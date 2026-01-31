@@ -1,0 +1,10 @@
+{
+    "id": "BalatroRLBridge",
+    "name": "Balatro RL Bridge",
+    "version": "1.0.0",
+    "description": "HTTP bridge for reinforcement learning harness",
+    "author": ["BalatroRL"],
+    "prefix": "rlbridge",
+    "main_file": "main.lua",
+    "priority": 100
+}

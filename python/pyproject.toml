@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "balatro-rl"
+version = "1.0.0"
+description = "Reinforcement Learning harness for Balatro"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "BalatroRL"}
+]
+
+dependencies = [
+    "requests>=2.28.0",
+    "pydantic>=2.0.0",
+    "rich>=13.0.0",
+    "gymnasium>=0.29.0",
+    "torch>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+balatro-health = "balatro_env.scripts.probe_health:main"
+balatro-state = "balatro_env.scripts.dump_state:main"
+balatro-legal = "balatro_env.scripts.list_legal_actions:main"
+balatro-smoke = "balatro_env.scripts.do_smoke_actions:main"
+balatro-shell = "balatro_env.scripts.interactive_shell:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["balatro_env*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]

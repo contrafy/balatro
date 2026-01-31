@@ -1,0 +1,376 @@
+<ClaudeMission name="Balatro True-State RL Harness" version="1.0">
+  <Context>
+    <UserGoal>
+      Build a fully working reinforcement-learning harness for the game Balatro running on macOS (Apple Silicon M1) via Steam.
+      The harness MUST use true game state (no OCR) and MUST include complete structured observations plus a legal-action mask.
+      The harness MUST be able to drive the actual running game instance on the user’s computer (modded client/injected Lua preferred).
+      Provide proof-of-concept scripts that can connect to the running Balatro instance, dump state, enumerate legal actions, and execute actions to verify correctness.
+      Training will be done later; right now deliver a robust environment + verification tooling.
+    </UserGoal>
+
+    <NonGoals>
+      <Item>Do not train the model yet.</Item>
+      <Item>Do not implement computer-vision OCR harness unless true-state access proves impossible; only build CV fallback after explicitly asking the user and getting approval.</Item>
+      <Item>Do not require cloud services.</Item>
+    </NonGoals>
+
+    <KeyPreferences>
+      <Item>Preferred control channel: local HTTP on localhost.</Item>
+      <Item>Preferred ML stack: PyTorch.</Item>
+      <Item>Goal harness quality: structured state + legal action masking comparable to a “human player interface,” i.e., correct and complete enough to avoid invalid embeddings.</Item>
+      <Item>Repository already exists and Claude will operate inside it: repo name 'balatro'.</Item>
+    </KeyPreferences>
+
+    <CriticalInstruction>
+      You MUST aggressively use the AskUserQuestion tool whenever there is any ambiguity about:
+      - file paths, installation steps, macOS security prompts, Steam install locations
+      - Balatro internals or modding APIs
+      - how to locate and hook into game state/action functions
+      - what constitutes a decision point in the game
+      - how to represent observation/action spaces
+      Never guess silently; ask, confirm, then implement.
+    </CriticalInstruction>
+  </Context>
+
+  <Assumptions>
+    <Item>User is on macOS, Apple Silicon M1.</Item>
+    <Item>User runs Balatro from Steam, latest version.</Item>
+    <Item>User is willing to install mod frameworks/injectors.</Item>
+    <Item>User prefers true-state extraction and direct action execution through game logic rather than mouse automation.</Item>
+  </Assumptions>
+
+  <ArchitecturePlan>
+    <Overview>
+      Implement a 2-part system:
+      (A) An in-game Lua module injected into Balatro (LÖVE/Lua) that exposes:
+          - GET /state  -> JSON structured state
+          - GET /legal  -> JSON legal actions/mask
+          - POST /action -> execute an action, return resulting state + transition metadata
+          - POST /reset  -> start a new run or return to a known initial state (best effort)
+      (B) A Python client + Gymnasium-like environment wrapper that:
+          - connects over localhost HTTP
+          - converts JSON state into tensors
+          - provides an action encoding/decoding layer
+          - exposes reset()/step() for RL training later
+
+      Provide CLI PoC tools and tests that validate:
+      - connectivity
+      - state extraction completeness
+      - legal action correctness
+      - action execution correspondence with what a human would see in UI
+    </Overview>
+
+    <InGameIntegration>
+      <PreferredApproach>
+        Use a supported Balatro modding/injection approach (e.g., Steamodded and/or Lovely Injector) to run custom Lua inside the game process.
+        The injected Lua code should:
+        - start a lightweight HTTP server bound to 127.0.0.1 on a configurable port (default 7777)
+        - discover and expose relevant game state tables/objects
+        - implement an action executor that calls in-game functions directly (not OS-level clicking)
+      </PreferredApproach>
+
+      <AskUserQuestionTriggers>
+        <Trigger>Any uncertainty about which injection method to use on macOS or how to install it.</Trigger>
+        <Trigger>Any uncertainty about the Balatro install path or app bundle location.</Trigger>
+        <Trigger>Any uncertainty about whether Steamodded/Lovely Injector is functioning (need user to confirm in-game mod menu/log output).</Trigger>
+      </AskUserQuestionTriggers>
+
+      <StateSpec>
+        <Principles>
+          <Item>Export stable, explicit identifiers for entities (cards, jokers, vouchers, shop items, blinds).</Item>
+          <Item>Include all information needed to compute optimal decisions: run meta, current blind requirements, hand contents, deck/discard counts, joker set with modifiers/counters, shop inventory with costs, consumables, active effects.</Item>
+          <Item>Provide a versioned schema with a top-level "schema_version".</Item>
+          <Item>Include "phase" / "decision_context" describing what the player is currently allowed to do.</Item>
+        </Principles>
+
+        <MinimumFields>
+          <Field name="schema_version" type="string"/>
+          <Field name="timestamp_ms" type="int"/>
+          <Field name="run_id" type="string"/>
+          <Field name="phase" type="string"/>
+          <Field name="money" type="int"/>
+          <Field name="ante" type="int"/>
+          <Field name="blind" type="object"/>
+          <Field name="hands_remaining" type="int"/>
+          <Field name="discards_remaining" type="int"/>
+          <Field name="hand" type="array"/>
+          <Field name="jokers" type="array"/>
+          <Field name="shop" type="object"/>
+          <Field name="deck_counts" type="object"/>
+          <Field name="active_effects" type="array"/>
+          <Field name="rng_state_if_available" type="object_optional"/>
+        </MinimumFields>
+
+        <CardEncoding>
+          <Item>Each card object must include: rank, suit, enhancements/editions/seals, debuffed flags, and any per-card metadata used by Balatro.</Item>
+          <Item>Use explicit string enums, not opaque integers, unless you also provide mapping tables.</Item>
+        </CardEncoding>
+
+        <LegalActionSpec>
+          <Principles>
+            <Item>Return a structured legal-action description, not just a flat mask.</Item>
+            <Item>For each action type, list valid parameters (e.g., which cards can be selected, which shop slots, which jokers can be sold).</Item>
+            <Item>Include a deterministic action_id encoding so Python can refer to actions consistently.</Item>
+          </Principles>
+
+          <ActionTypes>
+            <ActionType name="PLAY_HAND">
+              <Param name="card_indices" type="list[int]" constraints="select 1..5 from hand, obey in-game legality"/>
+            </ActionType>
+            <ActionType name="DISCARD">
+              <Param name="card_indices" type="list[int]" constraints="select 1..N from hand, obey discards_remaining"/>
+            </ActionType>
+            <ActionType name="SORT_HAND">
+              <Param name="mode" type="enum" constraints="whatever UI allows"/>
+            </ActionType>
+            <ActionType name="SHOP_BUY">
+              <Param name="slot" type="int" constraints="valid shop slot indices"/>
+            </ActionType>
+            <ActionType name="SHOP_REROLL"/>
+            <ActionType name="SHOP_SELL_JOKER">
+              <Param name="joker_index" type="int" constraints="valid owned joker index"/>
+            </ActionType>
+            <ActionType name="SHOP_END"/>
+            <ActionType name="SKIP_BLIND_IF_AVAILABLE"/>
+            <ActionType name="SELECT_PACK_ITEM">
+              <Param name="pack_id" type="string"/>
+              <Param name="choice_index" type="int"/>
+            </ActionType>
+          </ActionTypes>
+        </LegalActionSpec>
+      </StateSpec>
+
+      <HTTPAPI>
+        <Endpoints>
+          <Endpoint method="GET" path="/health" returns="200 OK with version + uptime"/>
+          <Endpoint method="GET" path="/state" returns="JSON state snapshot"/>
+          <Endpoint method="GET" path="/legal" returns="JSON legal action spec"/>
+          <Endpoint method="POST" path="/action" body="JSON action" returns="JSON transition: {ok, error?, state, legal, info}"/>
+          <Endpoint method="POST" path="/reset" body="optional seed/config" returns="JSON state + legal"/>
+          <Endpoint method="POST" path="/config" body="port/logging/fastmode" returns="JSON current config"/>
+        </Endpoints>
+
+        <LocalhostOnly>
+          Bind strictly to 127.0.0.1 unless the user explicitly requests LAN access.
+        </LocalhostOnly>
+
+        <Logging>
+          <Item>Write an in-game log file in the repo (or user-specified path) plus optionally print to console.</Item>
+          <Item>Expose GET /health with recent error count.</Item>
+        </Logging>
+      </HTTPAPI>
+    </InGameIntegration>
+
+    <PythonHarness>
+      <Structure>
+        <Item>Provide a Python package under python/ with a clean module layout.</Item>
+        <Item>Use Gymnasium API if available, otherwise implement a minimal compatible interface.</Item>
+        <Item>Implement action encoding/decoding with stable IDs.</Item>
+        <Item>Implement observation tokenizer that can later feed a Transformer (but do not train).</Item>
+      </Structure>
+
+      <RepoLayout>
+        <Tree>
+          <Dir name="balatro">
+            <Dir name="game_mod">
+              <File name="README.md"/>
+              <File name="balatro_http_bridge.lua"/>
+              <File name="install.md"/>
+            </Dir>
+            <Dir name="python">
+              <File name="pyproject.toml"/>
+              <File name="README.md"/>
+              <Dir name="balatro_env">
+                <File name="__init__.py"/>
+                <File name="client.py"/>
+                <File name="env.py"/>
+                <File name="schemas.py"/>
+                <File name="action_space.py"/>
+                <File name="obs_tokenizer.py"/>
+                <File name="util.py"/>
+              </Dir>
+              <Dir name="scripts">
+                <File name="probe_health.py"/>
+                <File name="dump_state.py"/>
+                <File name="list_legal_actions.py"/>
+                <File name="do_smoke_actions.py"/>
+                <File name="interactive_shell.py"/>
+              </Dir>
+              <Dir name="tests">
+                <File name="test_health.py"/>
+                <File name="test_state_schema.py"/>
+                <File name="test_legal_actions.py"/>
+              </Dir>
+            </Dir>
+            <File name="README.md"/>
+            <File name=".gitignore"/>
+          </Dir>
+        </Tree>
+      </RepoLayout>
+
+      <Dependencies>
+        <Item>requests</Item>
+        <Item>pydantic (for schema validation)</Item>
+        <Item>gymnasium (optional but preferred)</Item>
+        <Item>torch (PyTorch)</Item>
+        <Item>rich (for nice CLI output)</Item>
+        <Item>pytest</Item>
+      </Dependencies>
+
+      <PoCScriptsBehavior>
+        <Script name="probe_health.py">
+          Connect to http://127.0.0.1:7777/health and print status; nonzero exit on failure.
+        </Script>
+        <Script name="dump_state.py">
+          Fetch /state, validate against pydantic schema, pretty-print summary + write full JSON to artifacts/state_<timestamp>.json.
+        </Script>
+        <Script name="list_legal_actions.py">
+          Fetch /legal, print counts per action type, show examples, write to artifacts/legal_<timestamp>.json.
+        </Script>
+        <Script name="do_smoke_actions.py">
+          Execute a minimal safe sequence depending on phase:
+          - If in SHOP: reroll (if legal) then end shop (if legal)
+          - If in HAND_PLAY: play the simplest legal hand (e.g., highest-ranked single card if singles legal; otherwise first legal combo)
+          - If in DISCARD: discard one legal card
+          Must log actions and verify state changes (e.g., money/hands/discards/phase changes).
+        </Script>
+        <Script name="interactive_shell.py">
+          Provide a REPL to repeatedly show phase, legal action summary, allow user to type an action JSON, send it, and print results.
+        </Script>
+      </PoCScriptsBehavior>
+    </PythonHarness>
+  </ArchitecturePlan>
+
+  <ImplementationSteps>
+    <Step index="1" title="Confirm mod/injection approach on macOS">
+      <Instructions>
+        Research current, macOS-compatible approach to inject Lua into Balatro (LÖVE game) using known community tooling.
+        Identify the safest and simplest option for the user. Provide a short install guide under game_mod/install.md.
+        You MUST use AskUserQuestion to confirm:
+        - user’s Balatro app path if needed
+        - whether user is comfortable altering the game directory
+        - whether Gatekeeper blocks any binaries and what the user sees
+      </Instructions>
+      <Deliverable>game_mod/install.md + chosen approach documented</Deliverable>
+    </Step>
+
+    <Step index="2" title="Implement in-game HTTP server bridge">
+      <Instructions>
+        Implement balatro_http_bridge.lua with:
+        - localhost-only HTTP server
+        - /health endpoint
+        Start with minimal, then expand.
+        Validate the bridge is actually running by asking user to open http://127.0.0.1:7777/health in browser.
+        If there is any uncertainty about LÖVE networking availability, AskUserQuestion and/or adapt.
+      </Instructions>
+      <Deliverable>game_mod/balatro_http_bridge.lua working /health</Deliverable>
+    </Step>
+
+    <Step index="3" title="Discover and export true game state">
+      <Instructions>
+        Inspect Balatro runtime objects to locate:
+        - current run metadata
+        - current hand cards
+        - jokers
+        - shop inventory
+        - current blind/ante
+        Export JSON on /state.
+        Implement schema_versioning.
+        Use AskUserQuestion to have user navigate to known screens (shop, hand play, pack selection) so you can verify state export covers each phase.
+      </Instructions>
+      <Deliverable>/state returns structured JSON in multiple phases</Deliverable>
+    </Step>
+
+    <Step index="4" title="Compute legal actions and masks">
+      <Instructions>
+        Implement /legal based on current phase and in-game legality.
+        Must enumerate parameterized choices:
+        - which card selections are legal to play/discard
+        - which shop slots are purchasable
+        - which jokers are sellable
+        - whether reroll/end shop are available
+        Prefer to compute legality using in-game functions (if any) rather than re-implementing rules externally.
+        Where combinatorics explode (choose 5 from many), provide a two-level encoding:
+        - a structured spec listing valid card indices and constraints
+        - plus an optional enumerated list for small hand sizes
+        AskUserQuestion about performance expectations and whether to cap enumerations.
+      </Instructions>
+      <Deliverable>/legal returns correct legal action spec</Deliverable>
+    </Step>
+
+    <Step index="5" title="Accept and execute actions in-game">
+      <Instructions>
+        Implement POST /action to execute an action via game logic calls.
+        Must confirm action execution corresponds to UI-visible results.
+        Provide deterministic smoke action behaviors.
+        AskUserQuestion for user to confirm what they see on screen matches the action (e.g., card played, money changed, shop advanced).
+      </Instructions>
+      <Deliverable>/action works for at least: SHOP_REROLL, SHOP_END, DISCARD one card, PLAY simplest hand</Deliverable>
+    </Step>
+
+    <Step index="6" title="Build Python client + env wrapper">
+      <Instructions>
+        Implement Python HTTP client and Gymnasium-like env:
+        - env.reset() calls /reset then /state+/legal
+        - env.step(action) calls /action then returns obs/reward/done/info
+        Reward can be placeholder (0) for now; focus on correct transitions and done detection.
+        Provide schema validation with Pydantic.
+      </Instructions>
+      <Deliverable>python/balatro_env/env.py usable for later RL</Deliverable>
+    </Step>
+
+    <Step index="7" title="Proof-of-concept scripts and tests">
+      <Instructions>
+        Implement PoC scripts described in the plan.
+        Implement pytest tests that can run while Balatro is running (integration tests).
+        Provide a top-level README with exact commands:
+        - create venv, install deps, run probe, dump state, run smoke actions.
+      </Instructions>
+      <Deliverable>Working PoCs + tests + README</Deliverable>
+    </Step>
+  </ImplementationSteps>
+
+  <VerificationChecklist>
+    <Item>Visiting /health returns ok with version, uptime.</Item>
+    <Item>/state validates against schema, includes phase and all minimum fields.</Item>
+    <Item>/legal returns non-empty set of actions appropriate to phase.</Item>
+    <Item>POST /action changes state in a way consistent with on-screen UI.</Item>
+    <Item>Python dump_state.py writes a JSON artifact and prints a readable summary.</Item>
+    <Item>do_smoke_actions.py can safely act in at least shop and hand-play phases without crashing.</Item>
+  </VerificationChecklist>
+
+  <FailureModesAndFallbacks>
+    <If condition="True-state access is blocked or tools incompatible on macOS">
+      <Action>
+        Immediately AskUserQuestion describing what failed and present 2-3 alternatives:
+        - different injection framework
+        - using Steamodded vs Lovely Injector
+        - only as last resort: external UI automation
+        Do NOT switch to OCR/CV without explicit user approval.
+      </Action>
+    </If>
+
+    <If condition="Legal action enumeration is too large">
+      <Action>
+        Implement constraint-based legality spec rather than full enumeration.
+        Example: for PLAY_HAND, provide allowed indices and max_select and let Python sample/construct combos.
+        AskUserQuestion to confirm acceptable performance tradeoffs.
+      </Action>
+    </If>
+  </FailureModesAndFallbacks>
+
+  <Deliverables>
+    <Item>game_mod/balatro_http_bridge.lua</Item>
+    <Item>game_mod/install.md</Item>
+    <Item>python/balatro_env/*</Item>
+    <Item>python/scripts/*</Item>
+    <Item>python/tests/*</Item>
+    <Item>Top-level README.md with full run instructions</Item>
+  </Deliverables>
+
+  <StyleAndQuality>
+    <Item>Write clear code with comments, error handling, and structured logs.</Item>
+    <Item>Do not leave TODOs for core features without asking the user and getting permission.</Item>
+    <Item>Prefer incremental, testable milestones. After each milestone, provide the user a command to run plus expected output.</Item>
+  </StyleAndQuality>
+</ClaudeMission>
