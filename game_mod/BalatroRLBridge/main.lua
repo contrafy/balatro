@@ -239,8 +239,19 @@ end
 --------------------------------------------------------------------------------
 
 local function parse_http_request(data)
+    -- Find the header/body separator
+    local header_end = data:find("\r\n\r\n")
+    if not header_end then
+        -- No complete headers yet
+        return nil
+    end
+
+    local header_part = data:sub(1, header_end - 1)
+    local body = data:sub(header_end + 4)  -- Skip \r\n\r\n
+
+    -- Parse header lines
     local lines = {}
-    for line in data:gmatch("[^\r\n]+") do
+    for line in header_part:gmatch("[^\r\n]+") do
         lines[#lines + 1] = line
     end
 
@@ -250,27 +261,16 @@ local function parse_http_request(data)
     if not method then return nil end
 
     local headers = {}
-    local body_start = nil
     for i = 2, #lines do
         local line = lines[i]
-        if line == "" then
-            body_start = i + 1
-            break
-        end
         local key, value = line:match("^([^:]+):%s*(.*)$")
         if key then
             headers[key:lower()] = value
         end
     end
 
-    local body = nil
-    if body_start then
-        -- Find body after headers (after \r\n\r\n)
-        local _, body_pos = data:find("\r\n\r\n")
-        if body_pos then
-            body = data:sub(body_pos + 1)
-        end
-    end
+    -- If body is empty string, set to nil for consistency
+    if body == "" then body = nil end
 
     return {
         method = method,
@@ -771,30 +771,88 @@ local function execute_action(action_data)
             return {ok = false, error = "Must select 1-5 cards"}
         end
 
-        -- Highlight the selected cards
+        -- First unhighlight all cards, then highlight selected ones
         if G.hand and G.hand.cards then
-            -- First unhighlight all
             for _, card in ipairs(G.hand.cards) do
-                card.highlighted = false
+                card:highlight(false)
             end
-            -- Highlight selected
             for _, idx in ipairs(indices) do
                 if G.hand.cards[idx] then
-                    G.hand.cards[idx].highlighted = true
+                    G.hand.cards[idx]:highlight(true)
                 end
             end
         end
 
-        -- Trigger play action
-        if G.FUNCS and G.FUNCS.play_cards_from_highlighted then
-            G.FUNCS.play_cards_from_highlighted()
-            result.ok = true
-        elseif G.play_button and G.play_button.config and G.play_button.config.button then
-            -- Try clicking play button programmatically
-            G.FUNCS[G.play_button.config.button](G.play_button)
+        -- Try multiple methods to trigger play action
+        local played = false
+
+        -- Method 1: Use G.FUNCS.play_cards_from_highlighted if exists
+        if not played and G.FUNCS and G.FUNCS.play_cards_from_highlighted then
+            local ok, err = pcall(G.FUNCS.play_cards_from_highlighted)
+            if ok then played = true else log_error("play_cards_from_highlighted failed: " .. tostring(err)) end
+        end
+
+        -- Method 2: Try clicking the play button directly
+        if not played and G.buttons and G.buttons.cards then
+            for _, btn in ipairs(G.buttons.cards) do
+                if btn.config and btn.config.button == "play_cards_from_highlighted" then
+                    local ok, err = pcall(function() btn:click() end)
+                    if ok then played = true else log_error("Button click failed: " .. tostring(err)) end
+                    break
+                end
+            end
+        end
+
+        -- Method 3: Try G.FUNCS.run_play_card
+        if not played and G.FUNCS and G.FUNCS.run_play_card then
+            local ok, err = pcall(G.FUNCS.run_play_card)
+            if ok then played = true else log_error("run_play_card failed: " .. tostring(err)) end
+        end
+
+        -- Method 4: Directly create the play event
+        if not played and G.E_MANAGER then
+            local highlighted_cards = {}
+            for _, card in ipairs(G.hand.cards) do
+                if card.highlighted then
+                    highlighted_cards[#highlighted_cards + 1] = card
+                end
+            end
+
+            if #highlighted_cards > 0 then
+                -- Try using the event system
+                local ok, err = pcall(function()
+                    G.E_MANAGER:add_event(Event({
+                        trigger = 'after',
+                        delay = 0.1,
+                        func = function()
+                            if G.FUNCS.play_cards_from_highlighted then
+                                G.FUNCS.play_cards_from_highlighted()
+                            end
+                            return true
+                        end
+                    }))
+                end)
+                if ok then
+                    played = true
+                else
+                    log_error("Event manager failed: " .. tostring(err))
+                end
+            end
+        end
+
+        if played then
             result.ok = true
         else
-            result.error = "Cannot find play function"
+            -- Log available G.FUNCS for debugging
+            local funcs_list = {}
+            if G.FUNCS then
+                for k, _ in pairs(G.FUNCS) do
+                    if k:find("play") or k:find("card") or k:find("hand") then
+                        funcs_list[#funcs_list + 1] = k
+                    end
+                end
+            end
+            result.error = "Cannot find play function. Related G.FUNCS: " .. table.concat(funcs_list, ", ")
         end
 
     elseif action_type == "DISCARD" then
@@ -804,24 +862,46 @@ local function execute_action(action_data)
             return {ok = false, error = "Must select at least 1 card"}
         end
 
-        -- Highlight the selected cards
+        -- First unhighlight all cards, then highlight selected ones
         if G.hand and G.hand.cards then
             for _, card in ipairs(G.hand.cards) do
-                card.highlighted = false
+                card:highlight(false)
             end
             for _, idx in ipairs(indices) do
                 if G.hand.cards[idx] then
-                    G.hand.cards[idx].highlighted = true
+                    G.hand.cards[idx]:highlight(true)
                 end
             end
         end
 
-        -- Trigger discard action
-        if G.FUNCS and G.FUNCS.discard_cards_from_highlighted then
-            G.FUNCS.discard_cards_from_highlighted()
+        -- Try multiple methods to trigger discard action
+        local discarded = false
+
+        -- Method 1: G.FUNCS.discard_cards_from_highlighted
+        if not discarded and G.FUNCS and G.FUNCS.discard_cards_from_highlighted then
+            local ok, err = pcall(G.FUNCS.discard_cards_from_highlighted)
+            if ok then discarded = true else log_error("discard_cards_from_highlighted failed: " .. tostring(err)) end
+        end
+
+        -- Method 2: Try G.FUNCS.run_discard_card
+        if not discarded and G.FUNCS and G.FUNCS.run_discard_card then
+            local ok, err = pcall(G.FUNCS.run_discard_card)
+            if ok then discarded = true else log_error("run_discard_card failed: " .. tostring(err)) end
+        end
+
+        if discarded then
             result.ok = true
         else
-            result.error = "Cannot find discard function"
+            -- Log available G.FUNCS for debugging
+            local funcs_list = {}
+            if G.FUNCS then
+                for k, _ in pairs(G.FUNCS) do
+                    if k:find("discard") then
+                        funcs_list[#funcs_list + 1] = k
+                    end
+                end
+            end
+            result.error = "Cannot find discard function. Related G.FUNCS: " .. table.concat(funcs_list, ", ")
         end
 
     elseif action_type == "SHOP_BUY" then
@@ -993,6 +1073,51 @@ function handlers.OPTIONS_any(req)
     return {}
 end
 
+function handlers.GET_debug(req)
+    -- Debug endpoint to list available G.FUNCS and game info
+    local result = {
+        g_funcs = {},
+        state = nil,
+        buttons = {},
+    }
+
+    -- List all G.FUNCS that might be relevant
+    if G and G.FUNCS then
+        for k, v in pairs(G.FUNCS) do
+            if type(v) == "function" then
+                result.g_funcs[#result.g_funcs + 1] = k
+            end
+        end
+        table.sort(result.g_funcs)
+    end
+
+    -- Get current state info
+    if G then
+        result.state = G.STATE
+        result.states = {}
+        if G.STATES then
+            for k, v in pairs(G.STATES) do
+                result.states[k] = v
+            end
+        end
+    end
+
+    -- List buttons if available
+    if G and G.buttons and G.buttons.cards then
+        for i, btn in ipairs(G.buttons.cards) do
+            if btn.config and btn.config.button then
+                result.buttons[#result.buttons + 1] = {
+                    index = i,
+                    button = btn.config.button,
+                    label = btn.config.label,
+                }
+            end
+        end
+    end
+
+    return result
+end
+
 --------------------------------------------------------------------------------
 -- Main Server Loop
 --------------------------------------------------------------------------------
@@ -1000,13 +1125,32 @@ end
 local pending_clients = {}
 
 local function handle_request(client)
-    -- Set timeout for read
-    client:settimeout(0.001)
+    -- Set longer timeout for read to ensure we get full request
+    client:settimeout(0.1)
 
-    local data, err, partial = client:receive(CONFIG.max_request_size)
-    data = data or partial
+    -- Read until we get the full headers at least
+    local data = ""
+    local max_attempts = 10
 
-    if not data or #data == 0 then
+    for attempt = 1, max_attempts do
+        local chunk, err, partial = client:receive("*a")
+        chunk = chunk or partial
+
+        if chunk and #chunk > 0 then
+            data = data .. chunk
+        end
+
+        -- Check if we have complete headers
+        if data:find("\r\n\r\n") then
+            break
+        end
+
+        if err == "closed" or err == "timeout" then
+            break
+        end
+    end
+
+    if #data == 0 then
         return false
     end
 
@@ -1016,6 +1160,27 @@ local function handle_request(client)
     if not req then
         send_json(client, 400, {error = "Invalid HTTP request"})
         return true
+    end
+
+    -- For POST requests, ensure we have the body based on Content-Length
+    if req.method == "POST" and req.headers["content-length"] then
+        local content_length = tonumber(req.headers["content-length"]) or 0
+        local body = req.body or ""
+
+        -- If body is incomplete, try to read more
+        local attempts = 0
+        while #body < content_length and attempts < 10 do
+            client:settimeout(0.05)
+            local more, err, partial = client:receive(content_length - #body)
+            more = more or partial
+            if more and #more > 0 then
+                body = body .. more
+            end
+            if err == "closed" then break end
+            attempts = attempts + 1
+        end
+
+        req.body = body
     end
 
     local path = req.path:match("^([^?]+)") or req.path
