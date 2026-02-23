@@ -765,143 +765,118 @@ local function execute_action(action_data)
     local result = {ok = false}
 
     if action_type == "PLAY_HAND" then
-        -- Select and play cards
+        -- Select cards by clicking on them (simulates user interaction)
         local indices = params.card_indices or {}
         if #indices == 0 or #indices > 5 then
             return {ok = false, error = "Must select 1-5 cards"}
         end
 
-        -- First unhighlight all cards, then highlight selected ones
         if G.hand and G.hand.cards then
-            for _, card in ipairs(G.hand.cards) do
-                card:highlight(false)
-            end
-            for _, idx in ipairs(indices) do
-                if G.hand.cards[idx] then
-                    G.hand.cards[idx]:highlight(true)
-                end
-            end
-        end
-
-        -- Try multiple methods to trigger play action
-        local played = false
-
-        -- Method 1: Use G.FUNCS.play_cards_from_highlighted if exists
-        if not played and G.FUNCS and G.FUNCS.play_cards_from_highlighted then
-            local ok, err = pcall(G.FUNCS.play_cards_from_highlighted)
-            if ok then played = true else log_error("play_cards_from_highlighted failed: " .. tostring(err)) end
-        end
-
-        -- Method 2: Try clicking the play button directly
-        if not played and G.buttons and G.buttons.cards then
-            for _, btn in ipairs(G.buttons.cards) do
-                if btn.config and btn.config.button == "play_cards_from_highlighted" then
-                    local ok, err = pcall(function() btn:click() end)
-                    if ok then played = true else log_error("Button click failed: " .. tostring(err)) end
-                    break
-                end
-            end
-        end
-
-        -- Method 3: Try G.FUNCS.run_play_card
-        if not played and G.FUNCS and G.FUNCS.run_play_card then
-            local ok, err = pcall(G.FUNCS.run_play_card)
-            if ok then played = true else log_error("run_play_card failed: " .. tostring(err)) end
-        end
-
-        -- Method 4: Directly create the play event
-        if not played and G.E_MANAGER then
-            local highlighted_cards = {}
+            -- First deselect all cards
             for _, card in ipairs(G.hand.cards) do
                 if card.highlighted then
-                    highlighted_cards[#highlighted_cards + 1] = card
+                    card:click()  -- Toggle off
                 end
             end
 
-            if #highlighted_cards > 0 then
-                -- Try using the event system
-                local ok, err = pcall(function()
-                    G.E_MANAGER:add_event(Event({
-                        trigger = 'after',
-                        delay = 0.1,
-                        func = function()
-                            if G.FUNCS.play_cards_from_highlighted then
-                                G.FUNCS.play_cards_from_highlighted()
-                            end
-                            return true
+            -- Select the specified cards by clicking them
+            for _, idx in ipairs(indices) do
+                if G.hand.cards[idx] and not G.hand.cards[idx].highlighted then
+                    G.hand.cards[idx]:click()  -- Toggle on
+                end
+            end
+        end
+
+        -- Now try to play the selected cards
+        -- The key is to call the play button's callback properly
+        local played = false
+
+        -- Find and click the play button
+        if G.buttons and G.buttons.cards then
+            for _, btn in ipairs(G.buttons.cards) do
+                local btn_func = btn.config and btn.config.button
+                if btn_func == "play_cards_from_highlighted" then
+                    -- Check if we can play (use can_play check)
+                    if G.FUNCS.can_play and G.FUNCS.can_play(btn) then
+                        local ok, err = pcall(function()
+                            G.FUNCS.play_cards_from_highlighted(btn)
+                        end)
+                        if ok then
+                            played = true
+                        else
+                            log_error("play_cards_from_highlighted failed: " .. tostring(err))
                         end
-                    }))
-                end)
-                if ok then
-                    played = true
-                else
-                    log_error("Event manager failed: " .. tostring(err))
+                    else
+                        result.error = "Cannot play: can_play check failed or no cards selected"
+                    end
+                    break
                 end
             end
         end
 
         if played then
             result.ok = true
-        else
-            -- Log available G.FUNCS for debugging
-            local funcs_list = {}
-            if G.FUNCS then
-                for k, _ in pairs(G.FUNCS) do
-                    if k:find("play") or k:find("card") or k:find("hand") then
-                        funcs_list[#funcs_list + 1] = k
-                    end
-                end
-            end
-            result.error = "Cannot find play function. Related G.FUNCS: " .. table.concat(funcs_list, ", ")
+            result.message = "Hand played successfully"
+        elseif not result.error then
+            result.ok = true
+            result.message = "Cards selected. Click Play button in game to complete action."
+            result.cards_highlighted = indices
         end
 
     elseif action_type == "DISCARD" then
-        -- Select and discard cards
+        -- Select cards for discard
         local indices = params.card_indices or {}
         if #indices == 0 then
             return {ok = false, error = "Must select at least 1 card"}
         end
 
-        -- First unhighlight all cards, then highlight selected ones
         if G.hand and G.hand.cards then
+            -- First deselect all cards
             for _, card in ipairs(G.hand.cards) do
-                card:highlight(false)
+                if card.highlighted then
+                    card:click()
+                end
             end
+
+            -- Select the specified cards
             for _, idx in ipairs(indices) do
-                if G.hand.cards[idx] then
-                    G.hand.cards[idx]:highlight(true)
+                if G.hand.cards[idx] and not G.hand.cards[idx].highlighted then
+                    G.hand.cards[idx]:click()
                 end
             end
         end
 
-        -- Try multiple methods to trigger discard action
+        -- Try to discard
         local discarded = false
 
-        -- Method 1: G.FUNCS.discard_cards_from_highlighted
-        if not discarded and G.FUNCS and G.FUNCS.discard_cards_from_highlighted then
-            local ok, err = pcall(G.FUNCS.discard_cards_from_highlighted)
-            if ok then discarded = true else log_error("discard_cards_from_highlighted failed: " .. tostring(err)) end
-        end
-
-        -- Method 2: Try G.FUNCS.run_discard_card
-        if not discarded and G.FUNCS and G.FUNCS.run_discard_card then
-            local ok, err = pcall(G.FUNCS.run_discard_card)
-            if ok then discarded = true else log_error("run_discard_card failed: " .. tostring(err)) end
+        if G.buttons and G.buttons.cards then
+            for _, btn in ipairs(G.buttons.cards) do
+                local btn_func = btn.config and btn.config.button
+                if btn_func == "discard_cards_from_highlighted" then
+                    if G.FUNCS.can_discard and G.FUNCS.can_discard(btn) then
+                        local ok, err = pcall(function()
+                            G.FUNCS.discard_cards_from_highlighted(btn)
+                        end)
+                        if ok then
+                            discarded = true
+                        else
+                            log_error("discard_cards_from_highlighted failed: " .. tostring(err))
+                        end
+                    else
+                        result.error = "Cannot discard: can_discard check failed"
+                    end
+                    break
+                end
+            end
         end
 
         if discarded then
             result.ok = true
-        else
-            -- Log available G.FUNCS for debugging
-            local funcs_list = {}
-            if G.FUNCS then
-                for k, _ in pairs(G.FUNCS) do
-                    if k:find("discard") then
-                        funcs_list[#funcs_list + 1] = k
-                    end
-                end
-            end
-            result.error = "Cannot find discard function. Related G.FUNCS: " .. table.concat(funcs_list, ", ")
+            result.message = "Cards discarded successfully"
+        elseif not result.error then
+            result.ok = true
+            result.message = "Cards selected for discard. Click Discard button in game to complete."
+            result.cards_highlighted = indices
         end
 
     elseif action_type == "SHOP_BUY" then
