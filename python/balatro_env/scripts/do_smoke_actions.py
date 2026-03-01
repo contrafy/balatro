@@ -51,6 +51,27 @@ def smoke_shop(client: BalatroClient, state, legal) -> int:
     """Perform smoke actions in shop phase."""
     actions_taken = 0
 
+    # Display shop state
+    if state.shop:
+        shop = state.shop
+        console.print(f"  Shop jokers: {len(shop.jokers)}, vouchers: {len(shop.vouchers)}, boosters: {len(shop.boosters)}")
+        console.print(f"  Reroll cost: ${shop.reroll_cost}, Money: ${state.money}")
+        for item in shop.jokers:
+            console.print(f"    Joker slot {item.index}: {item.name} (${item.cost})")
+        for item in shop.vouchers:
+            console.print(f"    Voucher slot {item.index}: {item.name} (${item.cost})")
+        for item in shop.boosters:
+            console.print(f"    Booster slot {item.index}: {item.name} (${item.cost})")
+
+    # Try to buy first affordable joker
+    for action in legal.actions:
+        if action.type == ActionType.SHOP_BUY and action.params and action.params.slot:
+            req = ActionRequest(type=ActionType.SHOP_BUY, params={"slot": action.params.slot})
+            if execute_and_report(client, req, f"Buy from joker slot {action.params.slot}"):
+                actions_taken += 1
+                time.sleep(0.5)
+            break
+
     # Try to reroll if affordable
     for action in legal.actions:
         if action.type == ActionType.SHOP_REROLL:
@@ -58,7 +79,7 @@ def smoke_shop(client: BalatroClient, state, legal) -> int:
             if state.money >= cost:
                 if execute_and_report(client, ActionRequest(type=ActionType.SHOP_REROLL), "Reroll shop"):
                     actions_taken += 1
-                    time.sleep(0.5)  # Brief delay
+                    time.sleep(0.5)
                 break
 
     # End shop
@@ -75,20 +96,20 @@ def smoke_hand_play(client: BalatroClient, state, legal) -> int:
     """Perform smoke actions in hand selection phase."""
     actions_taken = 0
 
-    # Try to play a hand first
+    # Play as many cards as possible (up to 5) for maximum scoring
     for action in legal.actions:
         if action.type == ActionType.PLAY_HAND and action.params:
             params = action.params
             if params.card_indices:
                 available = params.card_indices.get("available", [])
                 if available:
-                    # Play just one card (simplest)
-                    card_to_play = [available[0]]
+                    # Play up to 5 cards for best scoring
+                    cards_to_play = available[:5]
                     req = ActionRequest(
                         type=ActionType.PLAY_HAND,
-                        params={"card_indices": card_to_play}
+                        params={"card_indices": cards_to_play}
                     )
-                    if execute_and_report(client, req, f"Play single card (index {card_to_play[0]})"):
+                    if execute_and_report(client, req, f"Play {len(cards_to_play)} cards {cards_to_play}"):
                         actions_taken += 1
                     return actions_taken
 
@@ -116,16 +137,23 @@ def smoke_pack(client: BalatroClient, state, legal) -> int:
     """Perform smoke actions in pack opening phase."""
     actions_taken = 0
 
-    # Try to select first pack item
+    # Display pack state
+    if state.pack:
+        console.print(f"  Pack cards: {len(state.pack.cards)}, choices remaining: {state.pack.choices_remaining}")
+        for card in state.pack.cards:
+            console.print(f"    Card {card.get('index', '?')}: {card.get('name', 'Unknown')} ({card.get('type', '?')})")
+
+    # Try to select first pack card (new action type)
     for action in legal.actions:
-        if action.type == ActionType.SELECT_PACK_ITEM and action.params:
-            choice_idx = action.params.choice_index
+        if action.type == ActionType.SELECT_PACK_CARD and action.params:
+            idx = action.params.index
             req = ActionRequest(
-                type=ActionType.SELECT_PACK_ITEM,
-                params={"choice_index": choice_idx}
+                type=ActionType.SELECT_PACK_CARD,
+                params={"index": idx}
             )
-            if execute_and_report(client, req, f"Select pack item {choice_idx}"):
+            if execute_and_report(client, req, f"Select pack card {idx}"):
                 actions_taken += 1
+                time.sleep(0.5)
             return actions_taken
 
     # Skip pack if can't select
@@ -176,15 +204,47 @@ def main():
             # Execute phase-appropriate actions
             actions_taken = 0
 
-            if state.phase == GamePhase.SHOP:
+            if state.phase == GamePhase.MENU:
+                # Start a new run from the menu
+                for action in legal.actions:
+                    if action.type == ActionType.START_RUN:
+                        req = ActionRequest(type=ActionType.START_RUN, params={"stake": 1})
+                        if execute_and_report(client, req, "Start new run (stake 1)"):
+                            actions_taken += 1
+                            time.sleep(3)  # Wait for run to start
+                        break
+            elif state.phase == GamePhase.SHOP:
                 actions_taken = smoke_shop(client, state, legal)
             elif state.phase == GamePhase.SELECTING_HAND:
                 actions_taken = smoke_hand_play(client, state, legal)
             elif state.phase == GamePhase.PACK_OPENING:
                 actions_taken = smoke_pack(client, state, legal)
             elif state.phase == GamePhase.BLIND_SELECT:
-                # Just observe for now
-                console.print("[cyan]In blind select - observing only[/cyan]")
+                # Select the blind (small blind by default)
+                for action in legal.actions:
+                    if action.type == ActionType.SELECT_BLIND:
+                        req = ActionRequest(type=ActionType.SELECT_BLIND, params={})
+                        if execute_and_report(client, req, "Select blind"):
+                            actions_taken += 1
+                            time.sleep(2)  # Wait for blind selection animation
+                        break
+            elif state.phase == GamePhase.ROUND_EVAL:
+                # Cash out to proceed to shop — retry until guard passes
+                for _ in range(5):
+                    req = ActionRequest(type=ActionType.CASH_OUT, params={})
+                    result = client.execute_action(req)
+                    if result.ok:
+                        console.print("[green]  Cash out: SUCCESS[/green]")
+                        actions_taken += 1
+                        time.sleep(1)
+                        break
+                    else:
+                        console.print(f"[yellow]  Cash out not ready: {result.error} - retrying...[/yellow]")
+                        time.sleep(0.5)
+            elif state.phase == GamePhase.GAME_OVER:
+                # Wait for game over animation to finish, then start a new run
+                console.print("[yellow]Game over - waiting for transition...[/yellow]")
+                time.sleep(2)
             else:
                 console.print(f"[yellow]Unknown phase {state.phase.value} - observing only[/yellow]")
 

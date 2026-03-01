@@ -16,6 +16,10 @@ class GamePhase(str, Enum):
     BLIND_SELECT = "BLIND_SELECT"
     SHOP = "SHOP"
     PACK_OPENING = "PACK_OPENING"
+    GAME_OVER = "GAME_OVER"
+    ROUND_EVAL = "ROUND_EVAL"
+    NEW_ROUND = "NEW_ROUND"
+    PLAY_TAROT = "PLAY_TAROT"
     UNKNOWN = "UNKNOWN"
 
     @classmethod
@@ -75,6 +79,9 @@ class ConsumableData(BaseModel):
     index: int
     name: Optional[str] = None
     key: Optional[str] = None
+    type: Optional[str] = None  # Tarot/Planet/Spectral
+    can_use: bool = False
+    ability: Optional[dict[str, Any]] = None
 
 
 class BlindData(BaseModel):
@@ -86,23 +93,44 @@ class BlindData(BaseModel):
     debuff_text: Optional[str] = None
 
 
-class ShopItem(BaseModel):
-    """An item in the shop."""
-    slot: int
+class ShopCard(BaseModel):
+    """A card in a shop area (jokers, vouchers, or boosters)."""
+    index: int
     name: Optional[str] = None
+    key: Optional[str] = None
     cost: int = 0
     type: str = "unknown"
+    edition: Optional[str] = None
+    sell_cost: int = 0
+    ability: Optional[dict[str, Any]] = None
 
 
 class ShopData(BaseModel):
-    """Shop state."""
-    items: list[ShopItem] = Field(default_factory=list)
+    """Shop state with three separate card areas."""
+    jokers: list[ShopCard] = Field(default_factory=list)
+    vouchers: list[ShopCard] = Field(default_factory=list)
+    boosters: list[ShopCard] = Field(default_factory=list)
     reroll_cost: int = 5
+
+    @field_validator("jokers", "vouchers", "boosters", mode="before")
+    @classmethod
+    def convert_empty_dict_to_list(cls, v):
+        if isinstance(v, dict) and len(v) == 0:
+            return []
+        return v
 
 
 class PackData(BaseModel):
     """Pack opening state."""
     cards: list[dict[str, Any]] = Field(default_factory=list)
+    choices_remaining: int = 1
+
+    @field_validator("cards", mode="before")
+    @classmethod
+    def convert_empty_dict_to_list(cls, v):
+        if isinstance(v, dict) and len(v) == 0:
+            return []
+        return v
 
 
 class DeckCounts(BaseModel):
@@ -123,7 +151,15 @@ class GameState(BaseModel):
     schema_version: str
     timestamp_ms: int
     phase: GamePhase
+    phase_raw: Optional[str] = None  # Original phase string before enum mapping
     error: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def preserve_raw_phase(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "phase" in data:
+            data["phase_raw"] = data["phase"]
+        return data
 
     # Run metadata
     run_id: Optional[Union[str, int]] = None
@@ -185,17 +221,24 @@ class GameState(BaseModel):
 
 class ActionType(str, Enum):
     """Types of actions that can be taken."""
+    SELECT_CARDS = "SELECT_CARDS"
     PLAY_HAND = "PLAY_HAND"
     DISCARD = "DISCARD"
     SORT_HAND = "SORT_HAND"
     SHOP_BUY = "SHOP_BUY"
+    SHOP_BUY_VOUCHER = "SHOP_BUY_VOUCHER"
+    SHOP_BUY_BOOSTER = "SHOP_BUY_BOOSTER"
     SHOP_REROLL = "SHOP_REROLL"
     SHOP_SELL_JOKER = "SHOP_SELL_JOKER"
     SHOP_END = "SHOP_END"
     SELECT_BLIND = "SELECT_BLIND"
     SKIP_BLIND = "SKIP_BLIND"
-    SELECT_PACK_ITEM = "SELECT_PACK_ITEM"
+    SELECT_PACK_CARD = "SELECT_PACK_CARD"
+    SELECT_PACK_ITEM = "SELECT_PACK_ITEM"  # legacy alias
     SKIP_PACK = "SKIP_PACK"
+    USE_CONSUMABLE = "USE_CONSUMABLE"
+    CASH_OUT = "CASH_OUT"
+    START_RUN = "START_RUN"
 
 
 class ActionParams(BaseModel):
@@ -208,6 +251,8 @@ class ActionParams(BaseModel):
     sell_value: Optional[int] = None
     options: Optional[list[str]] = None
     choice_index: Optional[int] = None
+    index: Optional[int] = None  # for pack card selection, consumable use
+    stake: Optional[int] = None
 
 
 class LegalAction(BaseModel):
@@ -216,6 +261,13 @@ class LegalAction(BaseModel):
     description: str
     params: ActionParams = Field(default_factory=ActionParams)
 
+    def to_request(self) -> "ActionRequest":
+        """Convert to an ActionRequest for execution."""
+        return ActionRequest(
+            type=self.type,
+            params=self.params.model_dump(exclude_none=True),
+        )
+
 
 class LegalActions(BaseModel):
     """Set of legal actions available in current state."""
@@ -223,6 +275,13 @@ class LegalActions(BaseModel):
     phase: GamePhase
     actions: list[LegalAction] = Field(default_factory=list)
     error: Optional[str] = None
+
+    @field_validator("actions", mode="before")
+    @classmethod
+    def convert_empty_dict_to_list(cls, v):
+        if isinstance(v, dict) and len(v) == 0:
+            return []
+        return v
 
     def has_action_type(self, action_type: ActionType) -> bool:
         """Check if a specific action type is available."""

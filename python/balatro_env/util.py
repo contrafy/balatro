@@ -136,30 +136,85 @@ def print_state_summary(state: GameState):
             )
         console.print(joker_table)
 
-    # Shop
-    if state.shop and state.shop.items:
-        shop_table = Table(title=f"Shop (Reroll: ${state.shop.reroll_cost})")
-        shop_table.add_column("Slot", style="dim")
-        shop_table.add_column("Item", style="bold")
-        shop_table.add_column("Cost", style="green")
-        shop_table.add_column("Type", style="cyan")
-        for item in state.shop.items:
-            affordable = "✓" if item.cost <= state.money else "✗"
-            shop_table.add_row(
-                str(item.slot),
-                item.name or "Unknown",
-                f"${item.cost} {affordable}",
-                item.type
+    # Consumables
+    if state.consumables:
+        cons_table = Table(title=f"Consumables ({len(state.consumables)})")
+        cons_table.add_column("Idx", style="dim")
+        cons_table.add_column("Name", style="bold magenta")
+        cons_table.add_column("Type", style="cyan")
+        cons_table.add_column("Usable", style="green")
+        for cons in state.consumables:
+            cons_table.add_row(
+                str(cons.index),
+                cons.name or cons.key or "Unknown",
+                cons.type or "?",
+                "Yes" if cons.can_use else "No"
             )
-        console.print(shop_table)
+        console.print(cons_table)
+
+    # Shop (three separate areas)
+    if state.shop:
+        shop = state.shop
+        if shop.jokers:
+            jt = Table(title=f"Shop - Jokers/Consumables (Reroll: ${shop.reroll_cost})")
+            jt.add_column("Slot", style="dim")
+            jt.add_column("Item", style="bold")
+            jt.add_column("Cost", style="green")
+            jt.add_column("Type", style="cyan")
+            for item in shop.jokers:
+                affordable = "Y" if item.cost <= state.money else "N"
+                jt.add_row(
+                    str(item.index),
+                    item.name or item.key or "Unknown",
+                    f"${item.cost} [{affordable}]",
+                    item.type
+                )
+            console.print(jt)
+
+        if shop.vouchers:
+            vt = Table(title="Shop - Vouchers")
+            vt.add_column("Slot", style="dim")
+            vt.add_column("Voucher", style="bold yellow")
+            vt.add_column("Cost", style="green")
+            for item in shop.vouchers:
+                affordable = "Y" if item.cost <= state.money else "N"
+                vt.add_row(
+                    str(item.index),
+                    item.name or item.key or "Unknown",
+                    f"${item.cost} [{affordable}]"
+                )
+            console.print(vt)
+
+        if shop.boosters:
+            bt = Table(title="Shop - Booster Packs")
+            bt.add_column("Slot", style="dim")
+            bt.add_column("Pack", style="bold blue")
+            bt.add_column("Cost", style="green")
+            for item in shop.boosters:
+                affordable = "Y" if item.cost <= state.money else "N"
+                bt.add_row(
+                    str(item.index),
+                    item.name or item.key or "Unknown",
+                    f"${item.cost} [{affordable}]"
+                )
+            console.print(bt)
+
+        if not shop.jokers and not shop.vouchers and not shop.boosters:
+            console.print(f"[dim]Shop is empty (Reroll: ${shop.reroll_cost})[/dim]")
 
     # Pack
     if state.pack and state.pack.cards:
-        pack_table = Table(title="Pack Cards")
+        pack_table = Table(title=f"Pack Cards (Choices remaining: {state.pack.choices_remaining})")
         pack_table.add_column("Idx", style="dim")
         pack_table.add_column("Card", style="bold yellow")
-        for i, card in enumerate(state.pack.cards):
-            pack_table.add_row(str(i + 1), card.get("name", "Unknown"))
+        pack_table.add_column("Type", style="cyan")
+        for card in state.pack.cards:
+            name = card.get("name", "Unknown")
+            card_type = card.get("type", "?")
+            # For playing cards, show suit/rank
+            if card.get("suit") and card.get("rank"):
+                name = f"{card['rank']} of {card['suit']}"
+            pack_table.add_row(str(card.get("index", "?")), name, card_type)
         console.print(pack_table)
 
 

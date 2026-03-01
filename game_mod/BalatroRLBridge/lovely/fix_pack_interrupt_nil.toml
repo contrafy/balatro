@@ -1,0 +1,31 @@
+[manifest]
+version = "1.0.0"
+
+# Fix G.STATE becoming nil when end_consumeable fires twice.
+#
+# end_consumeable has a deferred event that sets G.STATE = G.GAME.PACK_INTERRUPT
+# and then clears G.GAME.PACK_INTERRUPT = nil. If end_consumeable fires twice
+# (e.g. two use_card completions from the same pack), the second deferred event
+# fires after PACK_INTERRUPT has already been cleared to nil, so it executes
+# G.STATE = nil. This makes G.STATE nil, causing the RL bridge to report phase
+# "UNKNOWN" indefinitely (until the next blind-select animation).
+#
+# The fix: only assign G.STATE and call ease_background_colour_blind when
+# PACK_INTERRUPT is non-nil. If it's already nil, skip both calls (the first
+# invocation already handled the transition correctly).
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "G.STATE = G.GAME.PACK_INTERRUPT"
+position = "at"
+match_indent = true
+payload = "if G.GAME.PACK_INTERRUPT then G.STATE = G.GAME.PACK_INTERRUPT end"
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "ease_background_colour_blind(G.GAME.PACK_INTERRUPT)"
+position = "at"
+match_indent = true
+payload = "if G.GAME.PACK_INTERRUPT then ease_background_colour_blind(G.GAME.PACK_INTERRUPT) end"

@@ -1,0 +1,21 @@
+[manifest]
+version = "1.0.0"
+
+# Fix crash in update_shop's nested 'after' event.
+#
+# Game:update_shop runs every frame during SHOP state. It creates G.shop
+# (if not exists) then schedules: E_immediate → E_after (delay=0.2, blockable=false).
+# When toggle_shop is called (SHOP_END), it schedules its own E_after (delay=0.5)
+# that sets G.shop=nil. During the 0.5s transition window, update_shop keeps
+# scheduling more E_after_jiggle events. After G.shop=nil, all these fire and
+# crash on line 3242 (G.shop.T.y access).
+#
+# The fix: early-return from the nested after-event func if G.shop is nil.
+
+[[patches]]
+[patches.pattern]
+target = "game.lua"
+pattern = "if math.abs(G.shop.T.y - G.shop.VT.y) < 3 then"
+position = "before"
+match_indent = true
+payload = "if not G.shop then return true end\n"

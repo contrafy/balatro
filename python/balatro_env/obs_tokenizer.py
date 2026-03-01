@@ -198,8 +198,10 @@ class ObservationTokenizer:
             else:
                 features.extend([0.0, 0.0])
 
-        # Shop items (pad to MAX_SHOP_ITEMS)
-        shop_items = state.shop.items if state.shop else []
+        # Shop items (pad to MAX_SHOP_ITEMS) — flatten jokers+vouchers+boosters
+        shop_items = []
+        if state.shop:
+            shop_items = list(state.shop.jokers) + list(state.shop.vouchers) + list(state.shop.boosters)
         for i in range(self.MAX_SHOP_ITEMS):
             if i < len(shop_items):
                 item = shop_items[i]

@@ -381,6 +381,53 @@ local function extract_card(card)
     return data
 end
 
+-- Extract a card from a shop area (jokers, vouchers, boosters)
+local function extract_shop_card(card, index)
+    if not card then return nil end
+
+    local card_type = "unknown"
+    if card.ability and card.ability.set then
+        card_type = card.ability.set
+    elseif card.config and card.config.center and card.config.center.set then
+        card_type = card.config.center.set
+    end
+
+    local key = nil
+    if card.config and card.config.center then
+        key = card.config.center.key or card.config.center_key
+    end
+
+    return {
+        index = index,
+        name = safe_get(card, "ability", "name") or safe_get(card, "label") or "Unknown",
+        key = key,
+        cost = card.cost or 0,
+        type = card_type,
+        edition = card.edition and (
+            card.edition.foil and "foil" or
+            card.edition.holo and "holo" or
+            card.edition.polychrome and "polychrome" or
+            card.edition.negative and "negative" or nil
+        ) or nil,
+        sell_cost = card.sell_cost or 0,
+        ability = card.ability,
+    }
+end
+
+-- Extract cards from a CardArea (shop areas, pack cards, etc.)
+local function extract_cards_from_area(area, extractor)
+    local result = {}
+    if area and area.cards then
+        for i, card in ipairs(area.cards) do
+            local data = extractor(card, i)
+            if data then
+                result[#result + 1] = data
+            end
+        end
+    end
+    return result
+end
+
 -- Extract joker data
 local function extract_joker(joker)
     if not joker then return nil end
@@ -406,9 +453,18 @@ local function get_game_phase()
     if G.STATE == G.STATES.MENU then return "MENU" end
     if G.STATE == G.STATES.SPLASH then return "SPLASH" end
 
-    -- Check for specific UI states
     if G.GAME then
-        if G.GAME.shop and G.shop and G.shop.cards and #G.shop.cards > 0 then
+        -- Pack opening states (check before SHOP since packs open from shop)
+        if G.STATE == G.STATES.TAROT_PACK or
+           G.STATE == G.STATES.PLANET_PACK or
+           G.STATE == G.STATES.SPECTRAL_PACK or
+           G.STATE == G.STATES.STANDARD_PACK or
+           G.STATE == G.STATES.BUFFOON_PACK or
+           G.STATE == 999 then -- SMODS_BOOSTER_OPENED
+            return "PACK_OPENING"
+        end
+
+        if G.STATE == G.STATES.SHOP then
             return "SHOP"
         end
 
@@ -428,17 +484,20 @@ local function get_game_phase()
             return "BLIND_SELECT"
         end
 
-        if G.pack_cards and #G.pack_cards > 0 then
-            return "PACK_OPENING"
+        if G.STATE == G.STATES.GAME_OVER then
+            return "GAME_OVER"
         end
 
-        -- Check for booster pack selection
-        if G.STATE == G.STATES.PLANET_PACK or
-           G.STATE == G.STATES.TAROT_PACK or
-           G.STATE == G.STATES.SPECTRAL_PACK or
-           G.STATE == G.STATES.STANDARD_PACK or
-           G.STATE == G.STATES.BUFFOON_PACK then
-            return "PACK_OPENING"
+        if G.STATE == G.STATES.ROUND_EVAL or G.STATE == G.STATES.NEW_ROUND then
+            return "ROUND_EVAL"
+        end
+
+        if G.STATE == G.STATES.NEW_ROUND then
+            return "NEW_ROUND"
+        end
+
+        if G.STATE == G.STATES.PLAY_TAROT then
+            return "PLAY_TAROT"
         end
     end
 
@@ -515,42 +574,69 @@ local function build_game_state()
     state.consumables = {}
     if G.consumeables and G.consumeables.cards then
         for i, card in ipairs(G.consumeables.cards) do
+            local card_type = nil
+            if card.ability and card.ability.set then
+                card_type = card.ability.set
+            elseif card.config and card.config.center and card.config.center.set then
+                card_type = card.config.center.set
+            end
+
+            local can_use = false
+            if card.can_use_consumeable then
+                local ok_check, use_result = pcall(function() return card:can_use_consumeable(card) end)
+                if ok_check then can_use = use_result end
+            end
+
             state.consumables[#state.consumables + 1] = {
                 index = i,
                 name = safe_get(card, "ability", "name") or safe_get(card, "label"),
                 key = card.config and card.config.center and card.config.center.key,
+                type = card_type,
+                can_use = can_use,
+                ability = card.ability,
             }
         end
     end
 
-    -- Shop state
-    if state.phase == "SHOP" and G.shop then
+    -- Shop state (three separate card areas)
+    if state.phase == "SHOP" then
         state.shop = {
-            items = {},
+            jokers = extract_cards_from_area(G.shop_jokers, extract_shop_card),
+            vouchers = extract_cards_from_area(G.shop_vouchers, extract_shop_card),
+            boosters = extract_cards_from_area(G.shop_booster, extract_shop_card),
             reroll_cost = game.current_round and game.current_round.reroll_cost or 5,
         }
-        if G.shop.cards then
-            for i, card in ipairs(G.shop.cards) do
-                state.shop.items[#state.shop.items + 1] = {
-                    slot = i,
-                    name = safe_get(card, "ability", "name") or safe_get(card, "label"),
-                    cost = card.cost or 0,
-                    type = card.ability and card.ability.set or "unknown",
-                }
-            end
-        end
     end
 
     -- Pack opening state
-    if state.phase == "PACK_OPENING" and G.pack_cards then
+    if state.phase == "PACK_OPENING" and G.pack_cards and G.pack_cards.cards then
         state.pack = {
-            cards = {}
+            cards = {},
+            choices_remaining = game.pack_choices or 1,
         }
-        for i, card in ipairs(G.pack_cards) do
-            state.pack.cards[#state.pack.cards + 1] = {
+        for i, card in ipairs(G.pack_cards.cards) do
+            local pack_card = {
                 index = i,
                 name = safe_get(card, "ability", "name") or safe_get(card, "label"),
+                key = card.config and card.config.center and card.config.center.key,
+                type = card.ability and card.ability.set or (card.config and card.config.center and card.config.center.set) or "unknown",
             }
+            -- For playing cards (standard packs), include suit/rank/enhancements
+            if pack_card.type == "Default" or pack_card.type == "Enhanced" then
+                pack_card.suit = safe_get(card, "base", "suit")
+                pack_card.rank = safe_get(card, "base", "value") or safe_get(card, "base", "nominal")
+                if card.edition then
+                    if card.edition.foil then pack_card.edition = "foil"
+                    elseif card.edition.holo then pack_card.edition = "holo"
+                    elseif card.edition.polychrome then pack_card.edition = "polychrome"
+                    end
+                end
+                if card.ability and card.ability.name then
+                    pack_card.enhancement = card.ability.name
+                end
+                if card.seal then pack_card.seal = card.seal end
+            end
+            state.pack.cards[#state.pack.cards + 1] = pack_card
         end
     end
 
@@ -650,19 +736,73 @@ local function get_legal_actions()
             }
         }
 
+        -- Use consumable (tarots/planets/spectrals)
+        if G.consumeables and G.consumeables.cards then
+            for i, card in ipairs(G.consumeables.cards) do
+                local can_use = false
+                if card.can_use_consumeable then
+                    local ok_check, use_result = pcall(function() return card:can_use_consumeable(card) end)
+                    if ok_check then can_use = use_result end
+                end
+                if can_use then
+                    legal.actions[#legal.actions + 1] = {
+                        type = "USE_CONSUMABLE",
+                        description = "Use " .. (safe_get(card, "ability", "name") or "consumable"),
+                        params = {
+                            index = i,
+                        }
+                    }
+                end
+            end
+        end
+
     elseif phase == "SHOP" then
         -- Shop actions
         local money = game.dollars or 0
         local reroll_cost = game.current_round and game.current_round.reroll_cost or 5
 
-        -- Buy items
-        if G.shop and G.shop.cards then
-            for i, card in ipairs(G.shop.cards) do
+        -- Buy from joker/consumable area
+        if G.shop_jokers and G.shop_jokers.cards then
+            for i, card in ipairs(G.shop_jokers.cards) do
                 local cost = card.cost or 0
                 if cost <= money then
                     legal.actions[#legal.actions + 1] = {
                         type = "SHOP_BUY",
-                        description = "Buy item from shop",
+                        description = "Buy " .. (safe_get(card, "ability", "name") or "item") .. " from shop",
+                        params = {
+                            slot = i,
+                            cost = cost,
+                        }
+                    }
+                end
+            end
+        end
+
+        -- Buy voucher
+        if G.shop_vouchers and G.shop_vouchers.cards then
+            for i, card in ipairs(G.shop_vouchers.cards) do
+                local cost = card.cost or 0
+                if cost <= money then
+                    legal.actions[#legal.actions + 1] = {
+                        type = "SHOP_BUY_VOUCHER",
+                        description = "Buy voucher: " .. (safe_get(card, "ability", "name") or "voucher"),
+                        params = {
+                            slot = i,
+                            cost = cost,
+                        }
+                    }
+                end
+            end
+        end
+
+        -- Buy booster pack
+        if G.shop_booster and G.shop_booster.cards then
+            for i, card in ipairs(G.shop_booster.cards) do
+                local cost = card.cost or 0
+                if cost <= money then
+                    legal.actions[#legal.actions + 1] = {
+                        type = "SHOP_BUY_BOOSTER",
+                        description = "Buy booster: " .. (safe_get(card, "ability", "name") or "pack"),
                         params = {
                             slot = i,
                             cost = cost,
@@ -688,12 +828,32 @@ local function get_legal_actions()
             for i, joker in ipairs(G.jokers.cards) do
                 legal.actions[#legal.actions + 1] = {
                     type = "SHOP_SELL_JOKER",
-                    description = "Sell a joker",
+                    description = "Sell joker: " .. (safe_get(joker, "ability", "name") or "joker"),
                     params = {
                         joker_index = i,
                         sell_value = joker.sell_cost or 0,
                     }
                 }
+            end
+        end
+
+        -- Use consumable (tarots/planets/spectrals from consumable slots)
+        if G.consumeables and G.consumeables.cards then
+            for i, card in ipairs(G.consumeables.cards) do
+                local can_use = false
+                if card.can_use_consumeable then
+                    local ok_check, use_result = pcall(function() return card:can_use_consumeable(card) end)
+                    if ok_check then can_use = use_result end
+                end
+                if can_use then
+                    legal.actions[#legal.actions + 1] = {
+                        type = "USE_CONSUMABLE",
+                        description = "Use " .. (safe_get(card, "ability", "name") or "consumable"),
+                        params = {
+                            index = i,
+                        }
+                    }
+                end
             end
         end
 
@@ -723,13 +883,14 @@ local function get_legal_actions()
 
     elseif phase == "PACK_OPENING" then
         -- Pack card selection
-        if G.pack_cards then
-            for i = 1, #G.pack_cards do
+        local choices_remaining = game.pack_choices or 1
+        if G.pack_cards and G.pack_cards.cards and choices_remaining > 0 then
+            for i, card in ipairs(G.pack_cards.cards) do
                 legal.actions[#legal.actions + 1] = {
-                    type = "SELECT_PACK_ITEM",
-                    description = "Select card from pack",
+                    type = "SELECT_PACK_CARD",
+                    description = "Select " .. (safe_get(card, "ability", "name") or safe_get(card, "label") or "card") .. " from pack",
                     params = {
-                        choice_index = i,
+                        index = i,
                     }
                 }
             end
@@ -738,8 +899,26 @@ local function get_legal_actions()
         -- Skip pack
         legal.actions[#legal.actions + 1] = {
             type = "SKIP_PACK",
-            description = "Skip pack selection",
+            description = "Skip remaining pack choices",
             params = {}
+        }
+
+    elseif phase == "ROUND_EVAL" then
+        -- After winning a round the player must cash out to proceed to shop
+        legal.actions[#legal.actions + 1] = {
+            type = "CASH_OUT",
+            description = "Cash out and proceed to shop",
+            params = {}
+        }
+
+    elseif phase == "MENU" then
+        -- Can start a new run from the menu
+        legal.actions[#legal.actions + 1] = {
+            type = "START_RUN",
+            description = "Start a new run with default settings (stake 1, Red Deck)",
+            params = {
+                stake = 1,
+            }
         }
     end
 
@@ -764,141 +943,205 @@ local function execute_action(action_data)
 
     local result = {ok = false}
 
-    if action_type == "PLAY_HAND" then
-        -- Select cards by clicking on them (simulates user interaction)
+    if action_type == "SELECT_CARDS" then
+        -- Select/highlight cards in hand without playing or discarding.
+        local indices = params.card_indices or {}
+
+        if not G.hand or not G.hand.cards then
+            return {ok = false, error = "No hand available"}
+        end
+
+        -- Deselect all cards first
+        for _, card in ipairs(G.hand.cards) do
+            if card.highlighted then
+                card:click()
+            end
+        end
+
+        -- Select the specified cards
+        local selected = {}
+        for _, idx in ipairs(indices) do
+            if G.hand.cards[idx] then
+                if not G.hand.cards[idx].highlighted then
+                    G.hand.cards[idx]:click()
+                end
+                selected[#selected + 1] = idx
+            end
+        end
+
+        result.ok = true
+        result.message = "Cards selected"
+        result.cards_highlighted = selected
+
+    elseif action_type == "PLAY_HAND" then
+        -- Select cards and play them as a poker hand.
         local indices = params.card_indices or {}
         if #indices == 0 or #indices > 5 then
             return {ok = false, error = "Must select 1-5 cards"}
         end
 
-        if G.hand and G.hand.cards then
-            -- First deselect all cards
-            for _, card in ipairs(G.hand.cards) do
-                if card.highlighted then
-                    card:click()  -- Toggle off
-                end
-            end
+        if not G.hand or not G.hand.cards then
+            return {ok = false, error = "No hand available"}
+        end
 
-            -- Select the specified cards by clicking them
-            for _, idx in ipairs(indices) do
-                if G.hand.cards[idx] and not G.hand.cards[idx].highlighted then
-                    G.hand.cards[idx]:click()  -- Toggle on
-                end
+        -- Deselect all currently highlighted cards
+        for _, card in ipairs(G.hand.cards) do
+            if card.highlighted then
+                card:click()
             end
         end
 
-        -- Now try to play the selected cards
-        -- The key is to call the play button's callback properly
-        local played = false
-
-        -- Find and click the play button
-        if G.buttons and G.buttons.cards then
-            for _, btn in ipairs(G.buttons.cards) do
-                local btn_func = btn.config and btn.config.button
-                if btn_func == "play_cards_from_highlighted" then
-                    -- Check if we can play (use can_play check)
-                    if G.FUNCS.can_play and G.FUNCS.can_play(btn) then
-                        local ok, err = pcall(function()
-                            G.FUNCS.play_cards_from_highlighted(btn)
-                        end)
-                        if ok then
-                            played = true
-                        else
-                            log_error("play_cards_from_highlighted failed: " .. tostring(err))
-                        end
-                    else
-                        result.error = "Cannot play: can_play check failed or no cards selected"
-                    end
-                    break
-                end
+        -- Highlight the selected cards
+        for _, idx in ipairs(indices) do
+            if G.hand.cards[idx] and not G.hand.cards[idx].highlighted then
+                G.hand.cards[idx]:click()
             end
         end
 
-        if played then
-            result.ok = true
-            result.message = "Hand played successfully"
-        elseif not result.error then
-            result.ok = true
-            result.message = "Cards selected. Click Play button in game to complete action."
-            result.cards_highlighted = indices
+        -- Validate selection happened
+        if #G.hand.highlighted == 0 then
+            return {ok = false, error = "No cards were highlighted after selection"}
+        end
+
+        -- Play the hand
+        if G.FUNCS.play_cards_from_highlighted then
+            local ok, err = pcall(G.FUNCS.play_cards_from_highlighted, nil)
+            if ok then
+                result.ok = true
+                result.message = "Hand played"
+            else
+                log_error("play_cards_from_highlighted failed: " .. tostring(err))
+                result.error = "play_cards_from_highlighted failed: " .. tostring(err)
+            end
+        else
+            result.error = "play_cards_from_highlighted function not available"
         end
 
     elseif action_type == "DISCARD" then
-        -- Select cards for discard
+        -- Select cards and discard them.
         local indices = params.card_indices or {}
         if #indices == 0 then
             return {ok = false, error = "Must select at least 1 card"}
         end
 
-        if G.hand and G.hand.cards then
-            -- First deselect all cards
-            for _, card in ipairs(G.hand.cards) do
-                if card.highlighted then
-                    card:click()
-                end
-            end
+        if not G.hand or not G.hand.cards then
+            return {ok = false, error = "No hand available"}
+        end
 
-            -- Select the specified cards
-            for _, idx in ipairs(indices) do
-                if G.hand.cards[idx] and not G.hand.cards[idx].highlighted then
-                    G.hand.cards[idx]:click()
-                end
+        -- Deselect all currently highlighted cards
+        for _, card in ipairs(G.hand.cards) do
+            if card.highlighted then
+                card:click()
             end
         end
 
-        -- Try to discard
-        local discarded = false
-
-        if G.buttons and G.buttons.cards then
-            for _, btn in ipairs(G.buttons.cards) do
-                local btn_func = btn.config and btn.config.button
-                if btn_func == "discard_cards_from_highlighted" then
-                    if G.FUNCS.can_discard and G.FUNCS.can_discard(btn) then
-                        local ok, err = pcall(function()
-                            G.FUNCS.discard_cards_from_highlighted(btn)
-                        end)
-                        if ok then
-                            discarded = true
-                        else
-                            log_error("discard_cards_from_highlighted failed: " .. tostring(err))
-                        end
-                    else
-                        result.error = "Cannot discard: can_discard check failed"
-                    end
-                    break
-                end
+        -- Highlight the discard cards
+        for _, idx in ipairs(indices) do
+            if G.hand.cards[idx] and not G.hand.cards[idx].highlighted then
+                G.hand.cards[idx]:click()
             end
         end
 
-        if discarded then
-            result.ok = true
-            result.message = "Cards discarded successfully"
-        elseif not result.error then
-            result.ok = true
-            result.message = "Cards selected for discard. Click Discard button in game to complete."
-            result.cards_highlighted = indices
+        -- Validate selection happened
+        if #G.hand.highlighted == 0 then
+            return {ok = false, error = "No cards were highlighted after selection"}
+        end
+
+        -- Discard the hand
+        if G.FUNCS.discard_cards_from_highlighted then
+            local ok, err = pcall(G.FUNCS.discard_cards_from_highlighted, nil)
+            if ok then
+                result.ok = true
+                result.message = "Cards discarded"
+            else
+                log_error("discard_cards_from_highlighted failed: " .. tostring(err))
+                result.error = "discard_cards_from_highlighted failed: " .. tostring(err)
+            end
+        else
+            result.error = "discard_cards_from_highlighted function not available"
         end
 
     elseif action_type == "SHOP_BUY" then
         local slot = params.slot
-        if G.shop and G.shop.cards and G.shop.cards[slot] then
-            local card = G.shop.cards[slot]
+        if G.shop_jokers and G.shop_jokers.cards and G.shop_jokers.cards[slot] then
+            local card = G.shop_jokers.cards[slot]
             if card.cost and card.cost <= (G.GAME.dollars or 0) then
-                -- Try to buy the card
                 if G.FUNCS and G.FUNCS.buy_from_shop then
-                    G.FUNCS.buy_from_shop(card)
-                    result.ok = true
-                elseif card.click then
-                    card:click()
-                    result.ok = true
+                    -- Debug: log what we're passing
+                    local is_card = card and card.is and card:is(Card)
+                    local has_space = is_card and G.FUNCS.check_for_buy_space and G.FUNCS.check_for_buy_space(card)
+                    log_info("SHOP_BUY slot=" .. slot .. " is_Card=" .. tostring(is_card) .. " has_space=" .. tostring(has_space) .. " jokers=" .. tostring(G.jokers and #G.jokers.cards) .. "/" .. tostring(G.jokers and G.jokers.config.card_limit))
+                    local fake_e = {config = {ref_table = card}}
+                    local ok, buy_result = pcall(G.FUNCS.buy_from_shop, fake_e)
+                    if ok and buy_result ~= false then
+                        result.ok = true
+                        result.message = "Bought from shop slot " .. slot
+                    elseif ok and buy_result == false then
+                        result.error = "buy_from_shop returned false: no space or card not purchasable"
+                    else
+                        log_error("buy_from_shop failed: " .. tostring(buy_result))
+                        result.error = "buy_from_shop failed: " .. tostring(buy_result)
+                    end
                 else
-                    result.error = "Cannot find buy function"
+                    result.error = "buy_from_shop function not available"
                 end
             else
                 result.error = "Not enough money"
             end
         else
-            result.error = "Invalid shop slot"
+            result.error = "Invalid shop joker slot"
+        end
+
+    elseif action_type == "SHOP_BUY_VOUCHER" then
+        -- Vouchers use use_card (which calls card:redeem()), not buy_from_shop
+        local slot = params.slot
+        if G.shop_vouchers and G.shop_vouchers.cards and G.shop_vouchers.cards[slot] then
+            local card = G.shop_vouchers.cards[slot]
+            if card.cost and card.cost <= (G.GAME.dollars or 0) then
+                if G.FUNCS and G.FUNCS.use_card then
+                    local fake_e = {config = {ref_table = card}}
+                    local ok, err = pcall(G.FUNCS.use_card, fake_e)
+                    if ok then
+                        result.ok = true
+                        result.message = "Redeemed voucher from slot " .. slot
+                    else
+                        log_error("use_card (voucher) failed: " .. tostring(err))
+                        result.error = "use_card (voucher) failed: " .. tostring(err)
+                    end
+                else
+                    result.error = "use_card function not available"
+                end
+            else
+                result.error = "Not enough money"
+            end
+        else
+            result.error = "Invalid voucher slot"
+        end
+
+    elseif action_type == "SHOP_BUY_BOOSTER" then
+        -- Boosters use use_card (which calls card:open()), not buy_from_shop
+        local slot = params.slot
+        if G.shop_booster and G.shop_booster.cards and G.shop_booster.cards[slot] then
+            local card = G.shop_booster.cards[slot]
+            if card.cost and card.cost <= (G.GAME.dollars or 0) then
+                if G.FUNCS and G.FUNCS.use_card then
+                    local fake_e = {config = {ref_table = card}}
+                    local ok, err = pcall(G.FUNCS.use_card, fake_e)
+                    if ok then
+                        result.ok = true
+                        result.message = "Opened booster from slot " .. slot
+                    else
+                        log_error("use_card (booster) failed: " .. tostring(err))
+                        result.error = "use_card (booster) failed: " .. tostring(err)
+                    end
+                else
+                    result.error = "use_card function not available"
+                end
+            else
+                result.error = "Not enough money"
+            end
+        else
+            result.error = "Invalid booster slot"
         end
 
     elseif action_type == "SHOP_REROLL" then
@@ -950,15 +1193,58 @@ local function execute_action(action_data)
             result.error = "Cannot find sort function"
         end
 
+    elseif action_type == "SELECT_PACK_CARD" then
+        local idx = params.index
+        if G.pack_cards and G.pack_cards.cards and G.pack_cards.cards[idx] then
+            local card = G.pack_cards.cards[idx]
+            -- Highlight the card, then trigger use
+            if not card.highlighted then
+                card:click()
+            end
+            if G.FUNCS and G.FUNCS.use_card then
+                local fake_e = {config = {ref_table = card}}
+                local ok, err = pcall(G.FUNCS.use_card, fake_e, false, true)
+                if ok then
+                    result.ok = true
+                    result.message = "Selected pack card " .. idx
+                else
+                    log_error("use_card (pack) failed: " .. tostring(err))
+                    result.error = "use_card (pack) failed: " .. tostring(err)
+                end
+            elseif card.click then
+                card:click()
+                result.ok = true
+                result.message = "Clicked pack card " .. idx
+            else
+                result.error = "Cannot select pack card"
+            end
+        else
+            result.error = "Invalid pack card index"
+        end
+
+    -- Keep legacy alias for backward compat
     elseif action_type == "SELECT_PACK_ITEM" then
-        local idx = params.choice_index
-        if G.pack_cards and G.pack_cards[idx] then
-            local card = G.pack_cards[idx]
-            if card.click then
+        local idx = params.choice_index or params.index
+        if G.pack_cards and G.pack_cards.cards and G.pack_cards.cards[idx] then
+            local card = G.pack_cards.cards[idx]
+            if not card.highlighted then
+                card:click()
+            end
+            if G.FUNCS and G.FUNCS.use_card then
+                local fake_e = {config = {ref_table = card}}
+                local ok, err = pcall(G.FUNCS.use_card, fake_e, false, true)
+                if ok then
+                    result.ok = true
+                    result.message = "Selected pack item " .. idx
+                else
+                    log_error("use_card (pack legacy) failed: " .. tostring(err))
+                    result.error = "use_card (pack legacy) failed: " .. tostring(err)
+                end
+            elseif card.click then
                 card:click()
                 result.ok = true
             else
-                result.error = "Cannot click pack card"
+                result.error = "Cannot select pack card"
             end
         else
             result.error = "Invalid pack index"
@@ -966,10 +1252,160 @@ local function execute_action(action_data)
 
     elseif action_type == "SKIP_PACK" then
         if G.FUNCS and G.FUNCS.skip_booster then
-            G.FUNCS.skip_booster()
-            result.ok = true
+            local fake_e = {config = {ref_table = G.pack_cards}}
+            local ok, err = pcall(G.FUNCS.skip_booster, fake_e)
+            if ok then
+                result.ok = true
+                result.message = "Pack skipped"
+            else
+                log_error("skip_booster failed: " .. tostring(err))
+                result.error = "skip_booster failed: " .. tostring(err)
+            end
         else
-            result.error = "Cannot find skip function"
+            result.error = "skip_booster function not available"
+        end
+
+    elseif action_type == "USE_CONSUMABLE" then
+        local idx = params.index
+        if G.consumeables and G.consumeables.cards and G.consumeables.cards[idx] then
+            local card = G.consumeables.cards[idx]
+            -- Check if the consumable can be used
+            local can_use = false
+            if card.can_use_consumeable then
+                local ok_check, use_result = pcall(function() return card:can_use_consumeable(card) end)
+                if ok_check then can_use = use_result end
+            end
+            if not can_use then
+                result.error = "Consumable cannot be used right now (may need target cards selected)"
+                return result
+            end
+            -- Use the consumable
+            if G.FUNCS and G.FUNCS.use_card then
+                local fake_e = {config = {ref_table = card}}
+                local ok, err = pcall(G.FUNCS.use_card, fake_e)
+                if ok then
+                    result.ok = true
+                    result.message = "Used consumable " .. (safe_get(card, "ability", "name") or tostring(idx))
+                else
+                    log_error("use_card (consumable) failed: " .. tostring(err))
+                    result.error = "use_card (consumable) failed: " .. tostring(err)
+                end
+            else
+                result.error = "use_card function not available"
+            end
+        else
+            result.error = "Invalid consumable index"
+        end
+
+    elseif action_type == "START_RUN" then
+        -- Start a new run from the menu
+        if G.FUNCS and G.FUNCS.start_run then
+            local stake = params.stake or 1
+            local ok, err = pcall(function()
+                G.FUNCS.start_run(nil, {stake = stake})
+            end)
+            if ok then
+                result.ok = true
+                result.message = "New run started with stake " .. tostring(stake)
+            else
+                log_error("start_run failed: " .. tostring(err))
+                result.error = "start_run failed: " .. tostring(err)
+            end
+        else
+            result.error = "start_run function not available"
+        end
+
+    elseif action_type == "SELECT_BLIND" then
+        -- Select a blind to play (small, big, or boss).
+        -- Use fake_e with G.P_BLINDS ref_table directly — avoids get_UIE_by_ID which
+        -- fails for Boss blind (different UIBox structure). select_blind(e) reads:
+        --   e.config.ref_table  → the blind config object
+        --   e.UIBox:get_UIE_by_ID('tag_container') → optional tag (we return nil = no tag)
+        if G.FUNCS and G.FUNCS.select_blind then
+            local blind_on_deck = G.GAME and G.GAME.blind_on_deck  -- 'Small', 'Big', or 'Boss'
+            if not blind_on_deck then
+                -- BLIND_SELECT state is initializing; blind_on_deck isn't set yet. Retry.
+                return {ok = false, error = "blind_on_deck not set yet, retry"}
+            end
+            local blind_choices = G.GAME and G.GAME.round_resets and G.GAME.round_resets.blind_choices
+            local blind_key = blind_choices and blind_choices[blind_on_deck]
+            local blind_cfg = blind_key and G.P_BLINDS and G.P_BLINDS[blind_key]
+            if blind_cfg then
+                local fake_e = {
+                    config = {ref_table = blind_cfg},
+                    UIBox = {get_UIE_by_ID = function() return nil end}
+                }
+                local ok, err = pcall(G.FUNCS.select_blind, fake_e)
+                if ok then
+                    result.ok = true
+                    result.message = "Selected " .. tostring(blind_on_deck) .. " blind"
+                else
+                    log_error("select_blind failed: " .. tostring(err))
+                    result.error = "select_blind failed: " .. tostring(err)
+                end
+            else
+                result.error = "Could not resolve blind config for " .. tostring(blind_on_deck)
+                    .. " (blind_key=" .. tostring(blind_key) .. ")"
+            end
+        else
+            result.error = "select_blind function not available"
+        end
+
+    elseif action_type == "SKIP_BLIND" then
+        -- Skip the current blind
+        if G.FUNCS and G.FUNCS.skip_blind then
+            local ok, err = pcall(function()
+                G.FUNCS.skip_blind({config = {}})
+            end)
+            if ok then
+                result.ok = true
+                result.message = "Blind skipped"
+            else
+                log_error("skip_blind failed: " .. tostring(err))
+                result.error = "skip_blind failed: " .. tostring(err)
+            end
+        else
+            result.error = "skip_blind function not available"
+        end
+
+    elseif action_type == "CASH_OUT" then
+        -- Guard: wait until it is safe to call cash_out.
+        -- cash_out adds [delay(0.3), remove_round_eval] to the queue. If evaluate_round's
+        -- row events are still pending, they'll be queued AFTER remove_round_eval and crash.
+        -- Safe condition: no incomplete blocking events in the queue.
+        --   - animation-wait event (blocking, fires evaluate_round): if still pending → not safe
+        --   - row events from evaluate_round (blocking): if still pending → not safe
+        --   - persistent non-blocking event from game.lua: always present, never blocks → safe
+        -- Note: 'before' events with complete=true are just timing out → safe to proceed.
+        if not G.round_eval then
+            return {ok = false, error = "Round eval UI not ready yet, retry shortly"}
+        end
+        if G.E_MANAGER then
+            local has_pending_blocking = false
+            for _, ev in ipairs(G.E_MANAGER.queues.base) do
+                if ev.blocking and not ev.complete then
+                    has_pending_blocking = true
+                    break
+                end
+            end
+            if has_pending_blocking then
+                return {ok = false, error = "Round eval blocking events still pending, retry shortly"}
+            end
+        end
+        -- Cash out after winning a round to proceed to the shop
+        if G.FUNCS and G.FUNCS.cash_out then
+            local ok, err = pcall(function()
+                G.FUNCS.cash_out({config = {}})
+            end)
+            if ok then
+                result.ok = true
+                result.message = "Cashed out"
+            else
+                log_error("cash_out failed: " .. tostring(err))
+                result.error = "cash_out failed: " .. tostring(err)
+            end
+        else
+            result.error = "cash_out function not available"
         end
 
     else
@@ -1100,30 +1536,12 @@ end
 local pending_clients = {}
 
 local function handle_request(client)
-    -- Set longer timeout for read to ensure we get full request
-    client:settimeout(0.1)
+    -- Non-blocking read: all our requests are small and fit in a single TCP segment.
+    -- settimeout(0) avoids blocking the game loop for up to 1 second.
+    client:settimeout(0)
 
-    -- Read until we get the full headers at least
-    local data = ""
-    local max_attempts = 10
-
-    for attempt = 1, max_attempts do
-        local chunk, err, partial = client:receive("*a")
-        chunk = chunk or partial
-
-        if chunk and #chunk > 0 then
-            data = data .. chunk
-        end
-
-        -- Check if we have complete headers
-        if data:find("\r\n\r\n") then
-            break
-        end
-
-        if err == "closed" or err == "timeout" then
-            break
-        end
-    end
+    local chunk, err, partial = client:receive(65536)
+    local data = chunk or partial or ""
 
     if #data == 0 then
         return false
@@ -1137,26 +1555,8 @@ local function handle_request(client)
         return true
     end
 
-    -- For POST requests, ensure we have the body based on Content-Length
-    if req.method == "POST" and req.headers["content-length"] then
-        local content_length = tonumber(req.headers["content-length"]) or 0
-        local body = req.body or ""
-
-        -- If body is incomplete, try to read more
-        local attempts = 0
-        while #body < content_length and attempts < 10 do
-            client:settimeout(0.05)
-            local more, err, partial = client:receive(content_length - #body)
-            more = more or partial
-            if more and #more > 0 then
-                body = body .. more
-            end
-            if err == "closed" then break end
-            attempts = attempts + 1
-        end
-
-        req.body = body
-    end
+    -- Body is already included in the initial read for all our small payloads.
+    -- No retry loop needed.
 
     local path = req.path:match("^([^?]+)") or req.path
     path = path:gsub("^/+", "")  -- Remove leading slashes
@@ -1268,7 +1668,127 @@ function RLBridge.init()
     return true
 end
 
+--------------------------------------------------------------------------------
+-- Save Data Migration
+-- Steamodded expects wins_by_key/losses_by_key in deck_usage and joker_usage,
+-- but vanilla Balatro save data only has wins/losses (indexed by number).
+-- Steamodded's convert_save_data() should handle this, but it may not run
+-- before the run-setup UI accesses deck_usage.wins_by_key, causing a crash.
+-- We ensure the fields exist as a safety net.
+--------------------------------------------------------------------------------
+
+local save_migration_done = false
+
+local function ensure_save_data_migrated()
+    if save_migration_done then return end
+    if not G or not G.PROFILES or not G.SETTINGS or not G.SETTINGS.profile then return end
+    local profile = G.PROFILES[G.SETTINGS.profile]
+    if not profile then return end
+
+    -- Migrate deck_usage
+    if profile.deck_usage then
+        for k, v in pairs(profile.deck_usage) do
+            if not v.wins_by_key then v.wins_by_key = {} end
+            if not v.losses_by_key then v.losses_by_key = {} end
+        end
+    end
+
+    -- Migrate joker_usage
+    if profile.joker_usage then
+        for k, v in pairs(profile.joker_usage) do
+            if not v.wins_by_key then v.wins_by_key = {} end
+            if not v.losses_by_key then v.losses_by_key = {} end
+        end
+    end
+
+    -- Call Steamodded's full migration if available (populates from wins/losses)
+    if convert_save_data then
+        local ok, err = pcall(convert_save_data)
+        if not ok then
+            log_error("convert_save_data failed: " .. tostring(err))
+        end
+    end
+
+    save_migration_done = true
+    log_info("Save data migration check completed")
+end
+
+local _wipe_off_patched = false
+
 function RLBridge.update(dt)
+    ensure_save_data_migrated()
+
+    -- Completely replace wipe_off with a safe version.
+    -- The original events access G.screenwipe by global name. If START_RUN is called
+    -- twice, wipe_off fires twice: the first call's 1.1s event nils G.screenwipe, then
+    -- the second call's events crash trying to access nil. Fix: capture the screenwipe
+    -- object in a local variable at call time (sw/swcard) and use it directly in all
+    -- event callbacks. The global G.screenwipe is only nil'd if it still points to sw.
+    if not _wipe_off_patched and G and G.FUNCS and G.FUNCS.wipe_off then
+        G.FUNCS.wipe_off = function()
+            if not G.screenwipe then return end
+            local sw = G.screenwipe      -- captured reference; used in place of G.screenwipe
+            local swcard = G.screenwipecard
+            G.E_MANAGER:add_event(Event({
+                no_delete = true,
+                func = function()
+                    if sw.REMOVED then return true end
+                    delay(0.3)
+                    sw.children.particles.max = 0
+                    G.E_MANAGER:add_event(Event({
+                        trigger = 'ease', no_delete = true, blockable = false,
+                        blocking = false, timer = 'REAL',
+                        ref_table = sw.colours.black, ref_value = 4,
+                        ease_to = 0, delay = 0.3, func = (function(t) return t end)
+                    }))
+                    G.E_MANAGER:add_event(Event({
+                        trigger = 'ease', no_delete = true, blockable = false,
+                        blocking = false, timer = 'REAL',
+                        ref_table = sw.colours.white, ref_value = 4,
+                        ease_to = 0, delay = 0.3, func = (function(t) return t end)
+                    }))
+                    return true
+                end
+            }))
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after', delay = 0.55, no_delete = true,
+                blocking = false, timer = 'REAL',
+                func = function()
+                    if sw.REMOVED then return true end
+                    if swcard then swcard:start_dissolve({G.C.BLACK, G.C.ORANGE, G.C.GOLD, G.C.RED}) end
+                    local text_el = sw:get_UIE_by_ID('text')
+                    if text_el then
+                        for k, v in ipairs(text_el.children) do
+                            v.children[1].config.object:pop_out(4)
+                        end
+                    end
+                    return true
+                end
+            }))
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after', delay = 1.1, no_delete = true,
+                blocking = false, timer = 'REAL',
+                func = function()
+                    if sw.REMOVED then return true end
+                    sw.children.particles:remove()
+                    sw:remove()
+                    sw.children.particles = nil
+                    -- Only nil the global if it still points to our screenwipe object.
+                    -- If another START_RUN ran, G.screenwipe already points to a newer one.
+                    if G.screenwipe == sw then G.screenwipe = nil end
+                    if G.screenwipecard == swcard then G.screenwipecard = nil end
+                    return true
+                end
+            }))
+            G.E_MANAGER:add_event(Event({
+                trigger = 'after', delay = 1.2, no_delete = true,
+                blocking = true, timer = 'REAL',
+                func = function() return true end
+            }))
+        end
+        _wipe_off_patched = true
+    end
+
     server_tick()
 end
 

@@ -27,24 +27,39 @@ console = Console()
 HELP_TEXT = """
 [bold]Available Commands:[/bold]
 
-  [cyan]state[/cyan], [cyan]s[/cyan]      - Show current game state
-  [cyan]legal[/cyan], [cyan]l[/cyan]      - Show legal actions
-  [cyan]health[/cyan], [cyan]h[/cyan]     - Check bridge health
-  [cyan]action[/cyan] <json> - Execute an action (JSON format)
-  [cyan]play[/cyan] <indices> - Play cards (e.g., 'play 1 2 3')
-  [cyan]discard[/cyan] <indices> - Discard cards (e.g., 'discard 1 2')
-  [cyan]reroll[/cyan]       - Reroll shop
-  [cyan]endshop[/cyan]      - Leave shop
-  [cyan]sort[/cyan] <mode>  - Sort hand (rank/suit)
-  [cyan]buy[/cyan] <slot>   - Buy from shop slot
-  [cyan]sell[/cyan] <index> - Sell joker
-  [cyan]help[/cyan], [cyan]?[/cyan]       - Show this help
-  [cyan]quit[/cyan], [cyan]q[/cyan]       - Exit
+  [cyan]state[/cyan], [cyan]s[/cyan]         - Show current game state
+  [cyan]legal[/cyan], [cyan]l[/cyan]         - Show legal actions
+  [cyan]health[/cyan], [cyan]h[/cyan]        - Check bridge health
+  [cyan]action[/cyan] <json>    - Execute an action (JSON format)
+  [cyan]select[/cyan] <indices> - Select/highlight cards (e.g., 'select 1 2 3')
+  [cyan]play[/cyan] <indices>   - Play cards (e.g., 'play 1 2 3')
+  [cyan]discard[/cyan] <indices>- Discard cards (e.g., 'discard 1 2')
+  [cyan]run[/cyan]              - Start a new run
+  [cyan]blind[/cyan]            - Select the current blind
+  [cyan]sort[/cyan] <mode>      - Sort hand (rank/suit)
+
+[bold]Shop Commands:[/bold]
+  [cyan]buy[/cyan] <slot>, [cyan]bj[/cyan] <slot>  - Buy from joker/consumable shop slot
+  [cyan]buyvoucher[/cyan] <slot>, [cyan]bv[/cyan]  - Buy voucher
+  [cyan]buypack[/cyan] <slot>, [cyan]bp[/cyan]     - Buy booster pack
+  [cyan]sell[/cyan] <index>          - Sell joker
+  [cyan]reroll[/cyan]                - Reroll shop
+  [cyan]endshop[/cyan]               - Leave shop
+
+[bold]Pack Commands:[/bold]
+  [cyan]pick[/cyan] <index>          - Select card from opened pack
+  [cyan]skippack[/cyan], [cyan]sp[/cyan]          - Skip remaining pack choices
+
+[bold]Consumable Commands:[/bold]
+  [cyan]use[/cyan] <index>           - Use consumable (tarot/planet/spectral)
+
+  [cyan]help[/cyan], [cyan]?[/cyan]            - Show this help
+  [cyan]quit[/cyan], [cyan]q[/cyan]            - Exit
 
 [bold]Action JSON Format:[/bold]
   {"type": "PLAY_HAND", "params": {"card_indices": [1, 2, 3]}}
-  {"type": "SHOP_REROLL"}
   {"type": "SHOP_BUY", "params": {"slot": 1}}
+  {"type": "USE_CONSUMABLE", "params": {"index": 1}}
 """
 
 
@@ -155,6 +170,17 @@ def main():
                 except (KeyError, ValueError) as e:
                     console.print(f"[red]Invalid action:[/red] {e}")
 
+            elif cmd == "select":
+                indices = parse_indices(cmd_args)
+                if not indices:
+                    console.print("[yellow]Usage: select <index1> <index2> ...[/yellow]")
+                    continue
+                action = ActionRequest(
+                    type=ActionType.SELECT_CARDS,
+                    params={"card_indices": indices}
+                )
+                execute_action(client, action)
+
             elif cmd == "play":
                 indices = parse_indices(cmd_args)
                 if not indices:
@@ -177,6 +203,16 @@ def main():
                 )
                 execute_action(client, action)
 
+            elif cmd == "run":
+                execute_action(client, ActionRequest(
+                    type=ActionType.START_RUN, params={"stake": 1}
+                ))
+
+            elif cmd == "blind":
+                execute_action(client, ActionRequest(
+                    type=ActionType.SELECT_BLIND, params={}
+                ))
+
             elif cmd == "reroll":
                 execute_action(client, ActionRequest(type=ActionType.SHOP_REROLL))
 
@@ -191,7 +227,7 @@ def main():
                 )
                 execute_action(client, action)
 
-            elif cmd == "buy":
+            elif cmd in ("buy", "buyjoker", "bj"):
                 if not cmd_args:
                     console.print("[yellow]Usage: buy <slot>[/yellow]")
                     continue
@@ -204,6 +240,65 @@ def main():
                     execute_action(client, action)
                 except ValueError:
                     console.print("[red]Invalid slot number[/red]")
+
+            elif cmd in ("buyvoucher", "bv"):
+                if not cmd_args:
+                    console.print("[yellow]Usage: buyvoucher <slot>[/yellow]")
+                    continue
+                try:
+                    slot = int(cmd_args[0])
+                    action = ActionRequest(
+                        type=ActionType.SHOP_BUY_VOUCHER,
+                        params={"slot": slot}
+                    )
+                    execute_action(client, action)
+                except ValueError:
+                    console.print("[red]Invalid slot number[/red]")
+
+            elif cmd in ("buypack", "bp"):
+                if not cmd_args:
+                    console.print("[yellow]Usage: buypack <slot>[/yellow]")
+                    continue
+                try:
+                    slot = int(cmd_args[0])
+                    action = ActionRequest(
+                        type=ActionType.SHOP_BUY_BOOSTER,
+                        params={"slot": slot}
+                    )
+                    execute_action(client, action)
+                except ValueError:
+                    console.print("[red]Invalid slot number[/red]")
+
+            elif cmd == "pick":
+                if not cmd_args:
+                    console.print("[yellow]Usage: pick <index>[/yellow]")
+                    continue
+                try:
+                    idx = int(cmd_args[0])
+                    action = ActionRequest(
+                        type=ActionType.SELECT_PACK_CARD,
+                        params={"index": idx}
+                    )
+                    execute_action(client, action)
+                except ValueError:
+                    console.print("[red]Invalid index[/red]")
+
+            elif cmd in ("skippack", "sp"):
+                execute_action(client, ActionRequest(type=ActionType.SKIP_PACK))
+
+            elif cmd == "use":
+                if not cmd_args:
+                    console.print("[yellow]Usage: use <index>[/yellow]")
+                    continue
+                try:
+                    idx = int(cmd_args[0])
+                    action = ActionRequest(
+                        type=ActionType.USE_CONSUMABLE,
+                        params={"index": idx}
+                    )
+                    execute_action(client, action)
+                except ValueError:
+                    console.print("[red]Invalid index[/red]")
 
             elif cmd == "sell":
                 if not cmd_args:

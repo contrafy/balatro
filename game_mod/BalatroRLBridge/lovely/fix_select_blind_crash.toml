@@ -1,0 +1,31 @@
+[manifest]
+version = "1.0.0"
+
+# Fix crashes in select_blind's deferred 'before' and 'immediate' events.
+#
+# select_blind schedules a 'before' event (delay=0.2) and an 'immediate' event.
+# If select_blind is called twice in rapid succession, both calls schedule both
+# events while G.blind_select is still non-nil. The first call's immediate event
+# then sets G.blind_select = nil. When the second call's events fire, they crash
+# on nil-index of G.blind_select.
+#
+# Fix 1: early-return from the 'before' func if G.blind_select is already nil.
+# Fix 2: early-return from the 'immediate' func if G.blind_select is already nil.
+# Both are safe: if G.blind_select is gone, the first call already completed the
+# blind selection transition.
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "G.blind_prompt_box.alignment.offset.y = -10"
+position = "before"
+match_indent = true
+payload = "if not G.blind_select then return true end\n"
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "G.blind_select:remove()"
+position = "before"
+match_indent = true
+payload = "if not G.blind_select then return true end\n"

@@ -1,0 +1,42 @@
+[manifest]
+version = "1.0.0"
+
+# Fix crash in toggle_shop's 'immediate' event.
+#
+# toggle_shop schedules an 'immediate' event that accesses G.shop, followed
+# by an 'after' event (delay=0.5) that sets G.shop = nil. If toggle_shop is
+# called twice in rapid succession while G.shop is non-nil, both calls
+# schedule their own immediate+after pairs. The first after-event then sets
+# G.shop=nil. When the second immediate event fires, G.shop is nil and the
+# access crashes.
+#
+# The fix: early-return from the immediate func if G.shop is already nil.
+# Guard 1: before G.shop.alignment.offset.y = ... (crash in immediate event).
+#          This pattern also appears in use_card but is already inside
+#          'if G.shop and ...' so the 'not G.shop' guard is dead code there.
+# Guard 2: before G.SHOP_SIGN.alignment.offset.y = ... (unique, belt+suspenders).
+# Guard 3: before G.shop:remove() in the 'after' event (delay=0.5).
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "G.shop.alignment.offset.y = G.ROOM.T.y + 29"
+position = "before"
+match_indent = true
+payload = "if not G.shop then return true end\n"
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "G.SHOP_SIGN.alignment.offset.y = -15"
+position = "before"
+match_indent = true
+payload = "if not G.shop then return true end\n"
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "G.shop:remove()"
+position = "before"
+match_indent = true
+payload = "if not G.shop then return true end\n"

@@ -1,0 +1,22 @@
+[manifest]
+version = "1.0.0"
+
+# Fix crash in end_consumeable's deferred booster_pack removal event.
+#
+# end_consumeable schedules a deferred event (delay=0.2, blockable=false) that
+# calls G.booster_pack:remove(). If end_consumeable is called while a previous
+# removal event is still pending (e.g. two use_card completions in the same
+# EventManager tick), both events get scheduled while G.booster_pack is non-nil.
+# The first event removes the pack and nils G.booster_pack. The second event
+# then crashes because G.booster_pack is nil.
+#
+# The fix adds a nil guard before remove(). If G.booster_pack is already nil,
+# the remove() is skipped and only the nil-assignment runs (which is harmless).
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "G.booster_pack:remove()"
+position = "at"
+match_indent = true
+payload = "if G.booster_pack then G.booster_pack:remove() end"

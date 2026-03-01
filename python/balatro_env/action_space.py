@@ -127,8 +127,8 @@ class ActionEncoder:
         elif action_type == "SHOP_SELL_JOKER":
             joker_idx = action.params.get("joker_index", 1)
             return self.sell_joker_offset + joker_idx - 1
-        elif action_type == "SELECT_PACK_ITEM":
-            choice_idx = action.params.get("choice_index", 1)
+        elif action_type in ("SELECT_PACK_ITEM", "SELECT_PACK_CARD"):
+            choice_idx = action.params.get("choice_index") or action.params.get("index", 1)
             return self.pack_select_offset + choice_idx - 1
         elif action_type == "SELECT_BLIND":
             options = {"small": 0, "big": 1, "boss": 2}
@@ -242,12 +242,13 @@ class ActionEncoder:
                     joker_idx = params.joker_index
                     if 1 <= joker_idx <= self.MAX_JOKERS:
                         mask[self.sell_joker_offset + joker_idx - 1] = True
-            elif action_type == "SELECT_PACK_ITEM":
+            elif action_type in ("SELECT_PACK_ITEM", "SELECT_PACK_CARD"):
                 params = action.params
-                if params and params.choice_index:
-                    choice_idx = params.choice_index
-                    if 1 <= choice_idx <= self.MAX_PACK_CHOICES:
-                        mask[self.pack_select_offset + choice_idx - 1] = True
+                choice_idx = None
+                if params:
+                    choice_idx = params.choice_index or params.index
+                if choice_idx and 1 <= choice_idx <= self.MAX_PACK_CHOICES:
+                    mask[self.pack_select_offset + choice_idx - 1] = True
             elif action_type == "SELECT_BLIND":
                 # All three blind options
                 for i in range(3):

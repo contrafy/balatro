@@ -1,0 +1,23 @@
+[manifest]
+version = "1.0.0"
+
+# Fix crash in use_card's deferred cleanup event.
+#
+# When use_card's inner deferred event fires, it checks area.cards[1] to
+# decide whether to recall controller focus to the card area. The area is
+# captured at the time use_card is called. If the area (e.g. G.shop_jokers,
+# G.pack_cards) has been removed by the time this deferred event fires —
+# which happens when hand-scoring events block the queue and the shop/pack
+# is torn down in the interim — area.cards will be nil and Lua crashes.
+#
+# The fix adds a nil guard so we simply skip the focus-recall when the area
+# has already been cleaned up. This is always safe: if there are no cards in
+# the area, there is nothing to focus on anyway.
+
+[[patches]]
+[patches.pattern]
+target = "functions/button_callbacks.lua"
+pattern = "if area and area.cards[1] then "
+position = "at"
+match_indent = true
+payload = "if area and area.cards and area.cards[1] then "
