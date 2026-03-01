@@ -620,6 +620,7 @@ local function build_game_state()
                 name = safe_get(card, "ability", "name") or safe_get(card, "label"),
                 key = card.config and card.config.center and card.config.center.key,
                 type = card.ability and card.ability.set or (card.config and card.config.center and card.config.center.set) or "unknown",
+                facing = card.facing or "back",
             }
             -- For playing cards (standard packs), include suit/rank/enhancements
             if pack_card.type == "Default" or pack_card.type == "Enhanced" then

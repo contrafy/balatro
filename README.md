@@ -1,13 +1,13 @@
 # Balatro RL Harness
 
-A reinforcement learning harness for the game Balatro, providing true game state extraction and action execution via an in-game HTTP bridge.
+A reinforcement learning harness for the game **Balatro**, providing true game state extraction and action execution via an in-game HTTP bridge. Works on **Windows** and **macOS**.
 
 ## Overview
 
 This project enables RL agents to play Balatro by:
 
-1. **In-game Lua mod** (`game_mod/`) - Injects into Balatro to expose game state via HTTP
-2. **Python harness** (`python/`) - Gymnasium-compatible environment for RL training
+1. **In-game Lua mod** (`game_mod/`) — Injects into Balatro via Lovely Injector to expose game state over HTTP
+2. **Python harness** (`python/`) — Gymnasium-compatible environment, HTTP client, and a rule-based agent
 
 The harness extracts true game state (no OCR) including:
 - Current hand, jokers, consumables
@@ -19,29 +19,29 @@ The harness extracts true game state (no OCR) including:
 
 ### 1. Install the Mod
 
-See [game_mod/install.md](game_mod/install.md) for detailed instructions.
+See [game_mod/install.md](game_mod/install.md) for detailed platform-specific instructions.
 
+**Windows (summary):**
+```powershell
+# Download Lovely Injector (version.dll) → Balatro install dir
+# Install Steamodded → %APPDATA%\Balatro\Mods\Steamodded
+# Copy BalatroRLBridge → %APPDATA%\Balatro\Mods\BalatroRLBridge
+```
+
+**macOS (summary):**
 ```bash
-# Download Lovely Injector for Apple Silicon
-curl -L -o lovely.tar.gz https://github.com/ethangreen-dev/lovely-injector/releases/latest/download/lovely-aarch64-apple-darwin.tar.gz
-
-# Extract to Balatro directory
-cd ~/Library/Application\ Support/Steam/steamapps/common/Balatro
-tar -xzf ~/Downloads/lovely.tar.gz
-chmod +x run_lovely_macos.sh
-
-# Install Steamodded
-mkdir -p ~/Library/Application\ Support/Balatro/Mods
-cd ~/Library/Application\ Support/Balatro/Mods
-git clone https://github.com/Steamodded/smods.git Steamodded
-
-# Copy RL Bridge mod (from this repo)
-cp -r /path/to/this/repo/game_mod/BalatroRLBridge ~/Library/Application\ Support/Balatro/Mods/
+# Download Lovely Injector (liblovely.dylib) → Balatro install dir
+# Install Steamodded → ~/Library/Application Support/Balatro/Mods/Steamodded
+# Copy BalatroRLBridge → ~/Library/Application Support/Balatro/Mods/BalatroRLBridge
 ```
 
 ### 2. Launch Balatro
 
 ```bash
+# Windows (via Steam)
+steam -applaunch 2379780
+
+# macOS (via launch script)
 cd ~/Library/Application\ Support/Steam/steamapps/common/Balatro
 ./run_lovely_macos.sh
 ```
@@ -49,8 +49,8 @@ cd ~/Library/Application\ Support/Steam/steamapps/common/Balatro
 ### 3. Verify Bridge
 
 ```bash
-# Test connection
 curl http://127.0.0.1:7777/health
+# → {"status":"ok","version":"1.0.0","uptime_ms":12345}
 ```
 
 ### 4. Install Python Package
@@ -58,24 +58,51 @@ curl http://127.0.0.1:7777/health
 ```bash
 cd python
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-### 5. Run Tests
+### 5. Run the Agent
 
 ```bash
-# Probe health
-python -m balatro_env.scripts.probe_health
+# Plain console output
+python -m balatro_env.scripts.play_agent
 
-# Dump state
-python -m balatro_env.scripts.dump_state
+# Rich TUI dashboard (fullscreen)
+python -m balatro_env.scripts.play_agent --tui
 
-# List legal actions
-python -m balatro_env.scripts.list_legal_actions
+# With custom delay between decisions
+python -m balatro_env.scripts.play_agent --tui --delay 1.2
+```
 
-# Interactive shell
+The agent auto-starts runs, plays hands, shops, and restarts on game over.
+
+## Agent Strategy
+
+The built-in agent (`play_agent.py`) uses a deterministic rule-based strategy optimized for Red Deck on White Stake:
+
+| Component | Approach |
+|-----------|----------|
+| **Hand play** | Flush-first: aggressively discard off-suit cards to build flushes. Falls back to straights, then best available (full house, three of a kind, pairs). |
+| **Smeared Joker** | When owned, treats Hearts/Diamonds as "Red" and Clubs/Spades as "Black" for flush detection and discard decisions. |
+| **Planet priorities** | Buys/picks Jupiter (Flush) with highest priority. Deprioritizes Mars (Four of a Kind) and Neptune (Straight Flush) — hands the agent rarely completes. |
+| **Joker buying** | Prioritizes Droll Joker, Four Fingers, Smeared Joker, and xMult jokers. Sells weakest joker when a significantly better one appears in the shop. |
+| **Tarot cards** | Uses no-select tarots (Hermit, Judgement) immediately. Targets suit-changers and enhancements on hand cards with proper SELECT_CARDS → USE_CONSUMABLE flow. |
+| **Pack opening** | Waits for flip animations before selecting. Picks one card at a time with confirmation polling. |
+
+## Scripts
+
+```bash
+# Run the agent
+python -m balatro_env.scripts.play_agent [--tui] [--delay SECS]
+
+# Interactive REPL
 python -m balatro_env.scripts.interactive_shell
+
+# Smoke tests
+python -m balatro_env.scripts.do_smoke_actions probe_health
+python -m balatro_env.scripts.do_smoke_actions dump_state
+python -m balatro_env.scripts.do_smoke_actions list_legal_actions
 ```
 
 ## Architecture
@@ -85,11 +112,10 @@ python -m balatro_env.scripts.interactive_shell
 │                     Balatro (LÖVE2D)                        │
 │  ┌───────────────────────────────────────────────────────┐  │
 │  │              BalatroRLBridge (Lua mod)                │  │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐   │  │
-│  │  │ State       │  │ Legal       │  │ Action       │   │  │
-│  │  │ Extractor   │  │ Actions     │  │ Executor     │   │  │
-│  │  └──────┬──────┘  └──────┬──────┘  └──────┬───────┘   │  │
-│  │         │                │                │           │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐  │  │
+│  │  │ State       │  │ Legal       │  │ Action       │  │  │
+│  │  │ Extractor   │  │ Actions     │  │ Executor     │  │  │
+│  │  └──────┬──────┘  └──────┬──────┘  └──────┬───────┘  │  │
 │  │         └────────────────┴────────────────┘           │  │
 │  │                          │                            │  │
 │  │              ┌───────────┴───────────┐                │  │
@@ -99,13 +125,13 @@ python -m balatro_env.scripts.interactive_shell
 │  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
-                              │ HTTP
+                              │ HTTP (JSON)
                               │
 ┌─────────────────────────────┴───────────────────────────────┐
-│                    Python Harness                           │
+│                    Python Harness                            │
 │  ┌─────────────┐  ┌─────────────┐  ┌──────────────────────┐ │
-│  │BalatroClient│  │BalatroEnv   │  │ Action Encoder       │ │
-│  │ (HTTP)      │  │ (Gymnasium) │  │ Obs Tokenizer        │ │
+│  │BalatroClient│  │BalatroEnv   │  │ play_agent.py        │ │
+│  │ (HTTP)      │  │ (Gymnasium) │  │ (rule-based + TUI)   │ │
 │  └─────────────┘  └─────────────┘  └──────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -132,18 +158,16 @@ curl http://127.0.0.1:7777/state | jq .
 ```json
 {
   "schema_version": "1.0.0",
-  "timestamp_ms": 1234567890,
   "phase": "SELECTING_HAND",
   "money": 4,
   "ante": 1,
   "hands_remaining": 4,
   "discards_remaining": 3,
   "hand": [
-    {"id": "1", "rank": "King", "suit": "Hearts", ...},
-    ...
+    {"id": "1", "rank": "King", "suit": "Hearts"}
   ],
-  "jokers": [...],
-  "blind": {"name": "Small Blind", "chips_needed": 300, ...}
+  "jokers": [],
+  "blind": {"name": "Small Blind", "chips_needed": 300}
 }
 ```
 
@@ -160,52 +184,67 @@ curl -X POST http://127.0.0.1:7777/action \
 ```
 balatro/
 ├── game_mod/
-│   ├── install.md              # Installation guide
-│   ├── BalatroRLBridge/
-│   │   ├── mod.json            # Mod metadata
-│   │   └── main.lua            # Bridge implementation
-│   └── README.md
+│   ├── install.md              # Installation guide (Windows + macOS)
+│   └── BalatroRLBridge/
+│       ├── mod.json            # Mod metadata
+│       └── main.lua            # Bridge implementation
 ├── python/
 │   ├── balatro_env/            # Python package
 │   │   ├── client.py           # HTTP client
-│   │   ├── env.py              # Gymnasium env
-│   │   ├── schemas.py          # Data models
+│   │   ├── env.py              # Gymnasium environment
+│   │   ├── schemas.py          # Pydantic data models
+│   │   ├── strategy.py         # Shared decision logic
 │   │   ├── action_space.py     # Action encoding
 │   │   ├── obs_tokenizer.py    # State tokenization
-│   │   └── scripts/            # CLI tools
-│   ├── tests/                  # Integration tests
+│   │   └── scripts/
+│   │       ├── play_agent.py   # Rule-based agent (with TUI)
+│   │       ├── interactive_shell.py
+│   │       └── do_smoke_actions.py
+│   ├── tests/
 │   └── pyproject.toml
 └── README.md
 ```
 
 ## Requirements
 
-- macOS on Apple Silicon (M1/M2/M3)
+- **Windows 10+** or **macOS** (Apple Silicon M1/M2/M3/M4)
 - Balatro via Steam
 - Python 3.10+
-- PyTorch 2.0+
 
 ## Troubleshooting
 
 ### Bridge not responding
 
-1. Check terminal output when launching Balatro
-2. Look for `[BalatroRLBridge] HTTP server started` message
-3. Ensure port 7777 is not in use
+1. Ensure Balatro is running with mods loaded
+2. Check terminal/log output for `[BalatroRLBridge] HTTP server started`
+3. Verify port 7777 is not in use: `curl http://127.0.0.1:7777/health`
 
-### Mod not loading
+### Windows: Mod not loading
+
+1. Verify `version.dll` (Lovely Injector) is in the Balatro install directory
+2. Ensure Steamodded is in `%APPDATA%\Balatro\Mods\Steamodded\`
+3. Launch via Steam (Lovely hooks in automatically)
+4. Check logs in `%APPDATA%\Balatro\Mods\lovely\log\`
+
+### macOS: Mod not loading
 
 1. Verify Lovely Injector files are in Balatro directory
-2. Check Steamodded is installed in Mods folder
-3. Launch via `./run_lovely_macos.sh`, not Steam
+2. Launch via `./run_lovely_macos.sh`, not Steam
+3. If Gatekeeper blocks files: `xattr -d com.apple.quarantine liblovely.dylib`
 
-### macOS Gatekeeper blocks files
+### Game appears running but bridge is offline
 
+The game process can survive a Lua crash. Check both:
 ```bash
-xattr -d com.apple.quarantine liblovely.dylib
+# 1. Is process alive?
+tasklist /FI "IMAGENAME eq Balatro.exe"     # Windows
+pgrep -l Balatro                             # macOS
+
+# 2. Is bridge responding?
+curl http://127.0.0.1:7777/health
 ```
 
-Or allow in System Settings → Privacy & Security.
+If process exists but bridge is offline, check the latest log in the lovely log directory for errors, then kill and relaunch the game.
 
 ## License
 

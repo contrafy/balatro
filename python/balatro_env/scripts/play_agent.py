@@ -14,14 +14,20 @@ Run loop is synchronous: each iteration fetches state + legal, decides one
 action, executes it, then waits a short time for animations.
 """
 
+import argparse
 import sys
 import time
-from collections import Counter
+from collections import Counter, deque
+from dataclasses import dataclass, field
 from itertools import combinations
 from typing import Optional
 
 from rich.console import Console
+from rich.layout import Layout
+from rich.live import Live
 from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
 from balatro_env.client import BalatroClient, BalatroConnectionError
 from balatro_env.schemas import (
@@ -66,6 +72,35 @@ HAND_BASE: dict[int, tuple[int, int]] = {
     SF: (100, 8), FV: (120, 12), FLH: (140, 14), FLF: (160, 16),
 }
 
+# Planets to deprioritize — Four of a Kind (Mars) and Straight Flush (Neptune)
+# are hands the flush-first agent almost never completes intentionally.
+DEPRIORITIZED_PLANETS: set[str] = {"Mars", "Neptune"}
+
+
+# -- Smeared Joker helpers -----------------------------------------------------
+
+def has_smeared_joker(jokers: "list | None") -> bool:
+    """Return True if the player owns a Smeared Joker."""
+    if not jokers:
+        return False
+    return any((j.name or "") == "Smeared Joker" for j in jokers)
+
+
+def effective_suit(card: CardData, smeared: bool) -> str:
+    """Return the suit used for flush grouping.
+
+    With Smeared Joker active, Hearts/Diamonds → "Red", Clubs/Spades → "Black".
+    Without it, returns the card's actual suit.
+    """
+    suit = card.suit or "?"
+    if not smeared:
+        return suit
+    if suit in ("Hearts", "Diamonds"):
+        return "Red"
+    if suit in ("Clubs", "Spades"):
+        return "Black"
+    return suit
+
 
 def _rank(card: CardData) -> int:
     return RANK_ORDER.get(str(card.rank or "2").upper(), 0)
@@ -77,13 +112,52 @@ def _chips(card: CardData) -> int:
 
 # -- Hand detection ------------------------------------------------------------
 
-def detect_hand(cards: list[CardData]) -> int:
+def get_scoring_cards(hand_type: int, cards: list[CardData]) -> list[CardData]:
+    """Return only the cards that contribute chips in Balatro scoring.
+
+    In Balatro only the cards that FORM the hand type score — kickers do not
+    add chip values.  All five cards score for Straight / Flush / Full House /
+    Straight Flush / Five of a Kind / Flush variants.
+    """
+    if not cards:
+        return []
+    ranks = [_rank(c) for c in cards]
+    rc = Counter(ranks)
+
+    if hand_type == HC:
+        return [max(cards, key=_rank)]
+
+    if hand_type == PR:
+        for rank in sorted(rc, reverse=True):
+            if rc[rank] >= 2:
+                return [c for c in cards if _rank(c) == rank][:2]
+
+    if hand_type == TP:
+        pairs = sorted([r for r, cnt in rc.items() if cnt >= 2], reverse=True)[:2]
+        return [c for c in cards if _rank(c) in set(pairs)][:4]
+
+    if hand_type == TK:
+        for rank in sorted(rc, reverse=True):
+            if rc[rank] >= 3:
+                return [c for c in cards if _rank(c) == rank][:3]
+
+    if hand_type == FK:
+        for rank in sorted(rc, reverse=True):
+            if rc[rank] >= 4:
+                return [c for c in cards if _rank(c) == rank][:4]
+
+    # ST, FL, FH, SF, FV, FLH, FLF — all played cards are scoring cards
+    return list(cards)
+
+
+def detect_hand(cards: list[CardData], jokers: "list | None" = None) -> int:
     """Return the hand-type constant for a list of 1-5 cards."""
     if not cards:
         return HC
     cards = cards[:5]
     ranks = [_rank(c) for c in cards]
-    suits = [c.suit for c in cards]
+    smeared = has_smeared_joker(jokers)
+    suits = [effective_suit(c, smeared) for c in cards]
     rc = Counter(ranks)
     sc = Counter(suits)
 
@@ -164,25 +238,33 @@ def estimate_score(hand_type: int, cards: list[CardData], hand_levels: dict,
 
 def best_play(hand: list[CardData], hand_levels: dict,
               jokers: "list | None" = None) -> tuple[float, list[int], str]:
-    """Return (score, [hand_indices], name) for the best 1-5 card play."""
-    best = (-1.0, list(range(1, min(6, len(hand)+1))), "High Card")
+    """Return (score, [hand_indices], name) for the best play.
+
+    Returns only the *scoring* card indices (no kickers).  In Balatro, kicker
+    cards do not contribute chips — only the cards that form the hand type score.
+    Playing kickers wastes card slots and removes good cards from your hand.
+    """
+    best = (-1.0, [hand[0].hand_index] if hand and hand[0].hand_index is not None else [], "High Card")
     for size in range(1, min(6, len(hand)+1)):
         for combo in combinations(range(len(hand)), size):
             cards = [hand[i] for i in combo]
-            ht = detect_hand(cards)
-            sc = estimate_score(ht, cards, hand_levels, jokers)
+            ht = detect_hand(cards, jokers)
+            scoring = get_scoring_cards(ht, cards)
+            sc = estimate_score(ht, scoring, hand_levels, jokers)
             if sc > best[0]:
-                best = (sc, [hand[i].hand_index for i in combo
-                              if hand[i].hand_index is not None],
+                best = (sc,
+                        [c.hand_index for c in scoring if c.hand_index is not None],
                         HAND_NAMES[ht])
     return best
 
 
-def discard_for_flush(hand: list[CardData]) -> Optional[list[int]]:
+def discard_for_flush(hand: list[CardData],
+                      jokers: "list | None" = None) -> Optional[list[int]]:
     """Return indices to discard to chase a flush, or None if not worth it."""
+    smeared = has_smeared_joker(jokers)
     suit_groups: dict[str, list[CardData]] = {}
     for c in hand:
-        s = c.suit or "?"
+        s = effective_suit(c, smeared)
         suit_groups.setdefault(s, []).append(c)
 
     best_suit = max(suit_groups, key=lambda s: len(suit_groups[s]))
@@ -196,15 +278,61 @@ def discard_for_flush(hand: list[CardData]) -> Optional[list[int]]:
 
     # Discard ALL off-suit cards (up to 5 at once)
     off_suit = [c.hand_index for c in hand
-                if (c.suit or "?") != best_suit and c.hand_index is not None]
+                if effective_suit(c, smeared) != best_suit and c.hand_index is not None]
 
-    # Safety: if deck is low (hand already < 8 cards) only discard if we'd
-    # still have at least 5 cards after drawing back (worst case: draw 0).
+    # Safety: only prevent discard if we'd be left with fewer than 3 cards
+    # (Balatro draws back after discard, so this only matters when deck is
+    # near-empty and we genuinely cannot refill).
     cards_after_discard = len(hand) - len(off_suit[:5])
-    if cards_after_discard < 5:
+    if cards_after_discard < 3:
         return None
 
     return off_suit[:5] if off_suit else None
+
+
+def discard_for_straight(hand: list[CardData]) -> Optional[list[int]]:
+    """Return indices to discard to chase a straight, or None if not worth it.
+
+    Looks for 4-of-5 straight draws and discards non-matching cards.
+    """
+    if len(hand) < 5:
+        return None
+    ranks = sorted(set(_rank(c) for c in hand))
+    # Try each window of 5 consecutive ranks (including A-low wheel)
+    best_keep: set[int] | None = None
+    best_match = 0
+
+    for window_start in range(2, 12):  # windows starting 2..11 (2-6 thru 10-A)
+        window = set(range(window_start, window_start + 5))
+        matched = window & set(ranks)
+        if len(matched) >= 4 and len(matched) > best_match:
+            best_match = len(matched)
+            best_keep = matched
+
+    # Check wheel: A(14),2,3,4,5
+    wheel = {14, 2, 3, 4, 5}
+    wheel_matched = wheel & set(ranks)
+    if len(wheel_matched) >= 4 and len(wheel_matched) > best_match:
+        best_match = len(wheel_matched)
+        best_keep = wheel_matched
+
+    if best_keep is None or best_match < 4:
+        return None
+    if best_match >= 5:
+        return None  # already have a straight — no discard needed
+
+    # Keep one card per needed rank, discard the rest
+    kept: set[int] = set()
+    keep_indices: list[int] = []
+    for c in hand:
+        r = _rank(c)
+        if r in best_keep and r not in kept and c.hand_index is not None:
+            kept.add(r)
+            keep_indices.append(c.hand_index)
+
+    discard = [c.hand_index for c in hand
+               if c.hand_index is not None and c.hand_index not in set(keep_indices)]
+    return discard[:5] if discard else None
 
 
 def discard_for_hand(hand: list[CardData], hand_levels: dict) -> Optional[list[int]]:
@@ -225,7 +353,7 @@ def choose_play(hand: list[CardData], hand_levels: dict,
     # Try flush discard first (aggressive flush building)
     # But only if current best hand is weaker than what a flush would give us
     if discards_left > 0 and hands_left > 1:
-        flush_discard = discard_for_flush(hand)
+        flush_discard = discard_for_flush(hand, jokers)
         if flush_discard:
             flush_est = estimate_score(FL, hand[:5], hand_levels, jokers)
             # Don't discard if we already have something at least as good as a flush
@@ -236,6 +364,15 @@ def choose_play(hand: list[CardData], hand_levels: dict,
             return ActionRequest(type=ActionType.DISCARD,
                                  params={"card_indices": flush_discard})
 
+        # Try straight discard (lower priority than flush)
+        straight_discard = discard_for_straight(hand)
+        if straight_discard:
+            straight_est = estimate_score(ST, hand[:5], hand_levels, jokers)
+            if sc < straight_est * 0.9:
+                console.print(f"  -> Discard for straight: {straight_discard}")
+                return ActionRequest(type=ActionType.DISCARD,
+                                     params={"card_indices": straight_discard})
+
         # Discard if hand is weak and we have room to improve
         if hand_name in ("High Card", "Pair", "Two Pair") and hands_left > 1:
             generic_discard = discard_for_hand(hand, hand_levels)
@@ -243,6 +380,17 @@ def choose_play(hand: list[CardData], hand_levels: dict,
                 console.print(f"  -> Discard weak hand: {generic_discard}")
                 return ActionRequest(type=ActionType.DISCARD,
                                      params={"card_indices": generic_discard})
+
+    # Pad play with debuffed cards (boss blinds debuff suits/ranks; include
+    # debuffed cards alongside scoring cards to cycle them out of hand faster).
+    if len(play_idx) < 5:
+        play_set = set(play_idx)
+        debuffed_extra = [
+            c.hand_index for c in hand
+            if c.debuffed and c.hand_index is not None and c.hand_index not in play_set
+        ]
+        spaces = 5 - len(play_idx)
+        play_idx = play_idx + debuffed_extra[:spaces]
 
     console.print(f"  -> Play {hand_name}: {play_idx}  (est. {sc:.0f})")
     return ActionRequest(type=ActionType.PLAY_HAND,
@@ -281,6 +429,11 @@ JOKER_PRIORITY: dict[str, float] = {
 }
 
 
+def owned_joker_priority(joker) -> float:
+    """Return the priority score for an owned joker (lower = more expendable)."""
+    return JOKER_PRIORITY.get(joker.name or "", 4.0)
+
+
 def shop_item_priority(item, state: GameState) -> float:
     name = item.name or ""
     cost = item.cost
@@ -299,8 +452,10 @@ def shop_item_priority(item, state: GameState) -> float:
         return base
 
     if itype == "Planet":
+        if name in DEPRIORITIZED_PLANETS:
+            return -1.0  # Mars/Neptune: hands we rarely make
         # Only level up hands that fit our flush-first strategy
-        flush_planets = {"Jupiter", "Neptune"}   # Flush, Straight Flush
+        flush_planets = {"Jupiter"}              # Flush
         ok_planets    = {"Pluto", "Venus"}       # High Card / Three of a Kind (fallbacks)
         if name in flush_planets:
             return 9.0
@@ -309,7 +464,7 @@ def shop_item_priority(item, state: GameState) -> float:
         return 2.0   # Earth/Saturn/Mercury etc — not useful for flush build
 
     if itype == "Tarot":
-        # Buy high-value no-select tarots — we can use them immediately
+        # No-select tarots: buy when affordable
         if name in NO_SELECT_TAROTS:
             priorities = {
                 "Judgement":            8.5,   # free random joker
@@ -320,7 +475,20 @@ def shop_item_priority(item, state: GameState) -> float:
                 "The Wheel of Fortune": 5.0,   # chance for joker edition
             }
             return priorities.get(name, 4.5)
-        return 0.0   # card-targeting tarots — can't use without SELECT_CARDS
+        # Targeting tarots: buy if we can use them on hand cards
+        if name in TARGETING_TAROT_PRIORITY:
+            shop_buy_priority = {
+                "The Star":  7.5,  "The Moon": 7.5, "The Sun": 7.5, "The World": 7.5,
+                "The Lovers": 7.0,
+                "The Empress": 6.5, "Justice": 6.5,
+                "Death": 6.0,
+                "The Hierophant": 6.0,
+                "The Chariot": 5.5, "The Magician": 5.5, "Strength": 5.0,
+                "The Hanged Man": 4.5,
+                "The Devil": 4.0, "The Tower": 2.0,
+            }
+            return shop_buy_priority.get(name, 4.5)
+        return 0.0   # unknown / unhandled targeting tarot
 
     if itype == "Spectral":
         return 0.0   # can't use spectrals without SELECT_CARDS targeting
@@ -391,6 +559,28 @@ def choose_shop_action(state: GameState, legal: LegalActions,
     if candidates:
         candidates.sort(reverse=True, key=lambda x: x[0])
         best_p, best_act, best_name, best_cost = candidates[0]
+
+        # -- Sell weakest joker if a significantly better one is in the shop ---
+        if joker_count >= 5 and best_p >= 4.5:
+            # Find the weakest owned joker
+            sell_actions = legal.get_actions_of_type(ActionType.SHOP_SELL_JOKER)
+            if sell_actions and state.jokers:
+                weakest_j = min(state.jokers, key=owned_joker_priority)
+                weakest_p = owned_joker_priority(weakest_j)
+                # Only sell if the shop joker is 3+ points better
+                if best_p - weakest_p >= 3.0:
+                    # Find the sell action matching the weakest joker
+                    for sa in sell_actions:
+                        ji = sa.params.joker_index
+                        if ji is not None and 0 < ji <= len(state.jokers):
+                            if state.jokers[ji - 1] is weakest_j:
+                                console.print(
+                                    f"  -> Sell {weakest_j.name!r} (p={weakest_p:.1f}) "
+                                    f"to make room for {best_name!r} (p={best_p:.1f})")
+                                return ActionRequest(
+                                    type=ActionType.SHOP_SELL_JOKER,
+                                    params={"joker_index": ji})
+
         # Lower buy threshold slightly (4.5) so affordable jokers are always bought
         if best_p >= 4.5:
             console.print(f"  -> Buy {best_name!r} (${best_cost}, p={best_p:.1f})")
@@ -416,7 +606,7 @@ def choose_shop_action(state: GameState, legal: LegalActions,
 
 # -- Consumable use decisions --------------------------------------------------
 
-# Tarots that require NO card selection (can be used immediately in any phase)
+# Tarots that need NO card selection — can be fired immediately in any phase.
 NO_SELECT_TAROTS: set[str] = {
     "The Hermit",           # doubles current money — use ASAP (before spending)
     "Temperance",           # gives money = total joker sell value
@@ -427,7 +617,7 @@ NO_SELECT_TAROTS: set[str] = {
     "The Fool",             # copies last used consumable
 }
 
-TAROT_PRIORITY: dict[str, float] = {
+NO_SELECT_TAROT_PRIORITY: dict[str, float] = {
     "The Hermit":           10.0,  # doubles money — highest priority
     "Temperance":           9.5,   # money from joker sell values
     "Judgement":            9.0,   # free joker
@@ -437,59 +627,206 @@ TAROT_PRIORITY: dict[str, float] = {
     "The Fool":             6.0,   # copy last consumable (situational)
 }
 
+# Tarots that require SELECT_CARDS first — priority when we have a good target.
+# Only tried in SELECTING_HAND where a hand of cards exists.
+TARGETING_TAROT_PRIORITY: dict[str, float] = {
+    "The Star":       8.0,   # 3 cards → Spades  (great for flush building)
+    "The Moon":       8.0,   # 3 cards → Clubs
+    "The Sun":        8.0,   # 3 cards → Hearts
+    "The World":      8.0,   # 3 cards → Diamonds
+    "The Lovers":     7.5,   # 1 card  → Wild (any suit — fits any flush)
+    "The Empress":    7.0,   # 2 cards → Mult  enhancement
+    "Justice":        7.0,   # 1 card  → Glass (2x mult when scored)
+    "Death":          7.0,   # 2 adj   → copy left onto right
+    "The Hierophant": 6.5,   # 2 cards → Bonus chip enhancement
+    "The Chariot":    6.0,   # 1 card  → Steel (1.5x mult when NOT in hand)
+    "The Magician":   6.0,   # 1 card  → Lucky
+    "Strength":       5.5,   # 1 card  → +1 rank
+    "The Hanged Man": 5.0,   # 2 cards → destroys them (thins weak cards)
+    "The Devil":      4.0,   # 1 card  → Gold card ($3 per hand)
+    "The Tower":      2.0,   # 1 card  → Stone (removes rank/suit, big chips)
+}
+
+# Which suit each suit-changing tarot targets
+SUIT_CHANGER_TARGET: dict[str, str] = {
+    "The Star":  "Spades",
+    "The Moon":  "Clubs",
+    "The Sun":   "Hearts",
+    "The World": "Diamonds",
+}
+
+
+def get_tarot_target_cards(tarot_name: str, hand: list[CardData],
+                           jokers: "list | None" = None) -> list[int]:
+    """Return hand_index list for the best target cards for a targeting tarot.
+
+    Returns [] if this tarot cannot be usefully applied to the current hand.
+    """
+    if not hand:
+        return []
+
+    smeared = has_smeared_joker(jokers)
+    suit_counts = Counter(effective_suit(c, smeared) for c in hand)
+    dominant_suit = max(suit_counts, key=suit_counts.__getitem__)
+    suited = [c for c in hand if effective_suit(c, smeared) == dominant_suit and not c.debuffed]
+    off_suit = [c for c in hand if effective_suit(c, smeared) != dominant_suit and not c.debuffed]
+    suited_desc = sorted(suited, key=_rank, reverse=True)
+    off_suit_asc = sorted(off_suit, key=_rank)          # weakest off-suit first
+
+    # -- Suit-changers ---------------------------------------------------------
+    if tarot_name in SUIT_CHANGER_TARGET:
+        target_suit = SUIT_CHANGER_TARGET[tarot_name]
+        # When smeared, group by color; target suit maps to its color group
+        if smeared:
+            target_eff = "Red" if target_suit in ("Hearts", "Diamonds") else "Black"
+        else:
+            target_eff = target_suit
+        off_target = [c for c in hand if effective_suit(c, smeared) != target_eff and not c.debuffed]
+        new_count = suit_counts.get(target_eff, 0) + min(3, len(off_target))
+        # Only use if converting to target_suit would give us flush territory (>=5)
+        if new_count < 5 or not off_target:
+            return []
+        # Convert weakest off-target cards (keep high-value suited cards)
+        off_target_asc = sorted(off_target, key=_rank)
+        return [c.hand_index for c in off_target_asc[:3] if c.hand_index is not None]
+
+    # -- The Lovers (Wild card): best off-suit card or best suited if all same suit
+    if tarot_name == "The Lovers":
+        # Make off-suit card wild so it "fits" the flush suit
+        targets = off_suit_asc[:1] or suited_desc[:1]
+        return [c.hand_index for c in targets if c.hand_index is not None]
+
+    # -- Enhancement tarots: best suited cards ---------------------------------
+    if tarot_name in ("The Empress", "The Hierophant"):
+        return [c.hand_index for c in suited_desc[:2] if c.hand_index is not None]
+
+    if tarot_name in ("The Magician", "The Chariot", "Justice", "The Devil"):
+        return [c.hand_index for c in suited_desc[:1] if c.hand_index is not None]
+
+    if tarot_name == "Strength":
+        # Increase rank of best suited non-Ace card (Ace can't go higher)
+        non_ace = [c for c in suited_desc if _rank(c) < 14]
+        return [c.hand_index for c in non_ace[:1] if c.hand_index is not None]
+
+    if tarot_name == "The Tower":
+        # Stone on weakest off-suit card (removes rank/suit but adds big chips)
+        return [c.hand_index for c in off_suit_asc[:1] if c.hand_index is not None]
+
+    # -- The Hanged Man: destroy 2 weakest off-suit cards ----------------------
+    if tarot_name == "The Hanged Man":
+        if len(off_suit_asc) < 2:
+            return []
+        return [c.hand_index for c in off_suit_asc[:2] if c.hand_index is not None]
+
+    # -- Death: copy source card onto adjacent target card ---------------------
+    if tarot_name == "Death":
+        # Death: "Left card becomes Right card" — select [target, source]
+        # so target (left pos) becomes source (right pos).
+        # Cards must be adjacent (hand_index differs by 1).
+        for source in suited_desc:
+            for target in off_suit_asc:
+                if (source.hand_index is not None and target.hand_index is not None and
+                        abs(source.hand_index - target.hand_index) == 1):
+                    # Put lower index first (left), higher index second (right)
+                    lo, hi = sorted([target.hand_index, source.hand_index])
+                    # We want the worse card (lo) to become the better card (hi)
+                    # Death: left → right means lo becomes hi value.
+                    # Select [lo, hi]: lo is left → becomes hi (source)
+                    if hi == source.hand_index:
+                        return [lo, hi]
+        return []  # no adjacent pair found
+
+    return []
+
 
 def choose_consumable_action(
     state: GameState, legal: LegalActions
 ) -> Optional[ActionRequest]:
-    """Return a USE_CONSUMABLE action if there's a consumable worth using now,
-    else None.  Only uses items that require no card pre-selection."""
-    use_actions = legal.get_actions_of_type(ActionType.USE_CONSUMABLE)
-    if not use_actions:
-        return None
+    """Return the best consumable action available right now.
 
-    # Build index → consumable map (only usable ones)
-    consumable_map = {c.index: c for c in state.consumables if c.can_use}
-    if not consumable_map:
-        return None
+    May return USE_CONSUMABLE (for planets / no-select tarots, or after cards
+    are already highlighted for a targeting tarot) or SELECT_CARDS (to
+    highlight target cards before a USE_CONSUMABLE next iteration).
 
-    best_idx: Optional[int] = None
+    Returns None if no consumable action is worth taking.
+    """
+    use_map = {a.params.index: a for a in legal.get_actions_of_type(ActionType.USE_CONSUMABLE)}
+    can_select = legal.has_action_type(ActionType.SELECT_CARDS)
+    hand = state.hand  # empty list in SHOP phase
+
+    # Build index → ConsumableData for all consumables
+    consumable_by_idx = {c.index: c for c in state.consumables}
+
     best_priority = -1.0
+    best_action: Optional[ActionRequest] = None
+    best_label = ""
 
-    for action in use_actions:
-        idx = action.params.index
-        if idx is None:
-            continue
-        c = consumable_map.get(idx)
-        if c is None:
-            continue
-
-        ctype = c.type or ""
+    for c in state.consumables:
         cname = c.name or ""
+        ctype = c.type or ""
         priority = -1.0
+        action: Optional[ActionRequest] = None
+        label = ""
 
+        # -- Planet cards: always use immediately ------------------------------
         if ctype == "Planet":
-            # Always use planet cards immediately — levels up hand types
-            priority = 10.0
+            if c.can_use and c.index in use_map:
+                priority = 10.0
+                action = ActionRequest(type=ActionType.USE_CONSUMABLE,
+                                       params={"index": c.index})
+                label = f"Use planet {cname!r}"
 
+        # -- No-select tarots: use when can_use is True -----------------------
         elif ctype == "Tarot" and cname in NO_SELECT_TAROTS:
-            priority = TAROT_PRIORITY.get(cname, 6.0)
+            if c.can_use and c.index in use_map:
+                priority = NO_SELECT_TAROT_PRIORITY.get(cname, 6.0)
+                action = ActionRequest(type=ActionType.USE_CONSUMABLE,
+                                       params={"index": c.index})
+                label = f"Use tarot {cname!r}"
 
-        # Spectral and card-targeting tarots: skip (need SELECT_CARDS first or
-        # complex targeting we don't handle yet)
+        # -- Targeting tarots: need hand cards (only in SELECTING_HAND) -------
+        elif ctype == "Tarot" and cname in TARGETING_TAROT_PRIORITY and hand:
+            tp = TARGETING_TAROT_PRIORITY[cname]
+            if c.can_use and c.index in use_map:
+                # Target cards already highlighted — execute the tarot now
+                priority = tp
+                action = ActionRequest(type=ActionType.USE_CONSUMABLE,
+                                       params={"index": c.index})
+                label = f"Use targeting tarot {cname!r}"
+            elif not c.can_use and can_select:
+                # Need to highlight target cards first
+                targets = get_tarot_target_cards(cname, hand, state.jokers)
+                if targets:
+                    priority = tp - 0.1   # slightly lower than the USE step
+                    action = ActionRequest(type=ActionType.SELECT_CARDS,
+                                           params={"card_indices": targets})
+                    label = f"Select targets for {cname!r}: {targets}"
 
-        if priority > best_priority:
+        if priority > best_priority and action is not None:
             best_priority = priority
-            best_idx = idx
+            best_action = action
+            best_label = label
 
-    if best_idx is not None:
-        c = consumable_map[best_idx]
-        console.print(f"  -> Use consumable {c.name!r} (type={c.type})")
-        return ActionRequest(type=ActionType.USE_CONSUMABLE, params={"index": best_idx})
+    if best_action is not None:
+        console.print(f"  -> {best_label}")
+        return best_action
 
     return None
 
 
 # -- Pack decisions ------------------------------------------------------------
+
+def pack_cards_revealed(pack) -> bool:
+    """Return True if all pack cards are face-up with populated name/type."""
+    if not pack or not pack.cards:
+        return False
+    for c in pack.cards:
+        if c.get("facing") == "back":
+            return False
+        if not c.get("name") and not c.get("rank"):
+            return False
+    return True
+
 
 def choose_pack_action(state: GameState, legal: LegalActions) -> Optional[ActionRequest]:
     """Choose a pack action.  Returns None to signal 'wait this iteration'."""
@@ -507,6 +844,10 @@ def choose_pack_action(state: GameState, legal: LegalActions) -> Optional[Action
     if pack is None or pack.choices_remaining <= 0:
         return None
 
+    # Wait for pack cards to be fully revealed (flip animation)
+    if not pack_cards_revealed(pack):
+        return None
+
     best_idx: Optional[int] = None
     best_score = -1.0
 
@@ -519,17 +860,22 @@ def choose_pack_action(state: GameState, legal: LegalActions) -> Optional[Action
         score = 0.0
 
         if ctype == "Planet":
-            # Prefer flush-strategy planets; deprioritize others
-            if name in ("Jupiter", "Neptune"):
-                score = 10.0
+            if name in DEPRIORITIZED_PLANETS:
+                score = -1.0   # Mars/Neptune: never pick
+            elif name == "Jupiter":
+                score = 10.0   # Flush planet — core strategy
             elif name in ("Pluto", "Venus"):
                 score = 6.0
             else:
                 score = 3.0
         elif ctype == "Tarot":
-            high_val = {"The World", "The Star", "The Sun", "Judgement",
-                        "The Emperor", "The Lovers", "The High Priestess"}
-            score = 7.0 if name in high_val else 4.0
+            # No-select high-value tarots
+            if name in NO_SELECT_TAROT_PRIORITY:
+                score = NO_SELECT_TAROT_PRIORITY[name]
+            elif name in TARGETING_TAROT_PRIORITY:
+                score = TARGETING_TAROT_PRIORITY[name]
+            else:
+                score = 3.0
         elif ctype == "Spectral":
             score = 4.0
         elif ctype == "Joker":
@@ -551,226 +897,615 @@ def choose_pack_action(state: GameState, legal: LegalActions) -> Optional[Action
     return pick_actions[0].to_request()
 
 
+# -- TUI dashboard (ported from autopilot.py) ----------------------------------
+
+@dataclass
+class RunStats:
+    """Statistics for a single run."""
+    run_id: str = ""
+    rounds_survived: int = 0
+    max_ante: int = 0
+    max_money: int = 0
+    hands_played: int = 0
+    blinds_beaten: int = 0
+    won: bool = False
+
+    def summary_line(self) -> str:
+        result = "WON" if self.won else "Lost"
+        return (
+            f"Run {self.run_id}: {result} | "
+            f"Ante {self.max_ante} Round {self.rounds_survived} | "
+            f"${self.max_money} peak | "
+            f"{self.hands_played} hands"
+        )
+
+
+@dataclass
+class SessionStats:
+    """Statistics across all runs in this session."""
+    runs_completed: int = 0
+    total_rounds: int = 0
+    total_hands: int = 0
+    best_ante: int = 0
+    wins: int = 0
+    run_history: list[RunStats] = field(default_factory=list)
+    current_run: RunStats = field(default_factory=RunStats)
+
+    def finish_run(self, won: bool = False):
+        self.current_run.won = won
+        self.run_history.append(self.current_run)
+        self.runs_completed += 1
+        self.total_rounds += self.current_run.rounds_survived
+        self.total_hands += self.current_run.hands_played
+        if self.current_run.max_ante > self.best_ante:
+            self.best_ante = self.current_run.max_ante
+        if won:
+            self.wins += 1
+        self.current_run = RunStats()
+
+    def new_run(self, run_id: str):
+        self.current_run = RunStats(run_id=run_id)
+
+
+@dataclass
+class AgentDecision:
+    """Tracks the most recent agent decision for TUI display."""
+    reason: str = ""
+    cards_label: str = ""
+
+
+def _card_label(card) -> str:
+    """Short display label for a card (e.g. 'KH', '10S')."""
+    if isinstance(card, dict):
+        r = card.get("rank", "?")
+        s = card.get("suit", "?")
+    else:
+        r = card.rank or "?"
+        s = card.suit or "?"
+    suit_sym = {"Hearts": "H", "Diamonds": "D", "Clubs": "C", "Spades": "S"}
+    return f"{r}{suit_sym.get(str(s), '?')}"
+
+
+LOG_MAX = 30
+
+
+def build_dashboard(
+    state: GameState | None,
+    legal: LegalActions | None,
+    last_decision: AgentDecision | None,
+    session: SessionStats,
+    log_lines: deque[str],
+    status_msg: str = "",
+) -> Layout:
+    """Build the Rich Layout for the live TUI dashboard."""
+    layout = Layout()
+
+    layout.split_column(
+        Layout(name="header", size=3),
+        Layout(name="body"),
+        Layout(name="footer", size=5),
+    )
+
+    # Header
+    phase_str = state.phase.value if state else "Connecting..."
+    run_id = state.run_id or "N/A" if state else "N/A"
+    header_text = Text.from_markup(
+        f"  [bold cyan]BALATRO AGENT[/]  |  "
+        f"Phase: [bold yellow]{phase_str}[/]  |  "
+        f"Run: {run_id}  |  "
+        f"Runs: {session.runs_completed} ({session.wins}W)  |  "
+        f"Best Ante: {session.best_ante}"
+    )
+    layout["header"].update(Panel(header_text, style="blue"))
+
+    # Body: split into left (game state) and right (log)
+    layout["body"].split_row(
+        Layout(name="state_panel", ratio=2),
+        Layout(name="log_panel", ratio=1),
+    )
+
+    # State panel
+    state_content = build_state_panel(state, legal, session)
+    layout["state_panel"].update(state_content)
+
+    # Log panel
+    log_text = "\n".join(log_lines) if log_lines else "[dim]No actions yet[/dim]"
+    layout["log_panel"].update(
+        Panel(Text.from_markup(log_text), title="Action Log", border_style="dim")
+    )
+
+    # Footer — current decision
+    if status_msg:
+        footer_text = Text.from_markup(status_msg)
+    elif last_decision and last_decision.reason:
+        footer_text = Text.from_markup(
+            f"[bold green]>>> {last_decision.reason}[/]\n"
+            f"    {last_decision.cards_label}"
+        )
+    else:
+        footer_text = Text.from_markup("[dim]Waiting...[/dim]")
+    layout["footer"].update(Panel(footer_text, title="Decision", border_style="green"))
+
+    return layout
+
+
+def build_state_panel(
+    state: GameState | None,
+    legal: LegalActions | None,
+    session: SessionStats,
+) -> Panel:
+    """Build the game state display panel."""
+    if not state:
+        return Panel("[dim]No state yet[/dim]", title="Game State")
+
+    parts: list[str] = []
+
+    # Resources
+    chips_scored = state.blind.chips_scored if state.blind else 0
+    chips_needed = state.blind.chips_needed or 0 if state.blind else 0
+    blind_name = state.blind.name if state.blind else "?"
+    boss = " [red]BOSS[/]" if state.blind and state.blind.boss else ""
+
+    parts.append(
+        f"[bold]Ante {state.ante} | Round {state.round}[/] | "
+        f"Blind: {blind_name}{boss}"
+    )
+    parts.append(
+        f"Score: [bold]{chips_scored:,}[/] / {chips_needed:,} | "
+        f"Money: [green]${state.money}[/] | "
+        f"Hands: {state.hands_remaining} | "
+        f"Discards: {state.discards_remaining}"
+    )
+    parts.append(
+        f"Deck: {state.deck_counts.deck_size} | "
+        f"Discard pile: {state.deck_counts.discard_size}"
+    )
+    parts.append("")
+
+    # Hand
+    if state.hand:
+        hand_str = "  ".join(
+            f"[{'bold yellow' if c.highlighted else 'white'}]{_card_label(c)}[/]"
+            for c in state.hand
+        )
+        parts.append(f"[cyan]Hand ({len(state.hand)}):[/] {hand_str}")
+
+    # Jokers
+    if state.jokers:
+        joker_strs = [j.name or j.key or "?" for j in state.jokers]
+        parts.append(f"[magenta]Jokers ({len(state.jokers)}):[/] {', '.join(joker_strs)}")
+
+    # Consumables
+    if state.consumables:
+        cons_strs = []
+        for c in state.consumables:
+            name = c.name or c.key or "?"
+            usable = "*" if c.can_use else ""
+            cons_strs.append(f"{name}{usable}")
+        parts.append(f"[magenta]Consumables:[/] {', '.join(cons_strs)}")
+
+    # Shop
+    if state.shop:
+        shop = state.shop
+        parts.append("")
+        if shop.jokers:
+            items = [f"{it.name or it.key or '?'} ${it.cost}" for it in shop.jokers]
+            parts.append(f"[yellow]Shop Jokers:[/] {' | '.join(items)}")
+        if shop.vouchers:
+            items = [f"{it.name or it.key or '?'} ${it.cost}" for it in shop.vouchers]
+            parts.append(f"[yellow]Vouchers:[/] {' | '.join(items)}")
+        if shop.boosters:
+            items = [f"{it.name or it.key or '?'} ${it.cost}" for it in shop.boosters]
+            parts.append(f"[yellow]Boosters:[/] {' | '.join(items)}")
+        parts.append(f"Reroll: ${shop.reroll_cost}")
+
+    # Pack
+    if state.pack and state.pack.cards:
+        pack_items = []
+        for c in state.pack.cards:
+            name = c.get("name", "?")
+            if c.get("suit") and c.get("rank"):
+                name = f"{c['rank']}{c['suit'][0]}"
+            pack_items.append(name)
+        parts.append(
+            f"[yellow]Pack ({state.pack.choices_remaining} choices):[/] "
+            f"{' | '.join(pack_items)}"
+        )
+
+    # Legal action summary
+    if legal and legal.actions:
+        action_types: dict[str, int] = {}
+        for a in legal.actions:
+            t = a.type.value
+            action_types[t] = action_types.get(t, 0) + 1
+        summary = ", ".join(f"{t}({n})" for t, n in action_types.items())
+        parts.append(f"\n[dim]Legal: {summary}[/]")
+
+    content = "\n".join(parts)
+    return Panel(Text.from_markup(content), title="Game State", border_style="cyan")
+
+
 # -- Main loop -----------------------------------------------------------------
 
-def run_agent(client: BalatroClient):
-    console.print(Panel.fit(
-        "[bold green]Balatro Agent[/bold green]\n"
-        "Deck: Red  |  Stake: White (base)\n"
-        "Strategy: flush-first, opportunistic shop",
-        title="Agent"
-    ))
+def run_agent(client: BalatroClient, tui: bool = False, delay: float = 0.8):
+    if not tui:
+        console.print(Panel.fit(
+            "[bold green]Balatro Agent[/bold green]\n"
+            "Deck: Red  |  Stake: White (base)\n"
+            "Strategy: flush-first, opportunistic shop",
+            title="Agent"
+        ))
+
+    # TUI state
+    session = SessionStats()
+    log_lines: deque[str] = deque(maxlen=LOG_MAX)
+    last_decision = AgentDecision()
+    status_msg = ""
+    tui_state: GameState | None = None
+    tui_legal: LegalActions | None = None
+    live: Live | None = None
+
+    def tui_log(msg: str):
+        if tui:
+            log_lines.append(msg)
+        else:
+            console.print(msg)
+
+    def tui_update():
+        if live:
+            live.update(build_dashboard(
+                tui_state, tui_legal, last_decision, session, log_lines, status_msg))
 
     rerolled_this_shop = 0  # count of rerolls this shop visit
     failed_shop_slots: set[tuple] = set()
     prev_phase: Optional[GamePhase] = None
+    # When we send SELECT_CARDS to prepare for a targeting tarot, remember which
+    # consumable index we're preparing for.  If USE_CONSUMABLE still isn't
+    # available after one SELECT_CARDS attempt, we abandon (prevents loops).
+    awaiting_consumable: Optional[int] = None
 
-    while True:
-        # -- fetch state ----------------------------------------------------
-        try:
-            state  = client.get_state()
-            legal  = client.get_legal_actions()
-        except BalatroConnectionError as e:
-            console.print(f"[red]Connection error: {e} - retrying[/red]")
-            time.sleep(1.0)
-            continue
-
-        phase = state.phase
-
-        # Phase-change banner
-        if phase != prev_phase:
-            console.print(
-                f"\n[bold cyan]-- {phase.value}[/bold cyan]  "
-                f"ante={state.ante} round={state.round}  "
-                f"${state.money}  "
-                f"hands={state.hands_remaining} discards={state.discards_remaining}"
-            )
-            prev_phase = phase
-            if phase == GamePhase.SHOP:
-                rerolled_this_shop = 0
-                failed_shop_slots.clear()
-
-        if state.error:
-            console.print(f"[yellow]  State error: {state.error}[/yellow]")
-            time.sleep(0.4)
-            continue
-
-        # -- GAME OVER / MENU handle even with no legal actions ---------------
-        if phase in (GamePhase.GAME_OVER, GamePhase.MENU):
-            pass  # fall through to phase handlers below
-        elif not legal.actions:
-            time.sleep(0.3)
-            continue
-
-        # -- MENU ----------------------------------------------------------
-        if phase == GamePhase.MENU:
-            r = client.execute_action(
-                ActionRequest(type=ActionType.START_RUN, params={"stake": 1}))
-            if r.ok:
-                console.print("[green]  Run started[/green]")
-                time.sleep(3.0)
-            else:
-                console.print(f"[red]  START_RUN failed: {r.error}[/red]")
+    def _agent_loop():
+        nonlocal rerolled_this_shop, failed_shop_slots, prev_phase
+        nonlocal awaiting_consumable, tui_state, tui_legal, status_msg
+        while True:
+            # -- fetch state ------------------------------------------------
+            try:
+                state  = client.get_state()
+                legal  = client.get_legal_actions()
+            except BalatroConnectionError as e:
+                tui_log(f"[red]Connection error: {e} - retrying[/red]")
                 time.sleep(1.0)
+                continue
 
-        # -- BLIND SELECT --------------------------------------------------
-        elif phase == GamePhase.BLIND_SELECT:
-            if legal.has_action_type(ActionType.SELECT_BLIND):
+            tui_state = state
+            tui_legal = legal
+
+            phase = state.phase
+
+            # Track run stats for TUI
+            if tui and state.run_id and state.run_id != session.current_run.run_id:
+                if session.current_run.run_id:
+                    session.finish_run()
+                    tui_log(f"[red]Run ended: {session.run_history[-1].summary_line()}[/]")
+                session.new_run(str(state.run_id))
+
+            if tui:
+                run = session.current_run
+                run.rounds_survived = max(run.rounds_survived, state.round)
+                run.max_ante = max(run.max_ante, state.ante)
+                run.max_money = max(run.max_money, state.money)
+
+            # Phase-change banner
+            if phase != prev_phase:
+                tui_log(
+                    f"[bold cyan]-- {phase.value}[/bold cyan]  "
+                    f"ante={state.ante} round={state.round}  "
+                    f"${state.money}  "
+                    f"hands={state.hands_remaining} discards={state.discards_remaining}"
+                )
+                prev_phase = phase
+                if phase == GamePhase.SHOP:
+                    rerolled_this_shop = 0
+                    failed_shop_slots.clear()
+                awaiting_consumable = None  # reset on any phase change
+
+            if state.error:
+                tui_log(f"[yellow]  State error: {state.error}[/yellow]")
+                time.sleep(0.4)
+                tui_update()
+                continue
+
+            # -- GAME OVER / MENU handle even with no legal actions -----------
+            if phase in (GamePhase.GAME_OVER, GamePhase.MENU):
+                pass  # fall through to phase handlers below
+            elif not legal.actions:
+                time.sleep(0.3)
+                tui_update()
+                continue
+
+            # -- MENU ------------------------------------------------------
+            if phase == GamePhase.MENU:
                 r = client.execute_action(
-                    ActionRequest(type=ActionType.SELECT_BLIND, params={}))
+                    ActionRequest(type=ActionType.START_RUN, params={"stake": 1}))
                 if r.ok:
-                    console.print("[green]  Blind selected[/green]")
-                    time.sleep(1.5)
+                    tui_log("[green]  Run started[/green]")
+                    time.sleep(3.0)
                 else:
-                    console.print(f"[yellow]  {r.error}[/yellow]")
-                    time.sleep(0.5)
-            else:
-                time.sleep(0.3)
+                    tui_log(f"[red]  START_RUN failed: {r.error}[/red]")
+                    time.sleep(1.0)
 
-        # -- SELECTING HAND ------------------------------------------------
-        elif phase == GamePhase.SELECTING_HAND:
-            hand = state.hand
-            if not hand:
-                time.sleep(0.3)
-                continue
+            # -- BLIND SELECT ----------------------------------------------
+            elif phase == GamePhase.BLIND_SELECT:
+                if legal.has_action_type(ActionType.SELECT_BLIND):
+                    r = client.execute_action(
+                        ActionRequest(type=ActionType.SELECT_BLIND, params={}))
+                    if r.ok:
+                        tui_log("[green]  Blind selected[/green]")
+                        time.sleep(1.5)
+                    else:
+                        tui_log(f"[yellow]  {r.error}[/yellow]")
+                        time.sleep(0.5)
+                else:
+                    time.sleep(0.3)
 
-            # Use consumables before playing (planets level up hands immediately)
-            consumable_action = choose_consumable_action(state, legal)
-            if consumable_action:
-                r = client.execute_action(consumable_action)
+            # -- SELECTING HAND --------------------------------------------
+            elif phase == GamePhase.SELECTING_HAND:
+                hand = state.hand
+                if not hand:
+                    time.sleep(0.3)
+                    tui_update()
+                    continue
+
+                # Use consumables before playing (planets / tarots)
+                consumable_action = choose_consumable_action(state, legal)
+                if consumable_action:
+                    is_select = consumable_action.type == ActionType.SELECT_CARDS
+                    prep_idx = None
+                    if is_select:
+                        for c in state.consumables:
+                            cname = c.name or ""
+                            if (c.type == "Tarot" and cname in TARGETING_TAROT_PRIORITY
+                                    and not c.can_use):
+                                prep_idx = c.index
+                                break
+                        if prep_idx is not None and awaiting_consumable == prep_idx:
+                            use_map = {a.params.index: a
+                                       for a in legal.get_actions_of_type(ActionType.USE_CONSUMABLE)}
+                            if prep_idx in use_map:
+                                tui_log(f"  -> USE_CONSUMABLE now ready for {prep_idx}")
+                                consumable_action = ActionRequest(
+                                    type=ActionType.USE_CONSUMABLE,
+                                    params={"index": prep_idx})
+                                is_select = False
+                            else:
+                                tui_log(f"[yellow]  SELECT_CARDS retry blocked for consumable {prep_idx}[/yellow]")
+                                awaiting_consumable = None
+                                consumable_action = None
+
+                if consumable_action:
+                    r = client.execute_action(consumable_action)
+                    if r.ok:
+                        if is_select:
+                            awaiting_consumable = prep_idx
+                            tui_log("[green]  Cards selected for tarot[/green]")
+                            for _ in range(8):
+                                time.sleep(0.3)
+                                try:
+                                    s2 = client.get_state()
+                                except BalatroConnectionError:
+                                    break
+                                for c in s2.consumables:
+                                    if c.index == prep_idx and c.can_use:
+                                        break
+                                else:
+                                    continue
+                                break
+                        else:
+                            awaiting_consumable = None
+                            tui_log("[green]  Consumable used[/green]")
+                            time.sleep(1.2)
+                    else:
+                        awaiting_consumable = None
+                        tui_log(f"[yellow]  Consumable action failed: {r.error}[/yellow]")
+                        time.sleep(0.5)
+                    tui_update()
+                    continue
+
+                needed = (state.blind.chips_needed or 0) if state.blind else 0
+                scored = (state.blind.chips_scored or 0) if state.blind else 0
+                hand_str = " ".join(f"{c.rank}{(c.suit or '?')[0]}" for c in hand)
+                tui_log(f"  Hand: {hand_str}  [{scored:,}/{needed:,}]")
+
+                action = choose_play(hand, state.hand_levels,
+                                     state.discards_remaining,
+                                     state.hands_remaining,
+                                     state.jokers)
+                r = client.execute_action(action)
                 if r.ok:
-                    console.print("[green]  Consumable used[/green]")
-                    time.sleep(1.2)
+                    tui_log("[green]  OK[/green]")
+                    if tui:
+                        session.current_run.hands_played += (
+                            1 if action.type == ActionType.PLAY_HAND else 0)
+                    time.sleep(1.2 if action.type == ActionType.PLAY_HAND else 0.5)
                 else:
-                    console.print(f"[yellow]  Consumable use failed: {r.error}[/yellow]")
-                    time.sleep(0.5)
-                continue
+                    tui_log(f"[red]  Failed: {r.error}[/red]")
+                    if action.type == ActionType.DISCARD:
+                        _, idx, name = best_play(hand, state.hand_levels, state.jokers)
+                        tui_log(f"  -> Fallback play {name}: {idx}")
+                        r2 = client.execute_action(ActionRequest(
+                            type=ActionType.PLAY_HAND,
+                            params={"card_indices": idx}))
+                        if r2.ok:
+                            time.sleep(1.2)
+                        else:
+                            tui_log(f"[red]  Fallback also failed: {r2.error}[/red]")
+                            time.sleep(0.5)
 
-            needed   = (state.blind.chips_needed  or 0) if state.blind else 0
-            scored   = (state.blind.chips_scored   or 0) if state.blind else 0
-            console.print(
-                f"  Hand: {' '.join(f'{c.rank}{(c.suit or '?')[0]}' for c in hand)}"
-                f"  [{scored:,}/{needed:,}]"
-            )
+            # -- ROUND EVAL ------------------------------------------------
+            elif phase == GamePhase.ROUND_EVAL:
+                for _ in range(15):
+                    r = client.execute_action(
+                        ActionRequest(type=ActionType.CASH_OUT, params={}))
+                    if r.ok:
+                        tui_log("[green]  Cashed out[/green]")
+                        time.sleep(1.0)
+                        break
+                    tui_log(f"[yellow]  {r.error}[/yellow]")
+                    time.sleep(0.4)
 
-            action = choose_play(hand, state.hand_levels,
-                                 state.discards_remaining,
-                                 state.hands_remaining,
-                                 state.jokers)
-            r = client.execute_action(action)
-            if r.ok:
-                console.print("[green]  OK[/green]")
-                time.sleep(1.2 if action.type == ActionType.PLAY_HAND else 0.5)
-            else:
-                console.print(f"[red]  Failed: {r.error}[/red]")
-                # If discard failed, try playing instead
-                if action.type == ActionType.DISCARD:
-                    _, idx, name = best_play(hand, state.hand_levels, state.jokers)
-                    console.print(f"  -> Fallback play {name}: {idx}")
-                    r2 = client.execute_action(ActionRequest(
-                        type=ActionType.PLAY_HAND,
-                        params={"card_indices": idx}))
-                    if r2.ok:
+            # -- SHOP ------------------------------------------------------
+            elif phase == GamePhase.SHOP:
+                consumable_action = choose_consumable_action(state, legal)
+                if consumable_action:
+                    r = client.execute_action(consumable_action)
+                    if r.ok:
+                        tui_log("[green]  Consumable used[/green]")
                         time.sleep(1.2)
                     else:
-                        console.print(f"[red]  Fallback also failed: {r2.error}[/red]")
+                        tui_log(f"[yellow]  Consumable use failed: {r.error}[/yellow]")
                         time.sleep(0.5)
+                    tui_update()
+                    continue
 
-        # -- ROUND EVAL ----------------------------------------------------
-        elif phase == GamePhase.ROUND_EVAL:
-            for _ in range(15):
+                action = choose_shop_action(state, legal, rerolled_this_shop,
+                                            failed_shop_slots)
+                r = client.execute_action(action)
+                if r.ok:
+                    if action.type == ActionType.SHOP_REROLL:
+                        rerolled_this_shop += 1
+                        failed_shop_slots.clear()
+                    if action.type == ActionType.SHOP_END:
+                        tui_log("[green]  Left shop[/green]")
+                        time.sleep(1.5)
+                    else:
+                        time.sleep(0.5)
+                else:
+                    tui_log(f"[red]  Shop action failed: {r.error}[/red]")
+                    if action.type in (ActionType.SHOP_BUY,
+                                       ActionType.SHOP_BUY_BOOSTER,
+                                       ActionType.SHOP_BUY_VOUCHER):
+                        params = action.params or {}
+                        slot = (params.get("slot") if isinstance(params, dict)
+                                else getattr(params, "slot", None)) or 0
+                        failed_shop_slots.add((action.type, slot))
+                        time.sleep(0.5)
+                    else:
+                        client.execute_action(ActionRequest(type=ActionType.SHOP_END))
+                        time.sleep(1.0)
+
+            # -- PACK OPENING ----------------------------------------------
+            elif phase == GamePhase.PACK_OPENING:
+                action = choose_pack_action(state, legal)
+                if action is None:
+                    time.sleep(0.5)
+                    tui_update()
+                    continue
+                prev_choices = state.pack.choices_remaining if state.pack else 0
+                r = client.execute_action(action)
+                if r.ok:
+                    tui_log("[green]  Pack action OK[/green]")
+                    for _ in range(10):
+                        time.sleep(0.5)
+                        try:
+                            s2 = client.get_state()
+                        except BalatroConnectionError:
+                            break
+                        if s2.phase != GamePhase.PACK_OPENING:
+                            break
+                        if s2.pack and s2.pack.choices_remaining < prev_choices:
+                            break
+                    time.sleep(0.5)
+                else:
+                    tui_log(f"[red]  Pack action failed: {r.error}[/red]")
+                    time.sleep(1.0)
+
+            # -- GAME OVER -------------------------------------------------
+            elif phase == GamePhase.GAME_OVER:
+                tui_log(
+                    f"[red bold]GAME OVER[/red bold]  "
+                    f"ante={state.ante} round={state.round}")
+                if tui:
+                    session.finish_run(won=False)
+                time.sleep(4.0)
                 r = client.execute_action(
-                    ActionRequest(type=ActionType.CASH_OUT, params={}))
+                    ActionRequest(type=ActionType.START_RUN, params={"stake": 1}))
                 if r.ok:
-                    console.print("[green]  Cashed out[/green]")
-                    time.sleep(1.0)
-                    break
-                console.print(f"[yellow]  {r.error}[/yellow]")
-                time.sleep(0.4)
-
-        # -- SHOP ----------------------------------------------------------
-        elif phase == GamePhase.SHOP:
-            # Use consumables first — especially Hermit to double money before buying
-            consumable_action = choose_consumable_action(state, legal)
-            if consumable_action:
-                r = client.execute_action(consumable_action)
-                if r.ok:
-                    console.print("[green]  Consumable used[/green]")
-                    time.sleep(1.2)
+                    tui_log("[green]  New run started[/green]")
+                    time.sleep(3.0)
                 else:
-                    console.print(f"[yellow]  Consumable use failed: {r.error}[/yellow]")
-                    time.sleep(0.5)
-                continue
-
-            action = choose_shop_action(state, legal, rerolled_this_shop,
-                                        failed_shop_slots)
-            r = client.execute_action(action)
-            if r.ok:
-                if action.type == ActionType.SHOP_REROLL:
-                    rerolled_this_shop += 1
-                    failed_shop_slots.clear()  # reroll refreshes shop items
-                if action.type == ActionType.SHOP_END:
-                    console.print("[green]  Left shop[/green]")
-                    time.sleep(1.5)
-                else:
-                    time.sleep(0.5)
-            else:
-                console.print(f"[red]  Shop action failed: {r.error}[/red]")
-                # Mark this slot as failed and try the next best item
-                if action.type in (ActionType.SHOP_BUY,
-                                   ActionType.SHOP_BUY_BOOSTER,
-                                   ActionType.SHOP_BUY_VOUCHER):
-                    params = action.params or {}
-                    slot = (params.get("slot") if isinstance(params, dict)
-                            else getattr(params, "slot", None)) or 0
-                    failed_shop_slots.add((action.type, slot))
-                    time.sleep(0.5)
-                else:
-                    # Non-retryable failure → leave
-                    client.execute_action(ActionRequest(type=ActionType.SHOP_END))
+                    tui_log(f"[yellow]  Couldn't restart: {r.error}[/yellow]")
                     time.sleep(1.0)
 
-        # -- PACK OPENING --------------------------------------------------
-        elif phase == GamePhase.PACK_OPENING:
-            action = choose_pack_action(state, legal)
-            if action is None:
-                # Pack cards not dealt yet or all choices used; just wait.
-                time.sleep(0.5)
-                continue
-            r = client.execute_action(action)
-            if r.ok:
-                console.print("[green]  Pack action OK[/green]")
-                time.sleep(2.0)  # give game time to update choices_remaining
+            # -- Transition / unknown --------------------------------------
             else:
-                console.print(f"[red]  Pack action failed: {r.error}[/red]")
-                # Do not force-skip: wait and retry next iteration
-                time.sleep(1.0)
+                time.sleep(0.3)
 
-        # -- GAME OVER -----------------------------------------------------
-        elif phase == GamePhase.GAME_OVER:
-            console.print(
-                f"[red bold]GAME OVER[/red bold]  "
-                f"ante={state.ante} round={state.round}")
-            time.sleep(4.0)
-            r = client.execute_action(
-                ActionRequest(type=ActionType.START_RUN, params={"stake": 1}))
-            if r.ok:
-                console.print("[green]  New run started[/green]")
-                time.sleep(3.0)
-            else:
-                console.print(f"[yellow]  Couldn't restart: {r.error}[/yellow]")
-                time.sleep(1.0)
+            tui_update()
 
-        # -- Transition / unknown ------------------------------------------
+    # -- Run the loop (TUI or plain) ---------------------------------------
+    try:
+        if tui:
+            with Live(
+                build_dashboard(tui_state, tui_legal, last_decision, session,
+                                log_lines, "[yellow]Starting...[/]"),
+                console=console,
+                refresh_per_second=4,
+                screen=True,
+            ) as live_ctx:
+                live = live_ctx  # type: ignore[assignment]  # noqa: F841
+                _agent_loop()
         else:
-            time.sleep(0.3)
+            _agent_loop()
+    except KeyboardInterrupt:
+        pass
+
+    # Session summary (TUI mode)
+    if tui:
+        if session.current_run.run_id:
+            session.finish_run()
+
+        console.print()
+        console.print(Panel.fit(
+            f"[bold]Session Summary[/]\n"
+            f"Runs: {session.runs_completed} ({session.wins} wins)\n"
+            f"Best Ante: {session.best_ante}\n"
+            f"Total Rounds: {session.total_rounds}\n"
+            f"Total Hands: {session.total_hands}",
+            title="[bold blue]Agent Finished[/]",
+            border_style="blue",
+        ))
+
+        if session.run_history:
+            history_table = Table(title="Run History")
+            history_table.add_column("#", style="dim")
+            history_table.add_column("Run ID")
+            history_table.add_column("Result", style="bold")
+            history_table.add_column("Ante")
+            history_table.add_column("Round")
+            history_table.add_column("Hands")
+            history_table.add_column("Peak $")
+            for i, run in enumerate(session.run_history, 1):
+                result_style = "green" if run.won else "red"
+                history_table.add_row(
+                    str(i),
+                    run.run_id[:8],
+                    f"[{result_style}]{'WIN' if run.won else 'LOSS'}[/]",
+                    str(run.max_ante),
+                    str(run.rounds_survived),
+                    str(run.hands_played),
+                    f"${run.max_money}",
+                )
+            console.print(history_table)
 
 
 def main():
-    import argparse
     p = argparse.ArgumentParser(description="Balatro agent - Red Deck White Stake")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=7777)
+    p.add_argument("--tui", action="store_true",
+                   help="Enable Rich TUI dashboard (fullscreen)")
+    p.add_argument("--delay", type=float, default=0.8,
+                   help="Delay between decisions in seconds (default: 0.8)")
     args = p.parse_args()
 
     console.print(f"Connecting to {args.host}:{args.port} ...")
@@ -788,7 +1523,7 @@ def main():
     else:
         sys.exit(1)
 
-    run_agent(client)
+    run_agent(client, tui=args.tui, delay=args.delay)
 
 
 if __name__ == "__main__":
