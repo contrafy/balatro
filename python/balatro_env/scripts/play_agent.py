@@ -561,7 +561,8 @@ def choose_shop_action(state: GameState, legal: LegalActions,
         best_p, best_act, best_name, best_cost = candidates[0]
 
         # -- Sell weakest joker if a significantly better one is in the shop ---
-        if joker_count >= 5 and best_p >= 4.5:
+        # Slot limit comes from the run (Black Deck 6, Painted Deck 4), never a constant
+        if not state.can_add_joker() and best_p >= 4.5:
             # Find the weakest owned joker
             sell_actions = legal.get_actions_of_type(ActionType.SHOP_SELL_JOKER)
             if sell_actions and state.jokers:
@@ -592,7 +593,7 @@ def choose_shop_action(state: GameState, legal: LegalActions,
     max_rerolls = 2 if joker_count == 0 else 1
     if (rerolled_this_visit < max_rerolls
             and reroll_actions
-            and joker_count < 5):
+            and state.can_add_joker()):
         rc = reroll_actions[0].params.cost or 5
         # Reroll when: no jokers and we can afford it, or cheap reroll with spare cash
         no_jokers_reroll = joker_count == 0 and money >= rc + 4
@@ -848,12 +849,15 @@ def choose_pack_action(state: GameState, legal: LegalActions) -> Optional[Action
     if not pack_cards_revealed(pack):
         return None
 
+    # Only cards the bridge deems selectable (e.g. jokers need a free joker slot)
+    legal_indices = {a.params.index for a in pick_actions if a.params.index is not None}
+
     best_idx: Optional[int] = None
     best_score = -1.0
 
     for card in pack.cards:
         idx = card.get("index")
-        if idx is None:
+        if idx is None or idx not in legal_indices:
             continue
         ctype = card.get("type", "")
         name  = card.get("name", "")
@@ -1046,9 +1050,10 @@ def build_state_panel(
     blind_name = state.blind.name if state.blind else "?"
     boss = " [red]BOSS[/]" if state.blind and state.blind.boss else ""
 
+    deck = f" | {state.deck_name}" if state.deck_name else ""
     parts.append(
         f"[bold]Ante {state.ante} | Round {state.round}[/] | "
-        f"Blind: {blind_name}{boss}"
+        f"Blind: {blind_name}{boss}{deck}"
     )
     parts.append(
         f"Score: [bold]{chips_scored:,}[/] / {chips_needed:,} | "
@@ -1073,7 +1078,8 @@ def build_state_panel(
     # Jokers
     if state.jokers:
         joker_strs = [j.name or j.key or "?" for j in state.jokers]
-        parts.append(f"[magenta]Jokers ({len(state.jokers)}):[/] {', '.join(joker_strs)}")
+        slots = f"/{state.joker_slots}" if state.joker_slots is not None else ""
+        parts.append(f"[magenta]Jokers ({len(state.jokers)}{slots}):[/] {', '.join(joker_strs)}")
 
     # Consumables
     if state.consumables:

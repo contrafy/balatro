@@ -82,9 +82,19 @@ def print_state_summary(state: GameState):
     resources = Table(title="Resources", show_header=False)
     resources.add_column("Stat", style="cyan")
     resources.add_column("Value", style="green")
+    if state.deck_name:
+        resources.add_row("Deck", state.deck_name)
     resources.add_row("Money", f"${state.money}")
-    resources.add_row("Hands Left", str(state.hands_remaining))
-    resources.add_row("Discards Left", str(state.discards_remaining))
+    resources.add_row("Hands Left", f"{state.hands_remaining} / {state.hands_per_round}" if state.hands_per_round is not None else str(state.hands_remaining))
+    resources.add_row("Discards Left", f"{state.discards_remaining} / {state.discards_per_round}" if state.discards_per_round is not None else str(state.discards_remaining))
+    if state.joker_slots is not None:
+        resources.add_row("Joker Slots", f"{len(state.jokers)} / {state.joker_slots}")
+    if state.consumable_slots is not None:
+        resources.add_row("Consumable Slots", f"{len(state.consumables)} / {state.consumable_slots}")
+    if state.hand_size is not None:
+        resources.add_row("Hand Size", str(state.hand_size))
+    if state.no_interest:
+        resources.add_row("Interest", "none (deck modifier)")
     resources.add_row("Deck Size", str(state.deck_counts.deck_size))
     resources.add_row("Discard Pile", str(state.deck_counts.discard_size))
     console.print(resources)

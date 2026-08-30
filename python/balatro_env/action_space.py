@@ -13,9 +13,10 @@ class ActionEncoder:
     handling the variable action space that changes based on game state.
     """
 
-    # Maximum hand size for card selection
+    # Encoding capacity ceilings, not game rules: the live limits come from GameState
+    # (joker_slots, hand_size). Black Deck grants 6 joker slots and negative editions add more.
     MAX_HAND_SIZE = 10
-    MAX_JOKERS = 5
+    MAX_JOKERS = 10
     MAX_SHOP_SLOTS = 6
     MAX_PACK_CHOICES = 5
 
@@ -182,7 +183,7 @@ class ActionEncoder:
         else:
             raise ValueError(f"Invalid action index: {action_idx}")
 
-    def get_legal_action_mask(self, legal_actions: LegalActions, hand_size: int = 8) -> list[bool]:
+    def get_legal_action_mask(self, legal_actions: LegalActions, hand_size: int | None = None) -> list[bool]:
         """Generate a boolean mask for legal actions.
 
         Args:
@@ -192,6 +193,7 @@ class ActionEncoder:
         Returns:
             Boolean list where True indicates a legal action
         """
+        hand_size = hand_size or self.MAX_HAND_SIZE
         mask = [False] * self.action_space_size
 
         for action in legal_actions.actions:

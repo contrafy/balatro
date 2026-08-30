@@ -109,6 +109,12 @@ class BalatroEnv(gym.Env):
                 "discards_remaining": self._current_state.discards_remaining,
                 "hand_size": len(self._current_state.hand),
                 "joker_count": len(self._current_state.jokers),
+                "deck_name": self._current_state.deck_name,
+                "joker_slots": self._current_state.joker_slots,
+                "consumable_slots": self._current_state.consumable_slots,
+                "hand_size_limit": self._current_state.hand_size,
+                "hands_per_round": self._current_state.hands_per_round,
+                "discards_per_round": self._current_state.discards_per_round,
             })
 
             if self._current_state.blind:
@@ -117,7 +123,7 @@ class BalatroEnv(gym.Env):
 
         if self._current_legal:
             # Generate action mask
-            hand_size = len(self._current_state.hand) if self._current_state else 8
+            hand_size = len(self._current_state.hand) if self._current_state else self.action_encoder.MAX_HAND_SIZE
             mask = self.action_encoder.get_legal_action_mask(self._current_legal, hand_size)
             info["action_mask"] = np.array(mask, dtype=np.bool_)
 
@@ -330,7 +336,7 @@ class BalatroEnv(gym.Env):
             # All actions masked (none legal)
             return np.zeros(self.action_space.n, dtype=np.bool_)
 
-        hand_size = len(self._current_state.hand) if self._current_state else 8
+        hand_size = len(self._current_state.hand) if self._current_state else self.action_encoder.MAX_HAND_SIZE
         mask = self.action_encoder.get_legal_action_mask(self._current_legal, hand_size)
         return np.array(mask, dtype=np.bool_)
 

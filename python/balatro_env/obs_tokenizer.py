@@ -51,10 +51,11 @@ class ObservationTokenizer:
         GamePhase.UNKNOWN: 8,
     }
 
-    # Maximum sequence lengths
+    # Padding ceilings, not game rules: live limits come from GameState (joker_slots etc.).
+    # Black Deck grants 6 joker slots, negative editions add more; Nebula/Painted shift the others.
     MAX_HAND_SIZE = 10
-    MAX_JOKERS = 5
-    MAX_CONSUMABLES = 4
+    MAX_JOKERS = 10
+    MAX_CONSUMABLES = 6
     MAX_SHOP_ITEMS = 6
 
     def __init__(self, device: str = "cpu"):
@@ -74,6 +75,7 @@ class ObservationTokenizer:
         # Total observation size
         self.obs_size = (
             10 +  # Scalar features: phase, money, ante, round, hands, discards, chips_needed, chips_scored, deck_size, discard_size
+            4 +  # Run rules: joker_slots, consumable_slots, hand_size, no_interest
             self.MAX_HAND_SIZE * self.card_features +  # Hand cards
             self.MAX_JOKERS * 4 +  # Jokers (id, rarity, sell_cost, has_ability)
             self.MAX_CONSUMABLES * 2 +  # Consumables
@@ -160,8 +162,11 @@ class ObservationTokenizer:
         features.append(min(state.money, 500) / 500.0)  # Cap at 500
         features.append(state.ante / 8.0)  # 8 antes max
         features.append(state.round / 32.0)  # ~32 rounds per ante
-        features.append(state.hands_remaining / 5.0)  # Usually 4-5 hands
-        features.append(state.discards_remaining / 5.0)
+        # Normalize by the run's per-round allowance (deck backs and vouchers change it)
+        hands_per_round = state.hands_per_round or 5
+        discards_per_round = state.discards_per_round or 5
+        features.append(state.hands_remaining / max(hands_per_round, 1))
+        features.append(state.discards_remaining / max(discards_per_round, 1))
 
         # Blind info
         chips_needed = state.blind.chips_needed if state.blind else 0
@@ -174,6 +179,12 @@ class ObservationTokenizer:
         # Deck counts
         features.append(state.deck_counts.deck_size / 52.0)
         features.append(state.deck_counts.discard_size / 52.0)
+
+        # Run rules (0.0 when the bridge did not report them)
+        features.append((state.joker_slots or 0) / self.MAX_JOKERS)
+        features.append((state.consumable_slots or 0) / self.MAX_CONSUMABLES)
+        features.append((state.hand_size or 0) / self.MAX_HAND_SIZE)
+        features.append(1.0 if state.no_interest else 0.0)
 
         # Hand cards (pad to MAX_HAND_SIZE)
         for i in range(self.MAX_HAND_SIZE):

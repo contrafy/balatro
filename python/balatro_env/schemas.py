@@ -146,6 +146,47 @@ class HandLevel(BaseModel):
     chips: Optional[int] = None
 
 
+class TagData(BaseModel):
+    """A tag held from skipping a blind."""
+    key: Optional[str] = None
+    name: Optional[str] = None
+    orbital_hand: Optional[str] = None
+
+
+class BlindChoice(BaseModel):
+    """One of the upcoming blinds offered on the blind-select screen."""
+    key: Optional[str] = None
+    name: Optional[str] = None
+    chips: Optional[int] = None
+    state: Optional[str] = None
+    tag: Optional[str] = None
+    tag_key: Optional[str] = None
+    orbital_hand: Optional[str] = None
+
+
+class BlindSelectData(BaseModel):
+    """Blind-select screen: which blind is next and what each option offers."""
+    on_deck: Optional[str] = None
+    choices: dict[str, BlindChoice] = Field(default_factory=dict)
+
+
+class DeckComposition(BaseModel):
+    """Draw-pile composition; reflects deck backs (Abandoned, Checkered, Erratic) and mid-run changes."""
+    total_cards: int = 0
+    by_suit: dict[str, int] = Field(default_factory=dict)
+    by_rank: dict[str, int] = Field(default_factory=dict)
+    face_cards: int = 0
+
+
+class ShopRates(BaseModel):
+    """Shop appearance weights (Ghost Deck raises spectral, vouchers raise tarot/planet)."""
+    joker: Optional[float] = None
+    tarot: Optional[float] = None
+    planet: Optional[float] = None
+    spectral: Optional[float] = None
+    playing_card: Optional[float] = None
+
+
 class GameState(BaseModel):
     """Complete game state snapshot."""
     schema_version: str
@@ -163,8 +204,30 @@ class GameState(BaseModel):
 
     # Run metadata
     run_id: Optional[Union[str, int]] = None
+    deck_name: Optional[str] = None
+    deck_key: Optional[str] = None
+    deck_config: dict[str, Any] = Field(default_factory=dict)
+    stake: Optional[int] = None
+    win_ante: Optional[int] = None
     round: int = 0
     ante: int = 0
+
+    # Run rules read from the live game (deck backs, vouchers, stakes and mods all change these).
+    # None means the bridge did not report the value; never substitute a Red Deck default.
+    joker_slots: Optional[int] = None
+    consumable_slots: Optional[int] = None
+    hand_size: Optional[int] = None
+    hands_per_round: Optional[int] = None
+    discards_per_round: Optional[int] = None
+    interest_amount: Optional[int] = None
+    interest_cap: Optional[int] = None
+    no_interest: bool = False
+    modifiers: dict[str, Any] = Field(default_factory=dict)
+    starting_params: dict[str, Any] = Field(default_factory=dict)
+    shop_rates: Optional[ShopRates] = None
+    used_vouchers: list[str] = Field(default_factory=list)
+    tags: list[TagData] = Field(default_factory=list)
+    blind_select: Optional[BlindSelectData] = None
 
     # Resources
     money: int = 0
@@ -192,11 +255,12 @@ class GameState(BaseModel):
 
     # Deck counts
     deck_counts: DeckCounts = Field(default_factory=DeckCounts)
+    deck_composition: Optional[DeckComposition] = None
 
     # Hand levels (poker hand upgrades)
     hand_levels: dict[str, HandLevel] = Field(default_factory=dict)
 
-    @field_validator("jokers", "consumables", "hand", mode="before")
+    @field_validator("jokers", "consumables", "hand", "used_vouchers", "tags", mode="before")
     @classmethod
     def convert_empty_dict_to_list(cls, v):
         # Lua returns {} for empty tables which becomes {} in JSON, not []
@@ -208,6 +272,30 @@ class GameState(BaseModel):
     @classmethod
     def coerce_run_id_to_string(cls, v):
         return str(v) if v is not None else v
+
+    @property
+    def joker_slots_free(self) -> Optional[int]:
+        """Free joker slots per the live limit, or None when the bridge did not report one."""
+        if self.joker_slots is None:
+            return None
+        return self.joker_slots - len(self.jokers)
+
+    @property
+    def consumable_slots_free(self) -> Optional[int]:
+        """Free consumable slots per the live limit, or None when unknown."""
+        if self.consumable_slots is None:
+            return None
+        return self.consumable_slots - len(self.consumables)
+
+    def can_add_joker(self) -> bool:
+        """Whether another joker fits. Unknown limit defers to the bridge's legal actions."""
+        free = self.joker_slots_free
+        return free is None or free > 0
+
+    def can_add_consumable(self) -> bool:
+        """Whether another consumable fits. Unknown limit defers to the bridge's legal actions."""
+        free = self.consumable_slots_free
+        return free is None or free > 0
 
     def is_decision_point(self) -> bool:
         """Check if current phase requires a decision from the player."""
@@ -239,6 +327,8 @@ class ActionType(str, Enum):
     USE_CONSUMABLE = "USE_CONSUMABLE"
     CASH_OUT = "CASH_OUT"
     START_RUN = "START_RUN"
+    REORDER_JOKERS = "REORDER_JOKERS"
+    SELL_CONSUMABLE = "SELL_CONSUMABLE"
 
 
 class ActionParams(BaseModel):
@@ -253,6 +343,7 @@ class ActionParams(BaseModel):
     choice_index: Optional[int] = None
     index: Optional[int] = None  # for pack card selection, consumable use
     stake: Optional[int] = None
+    order: Optional[list[int]] = None  # for REORDER_JOKERS
 
 
 class LegalAction(BaseModel):
