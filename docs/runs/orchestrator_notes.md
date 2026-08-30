@@ -1,0 +1,1 @@
+- 2026-08-30 13:30 7780 4HGWA6VA: est under by 13-30% all run -> Wee Joker (and Lucky Cat) sat in CARD_TRIGGER_JOKERS so their accumulated chips/x_mult were skipped; fixed in cli.py.

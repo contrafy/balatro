@@ -1,0 +1,15 @@
+# Run FWTTJH1D (port 7780) - LOSS at ante 2 Big Blind
+
+Stake 1 (White), Black Deck.
+
+
+Ante 1: jokers [Acrobat (x3 final hand)], levels {Two Pair L2}. Small Blind: Two Pair(108)+Pair(60)+Trips(180)=348/300. Big Blind: Two Pair(80)+Full House(268)+Trips x3(432 final)=800/450. Boss The Manacle (hand size 7): Two Pair(222)+Full House(336)+Pair x3(84 final)=642/600. Shop buys: Buffoon Pack -> Acrobat (picked over Seance, unknown joker); Jumbo Celestial Pack -> Uranus (Two Pair L2, chosen as pair-family main hand). $1 at end of ante 1 shop (nothing affordable). Est vs actual: within range, Acrobat x3 final-hand consistently outperforms shown est baseline once applied (est already includes it correctly).
+
+Ante 2: jokers still [Acrobat only], levels {Two Pair L3 (60x4), via a second Uranus from Celestial Pack for $6}. Small Blind: Straight(220)+TwoPair(376)+TwoPair x3(1080 final)=1676/800. Shop after Small: $3, shopadvise said LEAVE (Wily Joker $4 and Mars $3 both marginal/unaffordable at floor), endshop with no buy. Big Blind: Quads-of-2s(476)+Flush-hearts(304)+Trips-5s(405, forced final hand, no discards left)=1185/1200 -> LOST by 15.
+
+Post-mortem: binding constraint was SCALING, not luck or misplay. The run never bought a second joker (only Acrobat from the ante-1 Buffoon Pack); every dollar after that went into Celestial Packs for Two Pair levels, leaving nothing to buy Wily Joker ($4) or any flat +mult/+chips joker when the ante-2 shop offered one and money was $3 (one dollar short). With only one joker (a final-hand-only x3), every non-final hand this run had zero joker support, so a forced final Three-of-a-Kind (405 chips, no fillers can help since only matching cards score) missed the Big Blind requirement by 15 points. advise's discard/play sequencing was correct throughout; the loss traces to the shop, not the hand play.
+The one decision I would change: at the ante-1 shop with $7 (after Acrobat), or the ante-2 shop with $6, skip one Celestial Pack purchase and instead hold $4-6 in reserve so a $4 scoring joker (flat +mult/+chips) could be bought the moment one appeared, giving buffer on non-final hands instead of relying entirely on Acrobat's once-per-round x3.
+Bridge issues: none. No `ACTION FAILED` retries needed, no connection issues, no CLI/state mismatches all run.
+Playbook suggestions:
+1. Section 5 (ante 1-2) says "Two such jokers by the end of ante 2" but the shop procedure otherwise defaults to buying Celestial packs for hand levels once money is tight; consider adding an explicit floor rule: "never let money hit $0-3 before owning a 2nd scoring joker, even if that means skipping one hand-level pack."
+2. Add a note that `est` for a forced final hand with zero fillers-that-matter (a Pair/Trips/Quads type where only matching cards score) is a hard ceiling — if `est < need` here, the loss is already determined at the shop before this hand and no in-hand decision can fix it; log this as a signal to prioritize joker buys over hand levels in early antes.

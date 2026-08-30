@@ -1,0 +1,20 @@
+# Run MSYRWSYM (port 7778)
+
+Stake 1 (White), Black Deck.
+
+Ante 1: jokers [Photograph, Blue Joker], $10 end, levels none (main hand undecided). Small 348/300 (Two Pair chain), Big 560/450 (Quads 5s - lucky), Boss The Hook 780/600 (Trips Q). No misses.
+Ante 2: jokers [Blue Joker, +4 Mult Joker, Photograph, Vampire, Hologram], $1 end (spent to fill slots per shopadvise), Two Pair L2 (Uranus). Small 952/800 (Trips 6), Big 1980/1200 (Straight, lucky draw). Vampire is a weak conditional xMult (no enhanced cards yet) - bought per shopadvise ADVICE, will monitor.
+Ante 2 boss The Mark: cleared 2356/1600 (Full House 99966 est1176 + guaranteed face-down pair est~704, actual combined 2356). Main hand committed: Two Pair (L2).
+Ante 3: Small 2364/2000 (FullHouse+Pair chain), Big 3164/3000 (FullHouse JJJKK+Trips Q). Two Pair leveled L3 (Uranus) - chose to keep leveling committed main hand over shopadvise's Venus/Trips suggestion (its "main hand" tracker follows last-played hand, noisy). $12 going into Boss (The Needle, 1 hand only).
+Ante 4: Small Blind LOST. need 5000, scored 3812 (Two Pair 2064 + Pair J 688 + Trips K 1060). Out of discards and hands with only Trips K available (no flush, no straight draw). GAME_OVER.
+
+Final jokers (5/6 slots): Blue Joker (+2 chips/card in deck), Joker (+4 mult), Photograph (x2 mult on first scoring face card), Vampire (xMult +0.1 per enhanced card played), Hologram (xMult grows +0.25 per card added to deck). Final money $10. Levels: Two Pair L3 (60x4), Straight L2 (60x7, unused this run).
+
+Post-mortem: binding constraint = scaling. Vampire and Hologram were bought as "reliable" xMult per shopadvise, but BOTH require active feeding (Vampire needs enhanced cards played; Hologram needs cards added to the deck via Standard packs) and neither was ever fed during the whole run - shopadvise never once recommended a Standard Pack or a tarot/spectral to create an enhanced card, so both xMult jokers sat at their base multiplier (effectively x1) the entire game. Effective scaling was only Photograph's conditional x2 (fires once, on the first face card) plus one flat +4 mult joker and Blue Joker's chip bonus - nowhere near enough to keep pace with the ante scaling curve (need 5000 by ante 4 small blind, roughly triple ante 3's blind). The decision I would change: at ante 2-3, after buying Hologram, I should have bought at least one Standard Pack (even at the cost of a joker slot or planet level) specifically to feed it, or preferred The Duo ($8, saw it once but couldn't afford) which is unconditionally reliable for a Two Pair/pair-heavy build, over Vampire which had zero path to activation given no enhancement source in the run.
+
+Bridge issues: none. Every `advise`/`shopadvise`/`play`/`disc` command worked as documented, no ACTION FAILED or connection errors encountered this run.
+
+Playbook suggestions:
+1. shopadvise labeled Vampire and Hologram as [XMULT] without checking whether the run has (or will soon have) a feed source (Standard packs in shop history, or an enhance-capable tarot/spectral available) - it should down-weight or flag these as "unfed" when no feed source has been seen recently, similar to how it already flags conditional/unreliable xMult jokers.
+2. Section 7a should explicitly instruct: after buying a feed-dependent xMult joker (Hologram/Constellation/Vampire), the very next Standard/Celestial-pack-equivalent purchase should prioritize feeding it over a hand level, until it has grown at least once - "buy it" is not enough, "feed it immediately" should be the paired instruction.
+3. Est accuracy check: one hand differed from actual by >20% - Ante 2 boss (The Mark), the guaranteed face-down-pair play was estimated by `advise` as "~704" but the actual score contribution was ~1180 (about +67% higher). The face-down guaranteed-pair heuristic in `advise` is a rough lower bound; worth noting it can significantly undershoot, which is fine for a safety floor but should be labeled as a lower bound rather than a point estimate so agents don't undervalue these plays relative to alternatives.
