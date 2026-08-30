@@ -8,6 +8,7 @@ This project enables RL agents to play Balatro by:
 
 1. **In-game Lua mod** (`game_mod/`) — Injects into Balatro via Lovely Injector to expose game state over HTTP
 2. **Python harness** (`python/`) — Gymnasium-compatible environment, HTTP client, and a rule-based agent
+3. **Advisor CLI + playbook** (`python/balatro_env/scripts/cli.py`, `docs/`) — a joker-aware scoring estimator and shop/play advisor that LLM player agents drive the game through, plus the strategy playbook and per-run post-mortems they learn from
 
 The harness extracts true game state (no OCR) including:
 - Current hand, jokers, consumables
@@ -90,6 +91,53 @@ The built-in agent (`play_agent.py`) uses a deterministic rule-based strategy op
 | **Tarot cards** | Uses no-select tarots (Hermit, Judgement) immediately. Targets suit-changers and enhancements on hand cards with proper SELECT_CARDS → USE_CONSUMABLE flow. |
 | **Pack opening** | Waits for flip animations before selecting. Picks one card at a time with confirmation polling. |
 
+## LLM Agent Swarm
+
+Beyond the rule-based agent, the repo supports a swarm of LLM player agents (Claude subagents) that each play a full run on their own game instance, coordinated by an orchestrator that patches the harness between runs.
+
+### Parallel game instances
+
+Each instance gets its own `HOME` (with its own `Library/Application Support/Balatro/Mods` copy) and its own bridge port via `BALATRO_RL_PORT`:
+
+```bash
+# macOS: six instances on ports 7777-7782
+HOME=~/balatro-homes/h1 BALATRO_RL_PORT=7777 ./run_lovely_macos.sh &
+HOME=~/balatro-homes/h2 BALATRO_RL_PORT=7778 ./run_lovely_macos.sh &
+# ...
+```
+
+A six-instance swarm runs comfortably on an M-series Mac (~650MB and a fraction of a core each).
+
+### The advisor CLI
+
+Player agents never do scoring arithmetic themselves — they drive the game through `cli.py`, which asks the bridge for state and prints estimates and advice:
+
+```bash
+export BALATRO_RL_PORT=7778
+python balatro_env/scripts/cli.py s                    # compact state + blind-select advice
+python balatro_env/scripts/cli.py hands                # candidate hands with joker-aware est
+python balatro_env/scripts/cli.py advise               # play/discard advice for this hand
+python balatro_env/scripts/cli.py shopadvise           # ranked shop advice (buy/sell/reroll)
+python balatro_env/scripts/cli.py play TWOPAIR 1 2 5 6 # aborts if the game preview disagrees
+python balatro_env/scripts/cli.py start Black Deck 3   # new run at a given stake
+```
+
+The estimator models scoring order, retriggers, enhancements, editions, held-card effects, joker copies (Blueprint/Brainstorm), growth jokers, and boss effects. Every played hand logs `est` vs actual to `docs/runs/est_log.tsv`; misses over 20% get diagnosed and fixed in the estimator, so accuracy improves run over run.
+
+### The learning loop
+
+1. Each player agent reads `docs/PLAYBOOK.md` before its run and follows the CLI's advice plus its own judgment.
+2. On game over it writes a post-mortem to `docs/runs/<port>_<run_id>.md` (build, money curve, the one decision it would change, CLI issues).
+3. The orchestrator folds those findings back into `cli.py` and the playbook, then relaunches the port.
+
+### Progress
+
+| Milestone | Status |
+|-----------|--------|
+| Black Deck, White Stake (1) | **Beaten** — run `7779_E19RBJB8`: Two Pair L8, Spare Trousers, Yorick x4, Photograph+Pareidolia, 153664/100000 vs Verdant Leaf |
+| Black Deck, Red Stake (2) | **Beaten** — run `7777_YYA2GKBR`: Two Pair L12, Space Joker, Photograph + foil Cavendish x3, 108480/100000 vs Cerulean Bell |
+| Black Deck, Green Stake (3) | In progress — deepest so far ante 6 Big Blind (`7778_HFZL5GR2`); the faster blind scaling punishes slow starts, so most fixes target ante 1-3 economy |
+
 ## Scripts
 
 ```bash
@@ -103,6 +151,9 @@ python -m balatro_env.scripts.interactive_shell
 python -m balatro_env.scripts.do_smoke_actions probe_health
 python -m balatro_env.scripts.do_smoke_actions dump_state
 python -m balatro_env.scripts.do_smoke_actions list_legal_actions
+
+# Advisor CLI (used by the LLM agent swarm; BALATRO_RL_PORT selects the instance)
+python balatro_env/scripts/cli.py s
 ```
 
 ## Architecture
@@ -198,10 +249,14 @@ balatro/
 │   │   ├── obs_tokenizer.py    # State tokenization
 │   │   └── scripts/
 │   │       ├── play_agent.py   # Rule-based agent (with TUI)
+│   │       ├── cli.py          # Advisor CLI for the LLM agent swarm
 │   │       ├── interactive_shell.py
 │   │       └── do_smoke_actions.py
 │   ├── tests/
 │   └── pyproject.toml
+├── docs/
+│   ├── PLAYBOOK.md             # Living strategy playbook the LLM agents follow
+│   └── runs/                   # Per-run post-mortems + est/shop calibration logs
 └── README.md
 ```
 

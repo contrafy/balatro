@@ -57,3 +57,6 @@ artifacts/
 # Local config
 .env
 .env.local
+
+# Claude Code session-local files (backups, worktrees)
+.claude/
