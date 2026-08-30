@@ -8,7 +8,8 @@ local RLBridge = {}
 -- Configuration
 local CONFIG = {
     host = "127.0.0.1",
-    port = 7777,
+    -- BALATRO_RL_PORT lets several game instances run side by side, each with its own bridge
+    port = tonumber(os.getenv("BALATRO_RL_PORT") or "") or 7777,
     max_request_size = 65536,
     schema_version = "1.0.0",
 }
@@ -342,9 +343,24 @@ local function extract_card(card)
         debuffed = card.debuff or false,
         facing = card.facing or "front",
         highlighted = card.highlighted or false,
+        -- permanent per-card bonuses (Hiker, Wee-style growth, Death copies keep them)
+        perma_bonus = card.ability and card.ability.perma_bonus or 0,
+        perma_mult = card.ability and card.ability.perma_mult or 0,
         -- Position in hand (for selection)
         area_index = nil,
     }
+
+    -- Face-down cards (e.g. The Mark boss) show only their back in-game: hide identity so the
+    -- harness cannot see more than the player does. facing == "back" is still reported.
+    if card.facing == "back" then
+        data.rank = nil
+        data.suit = nil
+        data.name = nil
+        data.enhancement = nil
+        data.edition = nil
+        data.seal = nil
+        return data
+    end
 
     -- Extract edition
     if card.edition then
@@ -445,6 +461,21 @@ local function extract_joker(joker)
     }
 end
 
+
+-- The blind currently offered. G.GAME.blind_on_deck is set by the blind-select UI, which can lag a
+-- START_RUN issued from GAME_OVER; fall back to the blind whose state is 'Select'.
+local function current_blind_on_deck()
+    local od = G.GAME and G.GAME.blind_on_deck
+    if od then return od end
+    local st = G.GAME and G.GAME.round_resets and G.GAME.round_resets.blind_states
+    if st then
+        for _, k in ipairs({"Small", "Big", "Boss"}) do
+            if st[k] == "Select" then return k end
+        end
+    end
+    return nil
+end
+
 -- Determine current game phase
 local function get_game_phase()
     if not G then return "UNKNOWN" end
@@ -527,6 +558,8 @@ local function build_game_state()
 
     -- Run metadata
     state.run_id = game.pseudorandom and game.pseudorandom.seed or "unknown"
+    state.deck_name = game.selected_back and game.selected_back.name or nil
+    state.won = game.won and true or false
     state.round = game.round or 0
     state.ante = game.round_resets and game.round_resets.ante or 0
 
@@ -545,6 +578,96 @@ local function build_game_state()
             debuff_text = game.blind.debuff_text,
         }
     end
+
+    -- The game's own preview of the currently highlighted cards (hand type and its level chips/mult,
+    -- jokers not applied). Use after SELECT_CARDS to confirm the hand type before playing.
+    pcall(function()
+        local ch = game.current_round and game.current_round.current_hand
+        if ch and ch.handname and ch.handname ~= "" then
+            state.preview = {
+                hand = ch.handname,
+                level = ch.hand_level,
+                chips = ch.chips,
+                mult = ch.mult,
+            }
+        end
+    end)
+
+    -- Slot limits and hand size (deck modifiers such as Black Deck's +1 joker slot apply here)
+    state.joker_slots = G.jokers and G.jokers.config and G.jokers.config.card_limit or nil
+    state.consumable_slots = G.consumeables and G.consumeables.config and G.consumeables.config.card_limit or nil
+    state.hand_size = G.hand and G.hand.config and G.hand.config.card_limit or nil
+
+    -- Run-level rules read from the live game. Deck backs, stakes, vouchers and mods all
+    -- write into these tables, so they are the source of truth (no per-deck lookup tables).
+    local back = game.selected_back
+    state.deck_key = back and back.effect and back.effect.center and back.effect.center.key or nil
+    state.deck_config = back and back.effect and back.effect.config or {}
+    state.stake = game.stake
+    state.win_ante = game.win_ante
+    state.hands_per_round = game.round_resets and game.round_resets.hands or nil
+    state.discards_per_round = game.round_resets and game.round_resets.discards or nil
+    state.interest_amount = game.interest_amount
+    state.interest_cap = game.interest_cap
+    state.no_interest = (game.modifiers and game.modifiers.no_interest) and true or false
+    state.modifiers = game.modifiers or {}
+    state.starting_params = game.starting_params or {}
+    state.shop_rates = {
+        joker = game.joker_rate,
+        tarot = game.tarot_rate,
+        planet = game.planet_rate,
+        spectral = game.spectral_rate,
+        playing_card = game.playing_card_rate,
+    }
+    state.used_vouchers = {}
+    if game.used_vouchers then
+        for k, v in pairs(game.used_vouchers) do
+            if v then state.used_vouchers[#state.used_vouchers + 1] = k end
+        end
+        table.sort(state.used_vouchers)
+    end
+
+    -- Tags currently held (from skipped blinds)
+    state.tags = {}
+    if game.tags then
+        for _, t in ipairs(game.tags) do
+            state.tags[#state.tags + 1] = {
+                key = t.key,
+                name = t.name or (G.P_TAGS and G.P_TAGS[t.key] and G.P_TAGS[t.key].name) or t.key,
+                orbital_hand = t.ability and t.ability.orbital_hand or nil,
+            }
+        end
+    end
+
+    -- Blind selection info (upcoming blinds, chip targets, skip tags)
+    pcall(function()
+        local rr = game.round_resets
+        if rr and rr.blind_choices then
+            local sel = {on_deck = current_blind_on_deck(), choices = {}}
+            for k, key in pairs(rr.blind_choices) do
+                local b = G.P_BLINDS and G.P_BLINDS[key]
+                local tagkey = rr.blind_tags and rr.blind_tags[k]
+                local tag = tagkey and G.P_TAGS and G.P_TAGS[tagkey]
+                local choice = {
+                    key = key,
+                    name = b and b.name,
+                    chips = b and math.floor(get_blind_amount(rr.ante) * b.mult * (game.starting_params.ante_scaling or 1)),
+                    state = rr.blind_states and rr.blind_states[k],
+                    tag = tag and tag.name or tagkey,
+                    tag_key = tagkey,
+                }
+                -- The offered Tag object (with per-instance ability, e.g. orbital_hand) lives in the blind option UI
+                local ui = G.blind_select_opts and G.blind_select_opts[string.lower(k)]
+                local tc = ui and ui.get_UIE_by_ID and ui:get_UIE_by_ID('tag_container')
+                local tobj = tc and tc.config and tc.config.ref_table
+                if tobj and tobj.ability and tobj.ability.orbital_hand then
+                    choice.orbital_hand = tobj.ability.orbital_hand
+                end
+                sel.choices[k] = choice
+            end
+            state.blind_select = sel
+        end
+    end)
 
     -- Hand cards
     state.hand = {}
@@ -622,16 +745,18 @@ local function build_game_state()
                 type = card.ability and card.ability.set or (card.config and card.config.center and card.config.center.set) or "unknown",
                 facing = card.facing or "back",
             }
+            -- Edition applies to every pack card type (jokers, consumables, playing cards)
+            if card.edition then
+                if card.edition.foil then pack_card.edition = "foil"
+                elseif card.edition.holo then pack_card.edition = "holo"
+                elseif card.edition.polychrome then pack_card.edition = "polychrome"
+                elseif card.edition.negative then pack_card.edition = "negative"
+                end
+            end
             -- For playing cards (standard packs), include suit/rank/enhancements
             if pack_card.type == "Default" or pack_card.type == "Enhanced" then
                 pack_card.suit = safe_get(card, "base", "suit")
                 pack_card.rank = safe_get(card, "base", "value") or safe_get(card, "base", "nominal")
-                if card.edition then
-                    if card.edition.foil then pack_card.edition = "foil"
-                    elseif card.edition.holo then pack_card.edition = "holo"
-                    elseif card.edition.polychrome then pack_card.edition = "polychrome"
-                    end
-                end
                 if card.ability and card.ability.name then
                     pack_card.enhancement = card.ability.name
                 end
@@ -647,6 +772,27 @@ local function build_game_state()
         discard_size = G.discard and G.discard.cards and #G.discard.cards or 0,
     }
 
+    -- Draw-pile composition (reflects Abandoned/Checkered/Erratic decks and cards
+    -- added or destroyed mid-run). face_cards is rank-based (Jack/Queen/King).
+    state.deck_composition = {
+        total_cards = G.playing_cards and #G.playing_cards or 0,
+        by_suit = {},
+        by_rank = {},
+        face_cards = 0,
+    }
+    if G.deck and G.deck.cards then
+        local comp = state.deck_composition
+        for _, card in ipairs(G.deck.cards) do
+            local suit = card.base and card.base.suit
+            local rank = card.base and card.base.value
+            if suit then comp.by_suit[suit] = (comp.by_suit[suit] or 0) + 1 end
+            if rank then comp.by_rank[rank] = (comp.by_rank[rank] or 0) + 1 end
+            if rank == "Jack" or rank == "Queen" or rank == "King" then
+                comp.face_cards = comp.face_cards + 1
+            end
+        end
+    end
+
     -- Played hand info
     if game.current_round then
         state.hands_played = game.current_round.hands_played or 0
@@ -661,6 +807,8 @@ local function build_game_state()
                     level = hand_info.level,
                     mult = hand_info.mult,
                     chips = hand_info.chips,
+                    played = hand_info.played,
+                    played_this_round = hand_info.played_this_round,
                 }
             end
         end
@@ -672,6 +820,23 @@ end
 --------------------------------------------------------------------------------
 -- Legal Actions
 --------------------------------------------------------------------------------
+
+-- Mirrors G.FUNCS.check_for_buy_space / can_select_card without their UI side effects.
+-- Limits come from the live card areas (deck backs, vouchers and mods change card_limit);
+-- negative editions carry their own slot allowance.
+local function fits_in_slots(card)
+    local ability = card.ability or {}
+    local area = nil
+    if ability.set == "Joker" then
+        area = G.jokers
+    elseif ability.consumeable then
+        area = G.consumeables
+    end
+    if not area or not area.cards then return true end
+    local allowance = ability.card_limit or ((card.edition and card.edition.negative) and 1 or 0)
+    local needed = 1 + (ability.extra_slots_used or 0)
+    return #area.cards + needed <= (area.config and area.config.card_limit or 0) + allowance
+end
 
 local function get_legal_actions()
     local legal = {
@@ -689,6 +854,22 @@ local function get_legal_actions()
     local game = G.GAME
 
     if phase == "SELECTING_HAND" then
+        if G.jokers and G.jokers.cards and #G.jokers.cards > 1 then
+            legal.actions[#legal.actions + 1] = {
+                type = "REORDER_JOKERS",
+                description = "Reorder jokers (params.order = current 1-based indices in new order)",
+                params = {}
+            }
+        end
+        if G.consumeables and G.consumeables.cards then
+            for i, card in ipairs(G.consumeables.cards) do
+                legal.actions[#legal.actions + 1] = {
+                    type = "SELL_CONSUMABLE",
+                    description = "Sell " .. (safe_get(card, "ability", "name") or "consumable") .. " for $" .. tostring(card.sell_cost or 0),
+                    params = {index = i, sell_value = card.sell_cost or 0}
+                }
+            end
+        end
         -- Can play or discard cards
         local hand_indices = {}
         if G.hand and G.hand.cards then
@@ -699,6 +880,7 @@ local function get_legal_actions()
 
         local hands_left = game.current_round and game.current_round.hands_left or 0
         local discards_left = game.current_round and game.current_round.discards_left or 0
+        local select_limit = G.hand and G.hand.config and G.hand.config.highlighted_limit or 5
 
         if hands_left > 0 and #hand_indices > 0 then
             legal.actions[#legal.actions + 1] = {
@@ -708,7 +890,7 @@ local function get_legal_actions()
                     card_indices = {
                         available = hand_indices,
                         min_select = 1,
-                        max_select = 5,
+                        max_select = select_limit,
                     }
                 }
             }
@@ -722,7 +904,7 @@ local function get_legal_actions()
                     card_indices = {
                         available = hand_indices,
                         min_select = 1,
-                        max_select = 5,
+                        max_select = select_limit,
                     }
                 }
             }
@@ -762,11 +944,28 @@ local function get_legal_actions()
         local money = game.dollars or 0
         local reroll_cost = game.current_round and game.current_round.reroll_cost or 5
 
+        if G.jokers and G.jokers.cards and #G.jokers.cards > 1 then
+            legal.actions[#legal.actions + 1] = {
+                type = "REORDER_JOKERS",
+                description = "Reorder jokers (params.order = current 1-based indices in new order)",
+                params = {}
+            }
+        end
+        if G.consumeables and G.consumeables.cards then
+            for i, card in ipairs(G.consumeables.cards) do
+                legal.actions[#legal.actions + 1] = {
+                    type = "SELL_CONSUMABLE",
+                    description = "Sell " .. (safe_get(card, "ability", "name") or "consumable") .. " for $" .. tostring(card.sell_cost or 0),
+                    params = {index = i, sell_value = card.sell_cost or 0}
+                }
+            end
+        end
+
         -- Buy from joker/consumable area
         if G.shop_jokers and G.shop_jokers.cards then
             for i, card in ipairs(G.shop_jokers.cards) do
                 local cost = card.cost or 0
-                if cost <= money then
+                if cost <= money and fits_in_slots(card) then
                     legal.actions[#legal.actions + 1] = {
                         type = "SHOP_BUY",
                         description = "Buy " .. (safe_get(card, "ability", "name") or "item") .. " from shop",
@@ -887,13 +1086,17 @@ local function get_legal_actions()
         local choices_remaining = game.pack_choices or 1
         if G.pack_cards and G.pack_cards.cards and choices_remaining > 0 then
             for i, card in ipairs(G.pack_cards.cards) do
-                legal.actions[#legal.actions + 1] = {
-                    type = "SELECT_PACK_CARD",
-                    description = "Select " .. (safe_get(card, "ability", "name") or safe_get(card, "label") or "card") .. " from pack",
-                    params = {
-                        index = i,
+                -- Pack consumables are used immediately; only jokers occupy a slot
+                local is_joker = card.ability and card.ability.set == "Joker"
+                if not is_joker or fits_in_slots(card) then
+                    legal.actions[#legal.actions + 1] = {
+                        type = "SELECT_PACK_CARD",
+                        description = "Select " .. (safe_get(card, "ability", "name") or safe_get(card, "label") or "card") .. " from pack",
+                        params = {
+                            index = i,
+                        }
                     }
-                }
+                end
             end
         end
 
@@ -916,7 +1119,7 @@ local function get_legal_actions()
         -- Can start a new run from the menu
         legal.actions[#legal.actions + 1] = {
             type = "START_RUN",
-            description = "Start a new run with default settings (stake 1, Red Deck)",
+            description = "Start a new run (params: stake, deck e.g. 'Black Deck', continue=true to resume saved run)",
             params = {
                 stake = 1,
             }
@@ -977,8 +1180,9 @@ local function execute_action(action_data)
     elseif action_type == "PLAY_HAND" then
         -- Select cards and play them as a poker hand.
         local indices = params.card_indices or {}
-        if #indices == 0 or #indices > 5 then
-            return {ok = false, error = "Must select 1-5 cards"}
+        local select_limit = G.hand and G.hand.config and G.hand.config.highlighted_limit or 5
+        if #indices == 0 or #indices > select_limit then
+            return {ok = false, error = "Must select 1-" .. tostring(select_limit) .. " cards"}
         end
 
         if not G.hand or not G.hand.cards then
@@ -1157,11 +1361,13 @@ local function execute_action(action_data)
         local joker_idx = params.joker_index
         if G.jokers and G.jokers.cards and G.jokers.cards[joker_idx] then
             local joker = G.jokers.cards[joker_idx]
-            if joker.sell_card then
-                joker:sell_card()
+            -- Use the same path as the in-game sell button: G.FUNCS.sell_card also fires the
+            -- selling_card context (Campfire etc.), which a bare joker:sell_card() skips.
+            if G.FUNCS and G.FUNCS.sell_card then
+                G.FUNCS.sell_card({config = {ref_table = joker}})
                 result.ok = true
-            elseif G.FUNCS and G.FUNCS.sell_card then
-                G.FUNCS.sell_card(joker)
+            elseif joker.sell_card then
+                joker:sell_card()
                 result.ok = true
             else
                 result.error = "Cannot find sell function"
@@ -1169,6 +1375,55 @@ local function execute_action(action_data)
         else
             result.error = "Invalid joker index"
         end
+
+    elseif action_type == "SELL_CONSUMABLE" then
+        -- Sell a held consumable via the in-game sell button path (fires selling_card context)
+        local idx = params.index
+        if G.consumeables and G.consumeables.cards and G.consumeables.cards[idx] then
+            local card = G.consumeables.cards[idx]
+            if G.FUNCS and G.FUNCS.sell_card then
+                G.FUNCS.sell_card({config = {ref_table = card}})
+                result.ok = true
+                result.message = "Sold consumable " .. idx
+            else
+                result.error = "Cannot find sell function"
+            end
+        else
+            result.error = "Invalid consumable index"
+        end
+
+    elseif action_type == "UNLOCK_ALL" then
+        if unlock_everything() then
+            result.ok = true
+            result.message = "All items unlocked and discovered"
+        else
+            result.error = "Game not ready for unlock (profile or item pools missing)"
+        end
+
+    elseif action_type == "REORDER_JOKERS" then
+        -- Reorder owned jokers (scoring applies jokers left to right, so order matters).
+        -- params.order lists the current 1-based joker indices in their new left-to-right order.
+        local order = params.order
+        if not (G.jokers and G.jokers.cards) then
+            return {ok = false, error = "No jokers"}
+        end
+        local n = #G.jokers.cards
+        if type(order) ~= "table" or #order ~= n then
+            return {ok = false, error = "order must list all " .. n .. " joker indices"}
+        end
+        local seen, reordered = {}, {}
+        for i, idx in ipairs(order) do
+            if type(idx) ~= "number" or idx < 1 or idx > n or seen[idx] then
+                return {ok = false, error = "invalid or duplicate joker index " .. tostring(idx)}
+            end
+            seen[idx] = true
+            reordered[i] = G.jokers.cards[idx]
+        end
+        G.jokers.cards = reordered
+        G.jokers:set_ranks()
+        G.jokers:align_cards()
+        result.ok = true
+        result.message = "Jokers reordered"
 
     elseif action_type == "SHOP_END" then
         if G.FUNCS and G.FUNCS.toggle_shop then
@@ -1198,6 +1453,16 @@ local function execute_action(action_data)
         local idx = params.index
         if G.pack_cards and G.pack_cards.cards and G.pack_cards.cards[idx] then
             local card = G.pack_cards.cards[idx]
+            -- Card-targeting consumables (Aura, Death, Justice...) crash the game later in the event queue when
+            -- used without the right number of highlighted hand cards, so refuse them here with the game's own check.
+            local set = safe_get(card, "ability", "set")
+            if (set == "Tarot" or set == "Spectral" or set == "Planet") and card.can_use_consumeable then
+                local ok_check, usable = pcall(function() return card:can_use_consumeable(card) end)
+                if ok_check and not usable then
+                    result.error = "Pack card " .. tostring(safe_get(card, "ability", "name")) .. " cannot be used right now (select its target hand cards first)"
+                    return result
+                end
+            end
             -- Highlight the card, then trigger use
             if not card.highlighted then
                 card:click()
@@ -1302,12 +1567,24 @@ local function execute_action(action_data)
         -- Start a new run from the menu
         if G.FUNCS and G.FUNCS.start_run then
             local stake = params.stake or 1
+            local deck = params.deck
             local ok, err = pcall(function()
-                G.FUNCS.start_run(nil, {stake = stake})
+                local args = {stake = stake}
+                if deck then args.deck_choice = {name = deck} end
+                if params.continue then
+                    -- Resume the saved run, same as the main menu Continue button
+                    if not G.SAVED_GAME then
+                        local saved = get_compressed(G.SETTINGS.profile .. '/save.jkr')
+                        if saved then G.SAVED_GAME = STR_UNPACK(saved) end
+                    end
+                    if not G.SAVED_GAME then error("no saved run to continue") end
+                    args = {savetext = G.SAVED_GAME}
+                end
+                G.FUNCS.start_run(nil, args)
             end)
             if ok then
                 result.ok = true
-                result.message = "New run started with stake " .. tostring(stake)
+                result.message = "New run started with stake " .. tostring(stake) .. " deck " .. tostring(deck or "default")
             else
                 log_error("start_run failed: " .. tostring(err))
                 result.error = "start_run failed: " .. tostring(err)
@@ -1323,7 +1600,7 @@ local function execute_action(action_data)
         --   e.config.ref_table  → the blind config object
         --   e.UIBox:get_UIE_by_ID('tag_container') → optional tag (we return nil = no tag)
         if G.FUNCS and G.FUNCS.select_blind then
-            local blind_on_deck = G.GAME and G.GAME.blind_on_deck  -- 'Small', 'Big', or 'Boss'
+            local blind_on_deck = current_blind_on_deck()  -- 'Small', 'Big', or 'Boss'
             if not blind_on_deck then
                 -- BLIND_SELECT state is initializing; blind_on_deck isn't set yet. Retry.
                 return {ok = false, error = "blind_on_deck not set yet, retry"}
@@ -1355,8 +1632,15 @@ local function execute_action(action_data)
     elseif action_type == "SKIP_BLIND" then
         -- Skip the current blind
         if G.FUNCS and G.FUNCS.skip_blind then
+            -- skip_blind reads the Tag from the blind option's UIBox ('tag_container'),
+            -- so pass the real UIBox for the blind currently on deck.
+            local on_deck = current_blind_on_deck()
+            local uibox = on_deck and G.blind_select_opts and G.blind_select_opts[string.lower(on_deck)]
+            if not uibox then
+                return {ok = false, error = "blind select UI not ready (no UIBox for " .. tostring(on_deck) .. "), retry"}
+            end
             local ok, err = pcall(function()
-                G.FUNCS.skip_blind({config = {}})
+                G.FUNCS.skip_blind({UIBox = uibox, config = {}})
             end)
             if ok then
                 result.ok = true
@@ -1716,7 +2000,35 @@ end
 
 local _wipe_off_patched = false
 
+
+-- Unlock and discover every item, mirroring the game's own G.FUNCS.unlock_all (Profile > Unlock All).
+-- Fresh per-instance profiles otherwise start with most jokers/decks locked, which shrinks the shop pool.
+local unlock_done = false
+local function unlock_everything()
+    local prof = G.PROFILES and G.SETTINGS and G.PROFILES[G.SETTINGS.profile]
+    if not (prof and G.P_CENTERS and G.P_BLINDS and G.P_TAGS) then return false end
+    prof.all_unlocked = true
+    if G.P_LOCKED then EMPTY(G.P_LOCKED) end
+    for _, pool in ipairs({G.P_CENTERS, G.P_BLINDS, G.P_TAGS, G.P_SEALS or {}}) do
+        for _, v in pairs(pool) do
+            if type(v) == "table" and not v.demo and not v.wip then
+                v.alerted = true
+                v.discovered = true
+                v.unlocked = true
+            end
+        end
+    end
+    pcall(set_profile_progress)
+    pcall(set_discover_tallies)
+    pcall(function() G:save_progress() end)
+    if G.FILE_HANDLER then G.FILE_HANDLER.force = true end
+    unlock_done = true
+    log_info("Unlocked and discovered all items for profile " .. tostring(G.SETTINGS.profile))
+    return true
+end
+
 function RLBridge.update(dt)
+    if not unlock_done and G and G.STAGE and G.STAGE ~= G.STAGES.SPLASH then pcall(unlock_everything) end
     ensure_save_data_migrated()
 
     -- Completely replace wipe_off with a safe version.
