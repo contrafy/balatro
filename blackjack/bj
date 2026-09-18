@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Launcher: run the trainer from anywhere, no install and no dependencies."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from bjtrainer.app import main  # noqa: E402
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        sys.exit(0)
