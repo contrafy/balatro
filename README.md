@@ -1,20 +1,27 @@
-# Balatro RL Harness
+# Balatro RL
 
-A reinforcement learning harness for the game **Balatro**, providing true game state extraction and action execution via an in-game HTTP bridge. Works on **Windows** and **macOS**.
+Training a from-scratch model to win Balatro runs (Black Deck, Gold Stake) using the full vanilla action space. The current work is the data pipeline: an in-game HTTP bridge, a Python harness, and a swarm of LLM agents that play through it to produce replayable trajectories and a written strategy playbook. Works on **Windows** and **macOS**.
 
-## Overview
+## Goal
 
-This project enables RL agents to play Balatro by:
+An entity transformer policy with autoregressive pointer-head action decoding and a value head, trained with behavior cloning on swarm trajectories and then PPO in a headless copy of the real game engine (unmodified Lua source, rendering removed). Target: win Black Deck / Gold Stake (8) runs. Full plan: [docs/TRAINING_PLAN.md](docs/TRAINING_PLAN.md).
 
-1. **In-game Lua mod** (`game_mod/`) — Injects into Balatro via Lovely Injector to expose game state over HTTP
-2. **Python harness** (`python/`) — Gymnasium-compatible environment, HTTP client, and a rule-based agent
-3. **Advisor CLI + playbook** (`python/balatro_env/scripts/cli.py`, `docs/`) — a joker-aware scoring estimator and shop/play advisor that LLM player agents drive the game through, plus the strategy playbook and per-run post-mortems they learn from
+## Roadmap
 
-The harness extracts true game state (no OCR) including:
-- Current hand, jokers, consumables
-- Shop inventory and prices
-- Blind requirements and progress
-- Legal action masks for each decision point
+1. **Data-ready bridge** (in progress): strict legality checks, a per-step trajectory recorder, and replay verification, per [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md).
+2. **Swarm data collection**: LLM agents play full runs through the bridge, recording step-level trajectories with a one-line rationale per action, and distilling strategy into [docs/PLAYBOOK.md](docs/PLAYBOOK.md) and per-run post-mortems in `docs/runs/`.
+3. **Headless engine**: the game source under LuaJIT with a batched step API; must replay every verified trajectory exactly.
+4. **Behavior cloning** on trajectories that pass schema and replay validation.
+5. **PPO** in the headless engine, with a White-to-Gold stake curriculum.
+6. **Evaluation** on held-out seeds: win rate per stake versus the swarm.
+
+## Components
+
+1. **In-game Lua mod** (`game_mod/`): injects into Balatro via Lovely Injector and exposes game state, legal actions, and action execution over HTTP. The same state/legality/action code is the interface the model will see.
+2. **Python harness** (`python/`): HTTP client, schemas, a Gymnasium environment and a rule-based baseline agent (existing tooling, not the training setup).
+3. **Advisor CLI + playbook** (`python/balatro_env/scripts/cli.py`, `docs/`): a joker-aware scoring estimator and shop/play advisor that the LLM agents drive the game through, plus the strategy playbook and post-mortems they learn from.
+
+State is read directly from the game (no OCR): hand, jokers, consumables, shop inventory and prices, blind requirements, and legal actions at each decision point.
 
 ## Quick Start
 
@@ -24,23 +31,22 @@ See [game_mod/install.md](game_mod/install.md) for detailed platform-specific in
 
 **Windows (summary):**
 ```powershell
-# Download Lovely Injector (version.dll) → Balatro install dir
-# Install Steamodded → %APPDATA%\Balatro\Mods\Steamodded
-# Copy BalatroRLBridge → %APPDATA%\Balatro\Mods\BalatroRLBridge
+# Download Lovely Injector v0.9.0 (version.dll) → Balatro install dir
+# No Steamodded: the bridge loads through Lovely only so game logic stays vanilla.
+# Each instance gets its own save/mod dir under %USERPROFILE%\balatro-instances\<port>; the launcher deploys the bridge.
 ```
 
 **macOS (summary):**
 ```bash
 # Download Lovely Injector (liblovely.dylib) → Balatro install dir
-# Install Steamodded → ~/Library/Application Support/Balatro/Mods/Steamodded
-# Copy BalatroRLBridge → ~/Library/Application Support/Balatro/Mods/BalatroRLBridge
+# Copy BalatroRLBridge → ~/Library/Application Support/Balatro/Mods/BalatroRLBridge (no Steamodded)
 ```
 
 ### 2. Launch Balatro
 
 ```bash
-# Windows (via Steam)
-steam -applaunch 2379780
+# Windows: isolated instance on its own port (prints the PID)
+powershell -NoProfile -ExecutionPolicy Bypass -File game_mod/windows/launch_instance.ps1 -Port 7777
 
 # macOS (via launch script)
 cd ~/Library/Application\ Support/Steam/steamapps/common/Balatro
@@ -51,7 +57,6 @@ cd ~/Library/Application\ Support/Steam/steamapps/common/Balatro
 
 ```bash
 curl http://127.0.0.1:7777/health
-# → {"status":"ok","version":"1.0.0","uptime_ms":12345}
 ```
 
 ### 4. Install Python Package
@@ -63,37 +68,24 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-### 5. Run the Agent
+### 5. Drive the Game
 
 ```bash
-# Plain console output
-python -m balatro_env.scripts.play_agent
+# Check state and legal actions
+python -m balatro_env.scripts.do_smoke_actions dump_state
+python -m balatro_env.scripts.do_smoke_actions list_legal_actions
 
-# Rich TUI dashboard (fullscreen)
-python -m balatro_env.scripts.play_agent --tui
-
-# With custom delay between decisions
+# Rule-based baseline agent (console or --tui dashboard)
 python -m balatro_env.scripts.play_agent --tui --delay 1.2
 ```
 
-The agent auto-starts runs, plays hands, shops, and restarts on game over.
+## Rule-based Baseline
 
-## Agent Strategy
-
-The built-in agent (`play_agent.py`) uses a deterministic rule-based strategy optimized for Red Deck on White Stake:
-
-| Component | Approach |
-|-----------|----------|
-| **Hand play** | Flush-first: aggressively discard off-suit cards to build flushes. Falls back to straights, then best available (full house, three of a kind, pairs). |
-| **Smeared Joker** | When owned, treats Hearts/Diamonds as "Red" and Clubs/Spades as "Black" for flush detection and discard decisions. |
-| **Planet priorities** | Buys/picks Jupiter (Flush) with highest priority. Deprioritizes Mars (Four of a Kind) and Neptune (Straight Flush) — hands the agent rarely completes. |
-| **Joker buying** | Prioritizes Droll Joker, Four Fingers, Smeared Joker, and xMult jokers. Sells weakest joker when a significantly better one appears in the shop. |
-| **Tarot cards** | Uses no-select tarots (Hermit, Judgement) immediately. Targets suit-changers and enhancements on hand cards with proper SELECT_CARDS → USE_CONSUMABLE flow. |
-| **Pack opening** | Waits for flip animations before selecting. Picks one card at a time with confirmation polling. |
+`play_agent.py` is a deterministic, flush-first strategy (planet, joker, tarot and pack heuristics) tuned for Red Deck on White Stake. It is a harness smoke test and baseline, not part of the training pipeline.
 
 ## LLM Agent Swarm
 
-Beyond the rule-based agent, the repo supports a swarm of LLM player agents (Claude subagents) that each play a full run on their own game instance, coordinated by an orchestrator that patches the harness between runs.
+The swarm is the current data source. LLM player agents (Claude subagents) each play full runs on their own game instance, coordinated by an orchestrator that patches the harness between runs. Their runs feed two things: step-level trajectories for behavior cloning (format in [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md)) and written strategy in `docs/PLAYBOOK.md` and `docs/runs/`.
 
 ### Parallel game instances
 
@@ -110,27 +102,30 @@ A six-instance swarm runs comfortably on an M-series Mac (~650MB and a fraction 
 
 ### The advisor CLI
 
-Player agents never do scoring arithmetic themselves — they drive the game through `cli.py`, which asks the bridge for state and prints estimates and advice:
+Player agents never do scoring arithmetic themselves — they drive the game through `cli.py` (via the `b.sh <port>` wrapper), which asks the bridge for state and prints estimates and advice. State-changing commands require `--why`; the orchestrator runbook is [docs/SWARM.md](docs/SWARM.md).
 
 ```bash
-export BALATRO_RL_PORT=7778
-python balatro_env/scripts/cli.py s                    # compact state + blind-select advice
-python balatro_env/scripts/cli.py hands                # candidate hands with joker-aware est
-python balatro_env/scripts/cli.py advise               # play/discard advice for this hand
-python balatro_env/scripts/cli.py shopadvise           # ranked shop advice (buy/sell/reroll)
-python balatro_env/scripts/cli.py play TWOPAIR 1 2 5 6 # aborts if the game preview disagrees
-python balatro_env/scripts/cli.py start Black Deck 3   # new run at a given stake
+B="bash python/balatro_env/scripts/b.sh 7778"
+$B s                                                       # compact state + blind-select advice
+$B hands                                                   # candidate hands with joker-aware est
+$B advise                                                  # play/discard advice for this hand
+$B shopadvise                                              # ranked shop advice (buy/sell/reroll)
+$B play TWOPAIR 1 2 5 6 --why "Two Pair est 412 > 300"     # aborts if the game preview disagrees
+$B start Black Deck 3 --seed 7K3P9QXA --why "assigned seed" # new seeded run at a given stake
 ```
 
 The estimator models scoring order, retriggers, enhancements, editions, held-card effects, joker copies (Blueprint/Brainstorm), growth jokers, and boss effects. Every played hand logs `est` vs actual to `docs/runs/est_log.tsv`; misses over 20% get diagnosed and fixed in the estimator, so accuracy improves run over run.
 
 ### The learning loop
 
-1. Each player agent reads `docs/PLAYBOOK.md` before its run and follows the CLI's advice plus its own judgment.
+1. Each player agent reads `docs/PLAYBOOK.md` before its run and follows the CLI's advice plus its own judgment, giving a one-line `--why` for each action.
 2. On game over it writes a post-mortem to `docs/runs/<port>_<run_id>.md` (build, money curve, the one decision it would change, CLI issues).
 3. The orchestrator folds those findings back into `cli.py` and the playbook, then relaunches the port.
+4. Recorded trajectories count as training data only after they pass schema and replay verification.
 
-### Progress
+### Swarm progress
+
+Earlier macOS swarm runs (not recorded under the data contract; used as strategy knowledge only):
 
 | Milestone | Status |
 |-----------|--------|
@@ -141,9 +136,6 @@ The estimator models scoring order, retriggers, enhancements, editions, held-car
 ## Scripts
 
 ```bash
-# Run the agent
-python -m balatro_env.scripts.play_agent [--tui] [--delay SECS]
-
 # Interactive REPL
 python -m balatro_env.scripts.interactive_shell
 
@@ -151,9 +143,6 @@ python -m balatro_env.scripts.interactive_shell
 python -m balatro_env.scripts.do_smoke_actions probe_health
 python -m balatro_env.scripts.do_smoke_actions dump_state
 python -m balatro_env.scripts.do_smoke_actions list_legal_actions
-
-# Advisor CLI (used by the LLM agent swarm; BALATRO_RL_PORT selects the instance)
-python balatro_env/scripts/cli.py s
 ```
 
 ## Architecture
@@ -189,45 +178,21 @@ python balatro_env/scripts/cli.py s
 
 ## HTTP API
 
-The in-game bridge exposes these endpoints on `http://127.0.0.1:7777`:
+The in-game bridge exposes these endpoints on `http://127.0.0.1:<port>` (default 7777). Full spec (action types,
+`/legal` parameter domains, settled rule, observation fields, trajectory files): [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md).
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/health` | GET | Health check with version and uptime |
-| `/state` | GET | Full game state as JSON |
-| `/legal` | GET | Legal actions for current phase |
-| `/action` | POST | Execute an action |
-| `/reset` | POST | Reset game (best effort) |
-| `/config` | POST | Update bridge configuration |
-
-### Example: Get State
-
-```bash
-curl http://127.0.0.1:7777/state | jq .
-```
-
-```json
-{
-  "schema_version": "1.0.0",
-  "phase": "SELECTING_HAND",
-  "money": 4,
-  "ante": 1,
-  "hands_remaining": 4,
-  "discards_remaining": 3,
-  "hand": [
-    {"id": "1", "rank": "King", "suit": "Hearts"}
-  ],
-  "jokers": [],
-  "blind": {"name": "Small Blind", "chips_needed": 300}
-}
-```
-
-### Example: Execute Action
+| `/health` | GET | Health, versions, recorder status |
+| `/state` | GET | Policy-visible game state plus `settled` |
+| `/legal` | GET | Legal action types with exact parameter domains (empty while not settled) |
+| `/action` | POST | Validate against `/legal`, execute, and record a legal action; illegal ones are rejected and recorded as `reject` |
+| `/preview` | POST | Read-only poker-hand reading for a hypothetical card selection |
 
 ```bash
 curl -X POST http://127.0.0.1:7777/action \
   -H "Content-Type: application/json" \
-  -d '{"type": "PLAY_HAND", "params": {"card_indices": [1, 2, 3, 4, 5]}}'
+  -d '{"type": "PLAY_HAND", "params": {"card_indices": [1, 2, 3]}, "meta": {"why": "pair of kings clears 300"}}'
 ```
 
 ## Project Structure
@@ -255,6 +220,8 @@ balatro/
 │   ├── tests/
 │   └── pyproject.toml
 ├── docs/
+│   ├── TRAINING_PLAN.md        # Model, headless engine, and training stages
+│   ├── DATA_CONTRACT.md        # Trajectory format and validity rules
 │   ├── PLAYBOOK.md             # Living strategy playbook the LLM agents follow
 │   └── runs/                   # Per-run post-mortems + est/shop calibration logs
 └── README.md
@@ -277,9 +244,8 @@ balatro/
 ### Windows: Mod not loading
 
 1. Verify `version.dll` (Lovely Injector) is in the Balatro install directory
-2. Ensure Steamodded is in `%APPDATA%\Balatro\Mods\Steamodded\`
-3. Launch via Steam (Lovely hooks in automatically)
-4. Check logs in `%APPDATA%\Balatro\Mods\lovely\log\`
+2. Launch with `game_mod/windows/launch_instance.ps1` (not Steam), which sets `--mod-dir` and `APPDATA` per instance
+3. Check logs in `%USERPROFILE%\balatro-instances\<port>\Balatro\Mods\lovely\log\`
 
 ### macOS: Mod not loading
 
@@ -292,7 +258,7 @@ balatro/
 The game process can survive a Lua crash. Check both:
 ```bash
 # 1. Is process alive?
-tasklist /FI "IMAGENAME eq Balatro.exe"     # Windows
+tasklist -FI "IMAGENAME eq Balatro.exe"     # Windows
 pgrep -l Balatro                             # macOS
 
 # 2. Is bridge responding?

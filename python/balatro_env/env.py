@@ -188,8 +188,10 @@ class BalatroEnv(gym.Env):
         Returns:
             True if episode should end
         """
-        # Game over if returned to menu
-        if state.phase in {GamePhase.MENU, GamePhase.SPLASH}:
+        # Run over: lost (GAME_OVER), won (WIN screen / won flag), or back at the menu
+        if state.phase in {GamePhase.GAME_OVER, GamePhase.WIN, GamePhase.MENU, GamePhase.SPLASH}:
+            return True
+        if state.won:
             return True
 
         # Max steps reached

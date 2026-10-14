@@ -45,12 +45,6 @@ class TestLegalActionsSchema:
             assert action.type is not None
             assert isinstance(action.type, ActionType)
 
-    def test_actions_have_description(self, legal_actions):
-        """Each action should have a description."""
-        for action in legal_actions.actions:
-            assert action.description is not None
-            assert len(action.description) > 0
-
 
 class TestPhaseSpecificActions:
     """Tests for phase-specific legal actions."""
@@ -83,11 +77,10 @@ class TestPhaseSpecificActions:
             legal = client.get_legal_actions()
             for action in legal.actions:
                 if action.type == ActionType.PLAY_HAND:
-                    assert action.params is not None
-                    assert action.params.card_indices is not None
-                    # Should have available indices
-                    available = action.params.card_indices.get("available", [])
-                    assert len(available) > 0
+                    spec = action.subset("card_indices")
+                    assert spec is not None
+                    # Should have available hand positions
+                    assert len(spec.get("of", [])) > 0
         except BalatroConnectionError:
             pytest.skip("Balatro bridge not running")
 

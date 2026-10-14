@@ -31,10 +31,9 @@ HELP_TEXT = """
   [cyan]legal[/cyan], [cyan]l[/cyan]         - Show legal actions
   [cyan]health[/cyan], [cyan]h[/cyan]        - Check bridge health
   [cyan]action[/cyan] <json>    - Execute an action (JSON format)
-  [cyan]select[/cyan] <indices> - Select/highlight cards (e.g., 'select 1 2 3')
   [cyan]play[/cyan] <indices>   - Play cards (e.g., 'play 1 2 3')
   [cyan]discard[/cyan] <indices>- Discard cards (e.g., 'discard 1 2')
-  [cyan]run[/cyan]              - Start a new run
+  [cyan]run[/cyan]              - Start a new run (Red Deck, stake 1)
   [cyan]blind[/cyan]            - Select the current blind
   [cyan]sort[/cyan] <mode>      - Sort hand (rank/suit)
 
@@ -47,11 +46,11 @@ HELP_TEXT = """
   [cyan]endshop[/cyan]               - Leave shop
 
 [bold]Pack Commands:[/bold]
-  [cyan]pick[/cyan] <index>          - Select card from opened pack
+  [cyan]pick[/cyan] <index> \\[targets...] - Select card from opened pack (targets = hand positions)
   [cyan]skippack[/cyan], [cyan]sp[/cyan]          - Skip remaining pack choices
 
 [bold]Consumable Commands:[/bold]
-  [cyan]use[/cyan] <index>           - Use consumable (tarot/planet/spectral)
+  [cyan]use[/cyan] <index> \\[targets...]  - Use consumable (targets = hand positions, e.g. 'use 1 2 3')
 
   [cyan]help[/cyan], [cyan]?[/cyan]            - Show this help
   [cyan]quit[/cyan], [cyan]q[/cyan]            - Exit
@@ -59,7 +58,8 @@ HELP_TEXT = """
 [bold]Action JSON Format:[/bold]
   {"type": "PLAY_HAND", "params": {"card_indices": [1, 2, 3]}}
   {"type": "SHOP_BUY", "params": {"slot": 1}}
-  {"type": "USE_CONSUMABLE", "params": {"index": 1}}
+  {"type": "USE_CONSUMABLE", "params": {"index": 1, "targets": [2, 3]}}
+  {"type": "SELL_JOKER", "params": {"index": 1}}
 """
 
 
@@ -170,17 +170,6 @@ def main():
                 except (KeyError, ValueError) as e:
                     console.print(f"[red]Invalid action:[/red] {e}")
 
-            elif cmd == "select":
-                indices = parse_indices(cmd_args)
-                if not indices:
-                    console.print("[yellow]Usage: select <index1> <index2> ...[/yellow]")
-                    continue
-                action = ActionRequest(
-                    type=ActionType.SELECT_CARDS,
-                    params={"card_indices": indices}
-                )
-                execute_action(client, action)
-
             elif cmd == "play":
                 indices = parse_indices(cmd_args)
                 if not indices:
@@ -205,7 +194,7 @@ def main():
 
             elif cmd == "run":
                 execute_action(client, ActionRequest(
-                    type=ActionType.START_RUN, params={"stake": 1}
+                    type=ActionType.START_RUN, params={"deck": "b_red", "stake": 1}
                 ))
 
             elif cmd == "blind":
@@ -271,13 +260,17 @@ def main():
 
             elif cmd == "pick":
                 if not cmd_args:
-                    console.print("[yellow]Usage: pick <index>[/yellow]")
+                    console.print("[yellow]Usage: pick <index> \\[targets...][/yellow]")
                     continue
                 try:
                     idx = int(cmd_args[0])
+                    params = {"index": idx}
+                    targets = parse_indices(cmd_args[1:])
+                    if targets:
+                        params["targets"] = targets
                     action = ActionRequest(
                         type=ActionType.SELECT_PACK_CARD,
-                        params={"index": idx}
+                        params=params
                     )
                     execute_action(client, action)
                 except ValueError:
@@ -288,13 +281,17 @@ def main():
 
             elif cmd == "use":
                 if not cmd_args:
-                    console.print("[yellow]Usage: use <index>[/yellow]")
+                    console.print("[yellow]Usage: use <index> \\[targets...][/yellow]")
                     continue
                 try:
                     idx = int(cmd_args[0])
+                    params = {"index": idx}
+                    targets = parse_indices(cmd_args[1:])
+                    if targets:
+                        params["targets"] = targets
                     action = ActionRequest(
                         type=ActionType.USE_CONSUMABLE,
-                        params={"index": idx}
+                        params=params
                     )
                     execute_action(client, action)
                 except ValueError:
@@ -307,8 +304,8 @@ def main():
                 try:
                     idx = int(cmd_args[0])
                     action = ActionRequest(
-                        type=ActionType.SHOP_SELL_JOKER,
-                        params={"joker_index": idx}
+                        type=ActionType.SELL_JOKER,
+                        params={"index": idx}
                     )
                     execute_action(client, action)
                 except ValueError:

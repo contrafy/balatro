@@ -3918,3 +3918,27 @@
 7777	a2	$6	jokers=3/6	xmult_owned=0	PACK:Jumbo Buffoon Pack $6 | PACK:Buffoon Pack $4 | UTIL:Matador $7 | UTIL:Splash $3 | VOUCHER:Tarot Merchant $10
 7777	a2	$0	jokers=4/6	xmult_owned=0	PACK:Buffoon Pack $4 | UTIL:Matador $7 | UTIL:Splash $3 | VOUCHER:Tarot Merchant $10
 7781	a3	$18	jokers=3/6	xmult_owned=0	PACK:Jumbo Arcana Pack $6 | PACK:Jumbo Arcana Pack $6 | XMULT(conditional, unreliable):Blackboard $6 | PLUS(weak/conditional):Green Joker $4 | VOUCHER:Tarot Merchant $10
+7778	a1	$7	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Clearance Sale $10 | UTIL:Reserved Parking $6 | PACK:Arcana Pack $4 | TAROT:The Moon $3
+7778	a1	$3	jokers=1/6	xmult_owned=1	VOUCHER:Clearance Sale $10 | UTIL:Reserved Parking $6 | PACK:Arcana Pack $4 | TAROT:The Moon $3
+7778	a1	$8	jokers=1/6	xmult_owned=1	VOUCHER:Clearance Sale $10 | PACK:Jumbo Celestial Pack $6 | PLUS(other hand):Droll Joker $4 | UTIL:To Do List $4 | PACK:Jumbo Arcana Pack $6
+7778	a1	$4	jokers=2/6	xmult_owned=1	VOUCHER:Clearance Sale $10 | PACK:Jumbo Celestial Pack $6 | UTIL:To Do List $4 | PACK:Jumbo Arcana Pack $6
+7778	a1	$4	jokers=2/6	xmult_owned=1	VOUCHER:Clearance Sale $10 | PACK:Jumbo Celestial Pack $6 | UTIL:To Do List $4 | PACK:Jumbo Arcana Pack $6
+7778	a2	$9	jokers=2/6	xmult_owned=1	PACK:Celestial Pack $4 | VOUCHER:Seed Money $10 | XMULT(conditional, unreliable):Acrobat $6 | PACK:Jumbo Arcana Pack $6 | AVOID(destroys one of your jokers every blind):Madness $7
+7778	a2	$4	jokers=2/6	xmult_owned=1	PACK:Celestial Pack $4 | VOUCHER:Seed Money $10 | XMULT(conditional, unreliable):Acrobat $6 | UTIL:Mail-In Rebate $4 | PACK:Jumbo Arcana Pack $6
+7778	a2	$9	jokers=2/6	xmult_owned=1	PLUS(main hand):Wily Joker $4 | VOUCHER:Seed Money $10 | UNKNOWN:Riff-raff $6 | PACK:Mega Arcana Pack $8 | PACK:Jumbo Standard Pack $6
+7778	a2	$5	jokers=3/6	xmult_owned=1	VOUCHER:Seed Money $10 | UNKNOWN:Riff-raff $6 | PACK:Mega Arcana Pack $8 | PACK:Jumbo Standard Pack $6
+7778	a2	$5	jokers=3/6	xmult_owned=1	VOUCHER:Seed Money $10 | UNKNOWN:Riff-raff $6 | PACK:Mega Arcana Pack $8 | PACK:Jumbo Standard Pack $6
+7778	a2	$11	jokers=3/6	xmult_owned=1	PLUS:Shoot the Moon $5 | PACK:Jumbo Celestial Pack $6 | PACK:Jumbo Celestial Pack $6 | VOUCHER:Seed Money $10 | PLUS(x0.25 per skipped blind: useless, we never skip):Throwback $6
+7778	a2	$6	jokers=4/6	xmult_owned=1	PACK:Jumbo Celestial Pack $6 | PACK:Jumbo Celestial Pack $6 | VOUCHER:Seed Money $10 | PLUS(x0.25 per skipped blind: useless, we never skip):Throwback $6
+7778	a3	$5	jokers=4/6	xmult_owned=1	TAROT:Justice $3 | PACK:Celestial Pack $4 | PACK:Celestial Pack $4 | PLANET:Venus $3 | VOUCHER:Reroll Surplus $10
+7778	a3	$6	jokers=4/6	xmult_owned=1	PACK:Mega Celestial Pack $8 | PACK:Jumbo Spectral Pack $6 | PLUS(common condition):Smiley Face $4 | XMULT(conditional, unreliable):Acrobat $6 | VOUCHER:Reroll Surplus $10
+7778	a3	$20	jokers=4/6	xmult_owned=1	PACK:Mega Celestial Pack $8 | PLUS(common condition):Smiley Face $4 | XMULT(conditional, unreliable):Acrobat $6 | VOUCHER:Reroll Surplus $10
+7778	a3	$12	jokers=4/6	xmult_owned=1	PLUS(common condition):Smiley Face $4 | XMULT(conditional, unreliable):Acrobat $6 | VOUCHER:Reroll Surplus $10
+7778	a3	$8	jokers=5/6	xmult_owned=1	XMULT(conditional, unreliable):Acrobat $6 | VOUCHER:Reroll Surplus $10
+7778	a3	$13	jokers=5/6	xmult_owned=1	PACK:Celestial Pack $4 | PACK:Arcana Pack $4 | UTIL:Hallucination $4 | UTIL:Oops! All 6s $4 | VOUCHER:Reroll Surplus $10
+7778	a3	$9	jokers=5/6	xmult_owned=1	PACK:Arcana Pack $4 | UTIL:Hallucination $4 | UTIL:Oops! All 6s $4 | VOUCHER:Reroll Surplus $10
+7778	a3	$5	jokers=5/6	xmult_owned=1	UTIL:Hallucination $4 | UTIL:Oops! All 6s $4 | VOUCHER:Reroll Surplus $10
+7778	a4	$0	jokers=5/6	xmult_owned=1	PACK:Celestial Pack $4 | PACK:Spectral Pack $4 | UTIL:Pareidolia $5 | PLUS(one suit):Greedy Joker $5 | VOUCHER:Seed Money $10
+7778	a4	$4	jokers=5/6	xmult_owned=1	PACK:Jumbo Arcana Pack $6 | PACK:Buffoon Pack $4 | PLUS(rare condition):Square Joker $4 | PLUS(other hand):Crafty Joker $4 | VOUCHER:Seed Money $10
+7778	a4	$7	jokers=5/6	xmult_owned=1	PACK:Arcana Pack $4 | UTIL:Drunkard $4 | PLANET:Mercury $3 | VOUCHER:Seed Money $10 | PACK:Jumbo Standard Pack $6
+7778	a4	$14	jokers=5/6	xmult_owned=1	UTIL:Drunkard $4 | PLANET:Mercury $3 | VOUCHER:Seed Money $10 | PACK:Jumbo Standard Pack $6

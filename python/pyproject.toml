@@ -35,10 +35,14 @@ balatro-state = "balatro_env.scripts.dump_state:main"
 balatro-legal = "balatro_env.scripts.list_legal_actions:main"
 balatro-smoke = "balatro_env.scripts.do_smoke_actions:main"
 balatro-shell = "balatro_env.scripts.interactive_shell:main"
+balatro-data = "balatro_env.data.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["balatro_env*"]
+
+[tool.setuptools.package-data]
+"balatro_env.data" = ["eval_seeds.txt"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

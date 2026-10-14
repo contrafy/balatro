@@ -4,6 +4,7 @@ from typing import Any
 
 import torch
 
+from balatro_env import vocab
 from balatro_env.schemas import CardData, GamePhase, GameState, JokerData
 
 
@@ -20,10 +21,11 @@ class ObservationTokenizer:
         "rank": 15,  # A, 2-10, J, Q, K + padding + unknown
         "suit": 6,   # Hearts, Diamonds, Clubs, Spades + padding + unknown
         "edition": 6,  # None, Foil, Holo, Polychrome, Negative, unknown
-        "enhancement": 15,  # Various enhancements + padding
+        "enhancement": len(vocab.ENHANCEMENTS) + 2,  # padding + enhancements + unknown
         "seal": 6,   # None, Gold, Red, Blue, Purple, unknown
-        "joker": 200,  # Estimated max joker types
-        "consumable": 100,  # Tarots, planets, spectrals
+        "joker": len(vocab.JOKER_KEYS) + 2,  # padding + vanilla jokers + unknown
+        "consumable": len(vocab.CONSUMABLE_KEYS) + 2,  # padding + tarots/planets/spectrals + unknown
+        "item_set": len(vocab.ITEM_SETS) + 2,
     }
 
     # Rank mapping
@@ -49,6 +51,10 @@ class ObservationTokenizer:
         GamePhase.SHOP: 6,
         GamePhase.PACK_OPENING: 7,
         GamePhase.UNKNOWN: 8,
+        GamePhase.ROUND_EVAL: 9,
+        GamePhase.GAME_OVER: 10,
+        GamePhase.NEW_ROUND: 11,
+        GamePhase.PLAY_TAROT: 12,
     }
 
     # Padding ceilings, not game rules: live limits come from GameState (joker_slots etc.).
@@ -109,8 +115,7 @@ class ObservationTokenizer:
         if card.edition:
             edition = self.EDITION_MAP.get(card.edition, 0)
 
-        # Simple numeric encoding for enhancement
-        enhancement = hash(card.enhancement or "") % self.VOCAB["enhancement"] if card.enhancement else 0
+        enhancement = vocab.lookup(vocab.ENHANCEMENT_IDS, card.enhancement)
 
         # Seal encoding
         seal_map = {"Gold": 1, "Red": 2, "Blue": 3, "Purple": 4}
@@ -136,8 +141,7 @@ class ObservationTokenizer:
         Returns:
             List of float features
         """
-        # Use hash of key/name for ID
-        joker_id = hash(joker.key or joker.name or "") % self.VOCAB["joker"]
+        joker_id = vocab.lookup(vocab.JOKER_IDS, joker.key)
 
         return [
             joker_id / self.VOCAB["joker"],
@@ -158,7 +162,7 @@ class ObservationTokenizer:
         features = []
 
         # Scalar features (normalized)
-        features.append(self.PHASE_MAP.get(state.phase, 8) / 10.0)
+        features.append(self.PHASE_MAP.get(state.phase, 8) / len(self.PHASE_MAP))
         features.append(min(state.money, 500) / 500.0)  # Cap at 500
         features.append(state.ante / 8.0)  # 8 antes max
         features.append(state.round / 32.0)  # ~32 rounds per ante
@@ -204,7 +208,7 @@ class ObservationTokenizer:
         for i in range(self.MAX_CONSUMABLES):
             if i < len(state.consumables):
                 cons = state.consumables[i]
-                cons_id = hash(cons.key or cons.name or "") % self.VOCAB["consumable"]
+                cons_id = vocab.lookup(vocab.CONSUMABLE_IDS, cons.key)
                 features.extend([cons_id / self.VOCAB["consumable"], 1.0])
             else:
                 features.extend([0.0, 0.0])
@@ -216,9 +220,9 @@ class ObservationTokenizer:
         for i in range(self.MAX_SHOP_ITEMS):
             if i < len(shop_items):
                 item = shop_items[i]
-                type_hash = hash(item.type) % 10
+                set_id = vocab.lookup(vocab.ITEM_SET_IDS, item.type)
                 features.extend([
-                    type_hash / 10.0,
+                    set_id / self.VOCAB["item_set"],
                     item.cost / 50.0,  # Normalize cost
                     1.0 if item.cost <= state.money else 0.0,  # Purchasable flag
                 ])

@@ -302,7 +302,7 @@ def decide_shop(state: GameState, legal: LegalActions) -> Decision:
     # Check for affordable joker buys
     buy_actions = legal.get_actions_of_type(ActionType.SHOP_BUY)
     for action in buy_actions:
-        cost = action.params.cost or 0
+        cost = action.info.get("cost") or 0
         if cost <= money:
             return Decision(
                 action.to_request(),
@@ -312,7 +312,7 @@ def decide_shop(state: GameState, legal: LegalActions) -> Decision:
     # Buy voucher if affordable
     voucher_actions = legal.get_actions_of_type(ActionType.SHOP_BUY_VOUCHER)
     for action in voucher_actions:
-        cost = action.params.cost or 0
+        cost = action.info.get("cost") or 0
         if cost <= money:
             return Decision(
                 action.to_request(),
@@ -345,21 +345,17 @@ def decide_pack_opening(state: GameState, legal: LegalActions) -> Decision:
     Skip if no selections remain.
     """
     pick_actions = legal.get_actions_of_type(ActionType.SELECT_PACK_CARD)
-    if pick_actions:
-        action = pick_actions[0]
-        return Decision(
-            action.to_request(),
-            f"Pick card from pack: {action.description}",
-        )
-
-    # Legacy action type
-    pick_legacy = legal.get_actions_of_type(ActionType.SELECT_PACK_ITEM)
-    if pick_legacy:
-        action = pick_legacy[0]
-        return Decision(
-            action.to_request(),
-            f"Pick item from pack: {action.description}",
-        )
+    for action in pick_actions:
+        # Picks that need hand targets (e.g. targeted tarots) are not chosen here.
+        targets = action.params.get("targets")
+        if targets and not targets.get("optional") and (targets.get("subset") or {}).get("min", 0) > 0:
+            continue
+        indices = action.options("index")
+        if indices:
+            return Decision(
+                ActionRequest(type=ActionType.SELECT_PACK_CARD, params={"index": indices[0]}),
+                f"Pick card from pack: {action.description}",
+            )
 
     return Decision(
         ActionRequest(type=ActionType.SKIP_PACK),
@@ -378,7 +374,7 @@ def decide_round_eval(state: GameState, legal: LegalActions) -> Decision:
 def decide_game_over(state: GameState, legal: LegalActions) -> Decision:
     """Decide during GAME_OVER — start a new run."""
     return Decision(
-        ActionRequest(type=ActionType.START_RUN, params={"stake": 1}),
+        ActionRequest(type=ActionType.START_RUN, params={"deck": "b_red", "stake": 1}),
         "Game over — starting new run",
     )
 
@@ -386,7 +382,7 @@ def decide_game_over(state: GameState, legal: LegalActions) -> Decision:
 def decide_menu(state: GameState, legal: LegalActions) -> Decision:
     """Decide from MENU — start a new run."""
     return Decision(
-        ActionRequest(type=ActionType.START_RUN, params={"stake": 1}),
+        ActionRequest(type=ActionType.START_RUN, params={"deck": "b_red", "stake": 1}),
         "At menu — starting new run",
     )
 

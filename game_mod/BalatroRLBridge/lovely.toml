@@ -1,0 +1,25 @@
+# BalatroRLBridge: Lovely-only loader (no Steamodded).
+#
+# 1. Register main.lua as the Lua module `balatro_rl_bridge`.
+# 2. Call it once per frame from love.update, right after the game's own G:update(dt).
+#    The first call runs the module body (HTTP server + recorder init); later calls hit
+#    package.loaded. These are the only patches: game logic stays vanilla.
+
+[manifest]
+version = "2.0.0"
+dump_lua = true
+priority = 0
+
+[[patches]]
+[patches.module]
+source = "main.lua"
+before = "main.lua"
+name = "balatro_rl_bridge"
+
+[[patches]]
+[patches.pattern]
+target = "main.lua"
+pattern = "G:update(dt)"
+position = "after"
+match_indent = true
+payload = "require('balatro_rl_bridge').update(dt)"

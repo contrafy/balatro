@@ -64,8 +64,8 @@ def legal_payload(actions: list[dict[str, Any]], phase: str = "SHOP") -> LegalAc
 
 def sell_actions(count: int) -> list[dict[str, Any]]:
     return [
-        {"type": "SHOP_SELL_JOKER", "description": f"Sell joker {i}",
-         "params": {"joker_index": i, "sell_value": 2}}
+        {"type": "SELL_JOKER", "description": f"Sell joker {i}",
+         "params": {"index": {"one_of": [i]}}, "info": {"sell_value": 2}}
         for i in range(1, count + 1)
     ]
 
@@ -191,7 +191,8 @@ class TestShopAgentHonorsDeckSlots:
 
     def shop_legal(self) -> LegalActions:
         return legal_payload(
-            [{"type": "SHOP_BUY", "description": "Buy Droll Joker", "params": {"slot": 1, "cost": 6}}]
+            [{"type": "SHOP_BUY", "description": "Buy Droll Joker",
+              "params": {"slot": {"one_of": [1]}}, "info": {"cost": 6}}]
             + sell_actions(5)
             + [{"type": "SHOP_END", "description": "Leave", "params": {}}]
         )
@@ -205,7 +206,8 @@ class TestShopAgentHonorsDeckSlots:
     def test_full_five_slot_deck_sells_before_buying(self):
         action = choose_shop_action(self.shop_state(joker_slots=5), self.shop_legal(), 0)
 
-        assert action.type == ActionType.SHOP_SELL_JOKER
+        assert action.type == ActionType.SELL_JOKER
+        assert action.params == {"index": 1}
 
     def test_rerolls_stop_when_run_limit_is_full_not_at_five(self):
         state = GameState.model_validate(black_deck_payload(
@@ -214,7 +216,7 @@ class TestShopAgentHonorsDeckSlots:
             shop={"jokers": [], "vouchers": {}, "boosters": {}, "reroll_cost": 5},
         ))
         legal = legal_payload([
-            {"type": "SHOP_REROLL", "description": "Reroll", "params": {"cost": 5}},
+            {"type": "SHOP_REROLL", "description": "Reroll", "params": {}, "info": {"cost": 5}},
             {"type": "SHOP_END", "description": "Leave", "params": {}},
         ])
 
@@ -233,7 +235,7 @@ class TestPackAgentHonorsLegality:
             ]},
         ))
         legal = legal_payload([
-            {"type": "SELECT_PACK_CARD", "description": "Select Pluto", "params": {"index": 2}},
+            {"type": "SELECT_PACK_CARD", "description": "Select Pluto", "params": {"index": {"one_of": [2]}}},
             {"type": "SKIP_PACK", "description": "Skip", "params": {}},
         ], phase="PACK_OPENING")
 
@@ -252,7 +254,7 @@ class TestActionEncoderCoversRunLimits:
         sixth = encoder.sell_joker_offset + 5
 
         assert mask[sixth] is True
-        assert encoder.decode_action(sixth).params == {"joker_index": 6}
+        assert encoder.decode_action(sixth).params == {"index": 6}
 
     def test_encoder_capacity_exceeds_every_vanilla_deck(self):
         assert ActionEncoder.MAX_JOKERS >= 6

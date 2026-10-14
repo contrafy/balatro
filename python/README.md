@@ -1,6 +1,6 @@
 # Balatro RL Python Harness
 
-Python package providing a Gymnasium-compatible environment for reinforcement learning with Balatro.
+Python package for driving Balatro through the in-game bridge: HTTP client, schemas, advisor CLI, a Gymnasium-compatible environment, and a rule-based baseline agent. The Gymnasium env is existing tooling; model training will run in a headless engine (see [../docs/TRAINING_PLAN.md](../docs/TRAINING_PLAN.md)).
 
 ## Installation
 
@@ -133,7 +133,10 @@ python/
 │   ├── schemas.py        # Pydantic data models
 │   ├── action_space.py   # Action encoding/decoding
 │   ├── obs_tokenizer.py  # State to tensor conversion
+│   ├── vocab.py          # Stable id vocabularies (center keys) for the tokenizer
 │   ├── util.py           # Display utilities
+│   ├── data/             # Trajectory tooling: `balatro-data` CLI (see below)
+│   │   └── eval_seeds.txt  # 500 held-out eval seeds: never play them for data
 │   └── scripts/
 │       ├── probe_health.py
 │       ├── dump_state.py
@@ -141,11 +144,26 @@ python/
 │       ├── do_smoke_actions.py
 │       └── interactive_shell.py
 ├── tests/
+│   ├── fixtures/trajectories/  # hand-written trajectory fixtures
+│   ├── test_data_tooling.py    # offline: validator, manifest, legality, seeds
 │   ├── test_health.py
 │   ├── test_state_schema.py
 │   └── test_legal_actions.py
 ├── pyproject.toml
 └── README.md
+```
+
+## Trajectory Data Tooling
+
+Recorded runs (format in [../docs/DATA_CONTRACT.md](../docs/DATA_CONTRACT.md)) are checked with
+`balatro-data` (data root: `--data-dir`, else `$BALATRO_RL_DATA_DIR`, else `./data`):
+
+```bash
+balatro-data validate                    # schema + legality + hidden-info check of every trajectory
+balatro-data manifest                    # rewrite data/manifest.jsonl
+balatro-data replay <file> --port 7779 --update-manifest   # live replay verification (idle instance)
+balatro-data fuzz --port 7779 --runs 5 --steps 400         # live legality fuzzer on FUZZ* seeds
+balatro-data seeds --count 10            # training seeds (never eval or fuzz seeds)
 ```
 
 ## Running Tests
@@ -194,11 +212,22 @@ pytest tests/test_health.py -v
 
 ### Action Types
 
-- `PLAY_HAND` - Play selected cards
-- `DISCARD` - Discard selected cards
-- `SHOP_BUY` - Buy shop item
+Each `/legal` entry is `{type, description?, params, info}`: `params` maps every parameter
+to its domain (`one_of`, `subset`, `permutation`, `seed`), `info` carries cost/name/key.
+See `docs/DATA_CONTRACT.md` for the full contract.
+
+- `START_RUN` - Start a run (`deck`, `stake`, optional `seed`)
+- `SELECT_BLIND` / `SKIP_BLIND` / `REROLL_BOSS` - Blind selection
+- `PLAY_HAND` - Play cards (`card_indices`)
+- `DISCARD` - Discard cards (`card_indices`)
+- `REORDER` - Reorder `hand`, `jokers` or `consumables` (`area`, `order`)
+- `SORT_HAND` - Sort hand (`mode`)
+- `USE_CONSUMABLE` - Use a consumable (`index`, `targets` for targeted tarots/spectrals)
+- `SELL_JOKER` / `SELL_CONSUMABLE` - Sell a joker/consumable (`index`)
+- `CASH_OUT` - Collect round rewards
+- `SHOP_BUY` / `SHOP_BUY_AND_USE` - Buy (and use) a shop card (`slot`)
+- `SHOP_BUY_VOUCHER` / `SHOP_BUY_BOOSTER` - Buy a voucher/booster (`slot`)
 - `SHOP_REROLL` - Reroll shop
-- `SHOP_SELL_JOKER` - Sell a joker
 - `SHOP_END` - Leave shop
-- `SELECT_PACK_ITEM` - Choose pack card
+- `SELECT_PACK_CARD` - Choose pack card (`index`, `targets` when it needs hand cards)
 - `SKIP_PACK` - Skip pack selection

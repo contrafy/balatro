@@ -8,37 +8,56 @@ Append your post-mortem to `docs/runs/` (section 9) so the next run improves.
 - INFRASTRUCTURE IS OFF LIMITS: never run git commands, never kill/restart/launch any process, never edit any file
   outside docs/runs/. Several agents share this machine; one agent's "restart" killed every game at once and a
   `git checkout` erased hours of harness work. If the bridge is unreachable for 2 minutes, write your log and stop.
-- `ACTION FAILED ... retry` messages are retryable (sleep 2, retry). `Connection refused` is not: stop and report.
-- If `blind` fails with `blind_on_deck not set yet` more than 3 times after a fresh `start`, run `start Black Deck` once
-  more (this starts a different run; note it in the log).
+- EVERY ACTION IS TRAINING DATA. The bridge records each action you send (with the state it was taken in and your
+  `--why`) into a trajectory that later trains models. So: no exploratory or "let's see what happens" actions, no
+  testing commands, no junk retries. Read-only commands are free and unrecorded: `s`, `hands`, `advise`, `shopadvise`,
+  `legal`, `raw`, `sel`, `help`. Use them as much as you like before committing to an action.
+- `--why "..."` IS REQUIRED on every state-changing command: one line, at most 300 characters, the concrete reason
+  (numbers, not vibes): `b 7778 play PAIR 2 5 1 3 4 --why "Pair of Kings + 3 fillers, est 340 vs 300 needed"`. The CLI
+  refuses the command (nothing is sent) without it. `ADVICE:` lines print the command without `--why`; add your own.
+- The CLI checks every action against the game's legal actions BEFORE sending. `NOT LEGAL NOW ... Nothing was sent`
+  means the action is not allowed in this state; it prints the legal forms (e.g. which consumables are usable and how
+  many targets they take). Fix the command; do not retry the same thing.
+- The bridge itself also rejects illegal actions and actions sent while the game is still animating. The CLI waits for
+  the game to settle before reading or acting and retries "not settled" responses itself. `ACTION REJECTED: ...`
+  means the bridge refused it (recorded as a reject): read the error and the printed state, then act again correctly.
+  `BRIDGE OFFLINE ... Connection refused` is not retryable: stop and report.
 - LOSING ANY BLIND ENDS THE RUN. There is no "lose this one to save money". Every blind must be beaten.
-- You control ONE game instance through the CLI wrapper you were given (e.g. `b7779`). Never touch other
-  ports, never restart the game, never edit harness files. If the bridge misbehaves, note it in your run log.
-- Every CLI action prints the new state. Read it before the next command. Card indices are 1-based and
-  change after every play/discard/sort, so always use indices from the most recent printout.
-- If a command prints `ACTION FAILED ... retry`, `sleep 2` and issue it again (cash out often needs one retry).
-- After `pack N`, if the pack list is empty run `s` again (animation lag).
+- You control ONE game instance through the wrapper you were given: `bash python/balatro_env/scripts/b.sh <port> <cmd>`
+  (Git Bash; PowerShell: `python\balatro_env\scripts\b.ps1 <port> <cmd>`). This playbook writes it as `b <cmd>`. Never
+  touch other ports, never restart the game, never edit harness files. If the bridge misbehaves, note it in your run log.
+- Every CLI action prints the new (settled) state. Read it before the next command. Card indices are 1-based, left to
+  right, and change after every play/discard/sort/move, so always use indices from the most recent printout.
 
-## 1. CLI reference (`bXXXX <cmd>`)
+## 1. CLI reference (`b <cmd>`; `[W]` = state-changing, needs `--why "..."`)
 
 | Command | Effect |
 |---|---|
 | `s` | print state + legal action types |
 | `hands` | list every poker hand you can make now, with card indices and `est` = estimated score INCLUDING your jokers. Also prints `need N more this blind`. Run it before every play/discard. |
-| `play TYPE i j k ...` | play cards as TYPE (PAIR, TWOPAIR, TRIPS, STRAIGHT, FLUSH, FULLHOUSE, QUADS, HIGH). The CLI checks the game's own reading of the cards and ABORTS if they do not form TYPE. Always use this form. |
-| `disc i j ...` | discard those cards (1-5) |
-| `blind` / `skip` | select / skip the blind on deck |
-| `cash` | cash out after a won blind |
-| `buy N` / `vouch N` / `pack N` | buy shop card slot N / voucher N / booster pack N |
-| `pick N` / `skippack` | choose card N from an open pack / skip it |
-| `sel i` then `use N` | highlight hand card i, then use consumable N on it (targeted tarots). `sel` prints the game's preview of the highlighted cards. |
-| `use N` / `sellc N` | use / sell consumable N |
-| `sell N` | sell joker N (works in shop and mid-round) |
-| `order 2 3 1 ...` | reorder jokers: list current indices in the new left-to-right order |
-| `sort rank` / `sort suit` | sort hand (indices change) |
-| `reroll` / `endshop` | reroll shop ($5, +1 each time) / leave shop |
-| `legal` / `raw` | full legal actions / raw state JSON |
-| `start Black Deck` | start a new run (from MENU or GAME_OVER) |
+| `advise` / `shopadvise` | hand / shop advisor with an `ADVICE:` line |
+| `sel i j ...` | PREVIEW only: the game's reading of those cards (hand type, scoring cards, base level) plus `est`. Selects nothing, sends nothing. |
+| `legal` | every legal action with its exact parameter domain (valid indices, target counts, costs) |
+| `raw` / `help` | raw state JSON / command list |
+| `[W] play TYPE i j k ...` | play cards as TYPE (PAIR, TWOPAIR, TRIPS, STRAIGHT, FLUSH, FULLHOUSE, QUADS, HIGH, ...). The CLI checks the game's own reading of the cards and ABORTS (nothing sent) if they do not form TYPE. Always use this form. |
+| `[W] disc i j ...` | discard those cards (1 up to the discard limit, normally 5) |
+| `[W] blind` / `[W] skip` | select / skip the blind on deck (the Boss can't be skipped) |
+| `[W] rerollboss` | reroll the Boss blind (only with Director's Cut / Retcon) |
+| `[W] cash` | cash out after a won blind |
+| `[W] buy N` / `[W] vouch N` / `[W] pack N` | buy shop card slot N / voucher N / booster pack N |
+| `[W] buyuse N` | buy shop consumable N and use it immediately (works with full consumable slots) |
+| `[W] pick N [t1 t2 ...]` / `[W] skippack` | take card N from an open pack, with target hand cards for targeting tarots/spectrals / skip the pack |
+| `[W] use N [t1 t2 ...]` | use consumable N; targeting tarots/spectrals take the target hand positions after N (e.g. `use 1 3 6`) |
+| `[W] sellc N` / `[W] sell N` | sell consumable N / joker N. Works whenever the game allows it: shop, blind select, mid-round, cash-out screen and with a pack open. Eternal jokers can't be sold. |
+| `[W] order [jokers\|hand\|cons] p1 p2 ...` | reorder an area: list the CURRENT positions in the new left-to-right order (area defaults to jokers) |
+| `[W] move jokers\|hand\|cons FROM TO` | move one card from position FROM to position TO |
+| `[W] sort rank` / `[W] sort suit` | sort hand (indices change) |
+| `[W] reroll` / `[W] endshop` | reroll shop ($5, +1 each time) / leave shop |
+| `[W] start <deck> <stake> [--seed S]` | start a new run (from MENU, GAME_OVER or the win screen), e.g. `start Black Deck 2 --seed 7K3P9QXA`. Use the seed you were assigned. |
+
+Targets: a targeting consumable accepts 1 up to its maximum number of cards (Death exactly 2), not only the maximum:
+Star/Moon/Sun/World up to 3, Magician/Empress/Hierophant/Strength/Hanged Man up to 2, Lovers/Chariot/Justice/Devil/
+Tower and the targeting spectrals exactly 1. `legal` shows the exact range for each usable consumable right now.
 
 State line: `[PHASE] ante A rnd R | $money | hands H disc D | blind NAME need X scored Y`.
 `Jokers (n/6)` lists each joker with a plain-English effect in parentheses. `Levels:` shows leveled hands.
@@ -47,20 +66,22 @@ Ignore `ab={...}` internals: `x_mult: 1` just means "no xMult stored", it does n
 ## 2. Phase loop
 
 1. `BLIND_SELECT`: read the three blinds (chips, skip tags, boss). Default is `blind` (play). Skip only per section 6.
-2. `SELECTING_HAND`: `hands`, then decide per section 4, then `play TYPE ...` or `disc ...`. Repeat until `ROUND_EVAL`.
-3. `ROUND_EVAL`: `cash`.
+2. `SELECTING_HAND`: `advise`/`hands`, then decide per section 4, then `play TYPE ... --why` or `disc ... --why`. Repeat
+   until `ROUND_EVAL`. Hand order matters for scoring (left to right) and for Death: use `move hand FROM TO` if needed.
+3. `ROUND_EVAL`: `cash --why "..."`.
 4. `SHOP`: follow section 5 step by step, then `endshop`.
-5. `PACK_OPENING`: `pick N` (or `skippack`). Card-targeting tarots in Arcana packs (Justice, Strength, Death, The Lovers,
-   Empress, Hierophant, Chariot, Devil, Tower, Magician, Star/Moon/Sun/World) apply immediately to HIGHLIGHTED hand cards: the
-   hand is shown during pack opening, so run `sel i` (or `sel i j`) on the target card(s) BEFORE `pick N`, otherwise the
-   tarot is consumed with no effect. Planets from Celestial packs are used immediately (no target needed).
-   The same applies to card-targeting SPECTRALS (Aura, Cryptid, Talisman, Deja Vu, Trance, Medium: `sel` one card first).
-   Picking Aura with nothing highlighted crashed the game once; the CLI and bridge now refuse it.
-   Death direction: `sel i j` with i < j turns card i (the LOWER hand index) into a copy of card j. To duplicate a
-   Glass King at idx 7 onto a junk card at idx 2, `sel 2 7`. The CLI prints the resulting copy before applying it.
+5. `PACK_OPENING`: `pick N` (or `skippack`). Targeting tarots/spectrals in Arcana/Spectral packs (Justice, Strength, Death,
+   The Lovers, Empress, Hierophant, Chariot, Devil, Tower, Magician, Star/Moon/Sun/World, Hanged Man, Aura, Cryptid,
+   Talisman, Deja Vu, Trance, Medium) apply immediately to the hand cards you name: the hand is shown during pack
+   opening, so give the targets in the same command: `pick 2 3 6 --why "..."` applies pack card 2 to hand cards 3 and 6.
+   The CLI aborts (nothing sent) if a targeting card is picked without targets. Planets are used immediately.
+   You may sell a joker or use/sell a held consumable while the pack is open (e.g. to make room for a Buffoon joker).
+   Death direction: `pick N i j` / `use N i j` turns the LEFT card (lower hand position) into a copy of the RIGHT one.
+   To duplicate a Glass King at idx 7 onto a junk card at idx 2: targets `2 7`. The CLI prints the resulting copy.
 6. `GAME_OVER`: write the run log (section 9). Do not start another run unless told.
 7. WIN (you beat the ante 8 boss; state shows `won` true / a win screen): write the run log, then immediately continue at the
-   NEXT STAKE: `start Black Deck <current stake + 1>` (the state line shows `stake N`). Stakes: 1 White, 2 Red (no Small
+   NEXT STAKE with the next seed you were assigned: `start Black Deck <current stake + 1> --seed S` (the state line shows
+   `stake N`). Stakes: 1 White, 2 Red (no Small
    Blind reward), 3 Green (blinds scale faster), 4 Black (Eternal jokers appear: cannot be sold), 5 Blue (-1 discard),
    6 Purple (scale faster still), 7 Orange (Perishable jokers), 8 Gold (Rental jokers). Keep the same run-log file and
    add a new section per stake. Keep going until you lose.
@@ -118,7 +139,7 @@ Ignore `ab={...}` internals: `x_mult: 1` just means "no xMult stored", it does n
    highly from ante 3 when you hold none.
 8. LAST HAND CHECK: before a forced final hand that does not clear, look at your consumables (`s`). A held Tarot
    (Death copies a card, Strength ranks up 2 cards, Devil/Justice/Chariot enhance, Magician Lucky) or Planet can turn a
-   dead card into a match or add a level: `sel` the targets, `use N`, then re-run `hands`. Never concede a run with an
+   dead card into a match or add a level: `use N t1 [t2 ...]` with the target hand positions, then re-run `hands`. Never concede a run with an
    unused consumable.
 
 ## 5. Shop procedure (money decides ante 6-8; scaling decides ante 3-5; a joker decides ante 1-2)
@@ -322,7 +343,7 @@ The boss for the ante is shown at blind select and in the shop ("Upcoming boss")
 - The other multiplicative path that IS common: card enhancements from Arcana packs. Justice makes a card Glass (x2 mult
   every time it scores; 1/4 chance to shatter), The Chariot makes it Steel (x1.5 while held in hand), Empress = +4 mult,
   Hierophant = +30 chips. Apply them to cards of the ranks your main hand uses (e.g. your Kings/Queens for a pair engine).
-  A pair of Glass Kings is x4 by itself. In a pack, `sel i` the target card BEFORE `pick N`; held tarots: `sel i` then `use N`
+  A pair of Glass Kings is x4 by itself. In a pack, give the targets with the pick (`pick N i`); held tarots: `use N i`
   during SELECTING_HAND. Buy Arcana packs from ante 3 on; Standard packs can also offer enhanced/edition cards.
 - `play` type words: HIGH, PAIR, TWOPAIR, TRIPS, STRAIGHT, FLUSH, FULLHOUSE, QUADS, STRAIGHTFLUSH, ROYALFLUSH (A-K-Q-J-T
   of one suit), FIVE, FLUSHHOUSE, FLUSHFIVE. A straight of one suit must be played as STRAIGHTFLUSH (or ROYALFLUSH).
@@ -346,7 +367,7 @@ The boss for the ante is shown at blind select and in the shop ("Upcoming boss")
   +chips/+mult jokers or hand levels. Base-halving bosses (The Flint) punish builds with no flat adds.
 - Supernova, Spare Trousers, Hiker, Wee Joker etc. only grow if you keep repeating the same hand type: commit to one main
   type by ante 3 and level it; keep Pair as the fallback.
-- Unused card-targeting tarots (Strength, Justice, Death) can turn a losing final hand into a winning one: `sel i` then `use N`.
+- Unused card-targeting tarots (Strength, Justice, Death) can turn a losing final hand into a winning one: `use N i [j]`.
 
 ## 7b. Reference builds that went deep (copy the shape, not the exact jokers)
 

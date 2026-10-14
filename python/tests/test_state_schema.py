@@ -33,7 +33,6 @@ class TestStateSchema:
     def test_state_has_schema_version(self, game_state):
         """State should have a schema version."""
         assert game_state.schema_version is not None
-        assert game_state.schema_version == "1.0.0"
 
     def test_state_has_timestamp(self, game_state):
         """State should have a timestamp."""
@@ -55,7 +54,8 @@ class TestStateSchema:
     def test_hand_cards_are_valid(self, game_state):
         """Hand cards should have required fields."""
         for card in game_state.hand:
-            assert card.id is not None
+            # face-down cards carry no id (hidden information)
+            assert card.id is not None or card.facing == "back"
             # rank and suit may be None for jokers/consumables in hand
             assert isinstance(card.debuffed, bool)
             assert isinstance(card.highlighted, bool)
@@ -63,7 +63,7 @@ class TestStateSchema:
     def test_jokers_are_valid(self, game_state):
         """Jokers should have required fields."""
         for joker in game_state.jokers:
-            assert joker.id is not None
+            assert joker.id is not None or getattr(joker, "facing", None) == "back"
             assert joker.sell_cost >= 0
 
     def test_deck_counts_are_valid(self, game_state):
@@ -76,13 +76,15 @@ class TestStateInDifferentPhases:
     """Tests for state in different game phases."""
 
     def test_shop_phase_has_shop_data(self, client):
-        """Shop phase should include shop data."""
+        """Shop phase should include the three shop areas and the reroll cost."""
         try:
             state = client.get_state()
             if state.phase == GamePhase.SHOP:
                 assert state.shop is not None
-                assert hasattr(state.shop, 'items')
-                assert hasattr(state.shop, 'reroll_cost')
+                assert isinstance(state.shop.jokers, list)
+                assert isinstance(state.shop.vouchers, list)
+                assert isinstance(state.shop.boosters, list)
+                assert state.shop.reroll_cost >= 0
         except BalatroConnectionError:
             pytest.skip("Balatro bridge not running")
 

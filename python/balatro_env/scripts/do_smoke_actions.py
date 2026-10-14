@@ -65,9 +65,10 @@ def smoke_shop(client: BalatroClient, state, legal) -> int:
 
     # Try to buy first affordable joker
     for action in legal.actions:
-        if action.type == ActionType.SHOP_BUY and action.params and action.params.slot:
-            req = ActionRequest(type=ActionType.SHOP_BUY, params={"slot": action.params.slot})
-            if execute_and_report(client, req, f"Buy from joker slot {action.params.slot}"):
+        if action.type == ActionType.SHOP_BUY and action.options("slot"):
+            slot = action.options("slot")[0]
+            req = ActionRequest(type=ActionType.SHOP_BUY, params={"slot": slot})
+            if execute_and_report(client, req, f"Buy from joker slot {slot}"):
                 actions_taken += 1
                 time.sleep(0.5)
             break
@@ -75,7 +76,7 @@ def smoke_shop(client: BalatroClient, state, legal) -> int:
     # Try to reroll if affordable
     for action in legal.actions:
         if action.type == ActionType.SHOP_REROLL:
-            cost = action.params.cost if action.params else 5
+            cost = action.info.get("cost") or 5
             if state.money >= cost:
                 if execute_and_report(client, ActionRequest(type=ActionType.SHOP_REROLL), "Reroll shop"):
                     actions_taken += 1
@@ -98,13 +99,13 @@ def smoke_hand_play(client: BalatroClient, state, legal) -> int:
 
     # Play as many cards as possible (up to 5) for maximum scoring
     for action in legal.actions:
-        if action.type == ActionType.PLAY_HAND and action.params:
-            params = action.params
-            if params.card_indices:
-                available = params.card_indices.get("available", [])
+        if action.type == ActionType.PLAY_HAND:
+            spec = action.subset("card_indices")
+            if spec:
+                available = spec.get("of", [])
                 if available:
                     # Play up to 5 cards for best scoring
-                    cards_to_play = available[:5]
+                    cards_to_play = available[:min(5, spec.get("max", 5))]
                     req = ActionRequest(
                         type=ActionType.PLAY_HAND,
                         params={"card_indices": cards_to_play}
@@ -115,10 +116,10 @@ def smoke_hand_play(client: BalatroClient, state, legal) -> int:
 
     # If no play available, try discard
     for action in legal.actions:
-        if action.type == ActionType.DISCARD and action.params:
-            params = action.params
-            if params.card_indices:
-                available = params.card_indices.get("available", [])
+        if action.type == ActionType.DISCARD:
+            spec = action.subset("card_indices")
+            if spec:
+                available = spec.get("of", [])
                 if available:
                     card_to_discard = [available[0]]
                     req = ActionRequest(
@@ -143,10 +144,12 @@ def smoke_pack(client: BalatroClient, state, legal) -> int:
         for card in state.pack.cards:
             console.print(f"    Card {card.get('index', '?')}: {card.get('name', 'Unknown')} ({card.get('type', '?')})")
 
-    # Try to select first pack card (new action type)
+    # Try to select first pack card that needs no hand targets
     for action in legal.actions:
-        if action.type == ActionType.SELECT_PACK_CARD and action.params:
-            idx = action.params.index
+        targets = action.params.get("targets")
+        needs_targets = bool(targets) and not targets.get("optional") and (targets.get("subset") or {}).get("min", 0) > 0
+        if action.type == ActionType.SELECT_PACK_CARD and action.options("index") and not needs_targets:
+            idx = action.options("index")[0]
             req = ActionRequest(
                 type=ActionType.SELECT_PACK_CARD,
                 params={"index": idx}
@@ -208,7 +211,7 @@ def main():
                 # Start a new run from the menu
                 for action in legal.actions:
                     if action.type == ActionType.START_RUN:
-                        req = ActionRequest(type=ActionType.START_RUN, params={"stake": 1})
+                        req = ActionRequest(type=ActionType.START_RUN, params={"deck": "b_red", "stake": 1})
                         if execute_and_report(client, req, "Start new run (stake 1)"):
                             actions_taken += 1
                             time.sleep(3)  # Wait for run to start

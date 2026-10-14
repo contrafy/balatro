@@ -252,18 +252,17 @@ def print_legal_actions(legal: LegalActions):
         action_table = Table(title=action_type)
         action_table.add_column("Description", style="cyan")
         action_table.add_column("Params", style="yellow")
+        action_table.add_column("Info", style="green")
 
         for action in actions[:5]:  # Limit display
-            params_str = ""
-            if action.params:
-                params_dict = action.params.model_dump(exclude_none=True)
-                if params_dict:
-                    params_str = json.dumps(params_dict, default=str)[:50]
+            dumped = action.model_dump(include={"params", "info"})
+            params_str = json.dumps(dumped["params"], default=str)[:80] if dumped["params"] else ""
+            info_str = json.dumps(dumped["info"], default=str)[:60] if dumped["info"] else ""
 
-            action_table.add_row(action.description, params_str)
+            action_table.add_row(action.description or "", params_str, info_str)
 
         if len(actions) > 5:
-            action_table.add_row(f"... and {len(actions) - 5} more", "")
+            action_table.add_row(f"... and {len(actions) - 5} more", "", "")
 
         console.print(action_table)
 

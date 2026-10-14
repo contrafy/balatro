@@ -491,7 +491,7 @@ def shop_item_priority(item, state: GameState) -> float:
         return 0.0   # unknown / unhandled targeting tarot
 
     if itype == "Spectral":
-        return 0.0   # can't use spectrals without SELECT_CARDS targeting
+        return 0.0   # no spectral usage logic (targets/side effects) in this agent
 
     return 2.0
 
@@ -511,50 +511,50 @@ def choose_shop_action(state: GameState, legal: LegalActions,
     candidates: list[tuple[float, ActionRequest, str, int]] = []
 
     for action in legal.get_actions_of_type(ActionType.SHOP_BUY):
-        slot = action.params.slot
-        if failed_slots and (ActionType.SHOP_BUY, slot) in failed_slots:
-            continue
-        if slot and 0 < slot <= len(shop.jokers):
-            item = shop.jokers[slot - 1]
-            p = shop_item_priority(item, state)
-            # Strongly boost joker priority when we have none yet
-            if p > 0 and item.type == "Joker" and joker_count == 0:
-                p += 4.0
-            if p >= 0:
-                candidates.append((p, ActionRequest(
-                    type=ActionType.SHOP_BUY, params={"slot": slot}
-                ), item.name or "?", item.cost))
+        for slot in action.options("slot"):
+            if failed_slots and (ActionType.SHOP_BUY, slot) in failed_slots:
+                continue
+            if slot and 0 < slot <= len(shop.jokers):
+                item = shop.jokers[slot - 1]
+                p = shop_item_priority(item, state)
+                # Strongly boost joker priority when we have none yet
+                if p > 0 and item.type == "Joker" and joker_count == 0:
+                    p += 4.0
+                if p >= 0:
+                    candidates.append((p, ActionRequest(
+                        type=ActionType.SHOP_BUY, params={"slot": slot}
+                    ), item.name or "?", item.cost))
 
     for action in legal.get_actions_of_type(ActionType.SHOP_BUY_BOOSTER):
-        slot = action.params.slot
-        if failed_slots and (ActionType.SHOP_BUY_BOOSTER, slot) in failed_slots:
-            continue
-        if slot and 0 < slot <= len(shop.boosters):
-            item = shop.boosters[slot - 1]
-            if item.cost <= money:
-                name = item.name or ""
-                p = (7.0 if "Planet" in name or "Celestial" in name
-                     else 7.0 if "Buffoon" in name   # jokers from Buffoon packs!
-                     else 5.5 if "Tarot" in name or "Arcana" in name  # can contain Judgement/Hermit
-                     else 0.0 if "Spectral" in name                   # can't use spectrals
-                     else 2.0)
-                # Deprioritize packs when we have no jokers (save money for jokers)
-                if joker_count == 0 and "Buffoon" not in name:
-                    p -= 3.0
-                candidates.append((p, ActionRequest(
-                    type=ActionType.SHOP_BUY_BOOSTER, params={"slot": slot}
-                ), name, item.cost))
+        for slot in action.options("slot"):
+            if failed_slots and (ActionType.SHOP_BUY_BOOSTER, slot) in failed_slots:
+                continue
+            if slot and 0 < slot <= len(shop.boosters):
+                item = shop.boosters[slot - 1]
+                if item.cost <= money:
+                    name = item.name or ""
+                    p = (7.0 if "Planet" in name or "Celestial" in name
+                         else 7.0 if "Buffoon" in name   # jokers from Buffoon packs!
+                         else 5.5 if "Tarot" in name or "Arcana" in name  # can contain Judgement/Hermit
+                         else 0.0 if "Spectral" in name                   # can't use spectrals
+                         else 2.0)
+                    # Deprioritize packs when we have no jokers (save money for jokers)
+                    if joker_count == 0 and "Buffoon" not in name:
+                        p -= 3.0
+                    candidates.append((p, ActionRequest(
+                        type=ActionType.SHOP_BUY_BOOSTER, params={"slot": slot}
+                    ), name, item.cost))
 
     for action in legal.get_actions_of_type(ActionType.SHOP_BUY_VOUCHER):
-        slot = action.params.slot
-        if failed_slots and (ActionType.SHOP_BUY_VOUCHER, slot) in failed_slots:
-            continue
-        if slot and 0 < slot <= len(shop.vouchers):
-            item = shop.vouchers[slot - 1]
-            if item.cost <= money:
-                candidates.append((6.0, ActionRequest(
-                    type=ActionType.SHOP_BUY_VOUCHER, params={"slot": slot}
-                ), item.name or "?", item.cost))
+        for slot in action.options("slot"):
+            if failed_slots and (ActionType.SHOP_BUY_VOUCHER, slot) in failed_slots:
+                continue
+            if slot and 0 < slot <= len(shop.vouchers):
+                item = shop.vouchers[slot - 1]
+                if item.cost <= money:
+                    candidates.append((6.0, ActionRequest(
+                        type=ActionType.SHOP_BUY_VOUCHER, params={"slot": slot}
+                    ), item.name or "?", item.cost))
 
     if candidates:
         candidates.sort(reverse=True, key=lambda x: x[0])
@@ -564,7 +564,7 @@ def choose_shop_action(state: GameState, legal: LegalActions,
         # Slot limit comes from the run (Black Deck 6, Painted Deck 4), never a constant
         if not state.can_add_joker() and best_p >= 4.5:
             # Find the weakest owned joker
-            sell_actions = legal.get_actions_of_type(ActionType.SHOP_SELL_JOKER)
+            sell_actions = legal.get_actions_of_type(ActionType.SELL_JOKER)
             if sell_actions and state.jokers:
                 weakest_j = min(state.jokers, key=owned_joker_priority)
                 weakest_p = owned_joker_priority(weakest_j)
@@ -572,15 +572,14 @@ def choose_shop_action(state: GameState, legal: LegalActions,
                 if best_p - weakest_p >= 3.0:
                     # Find the sell action matching the weakest joker
                     for sa in sell_actions:
-                        ji = sa.params.joker_index
-                        if ji is not None and 0 < ji <= len(state.jokers):
-                            if state.jokers[ji - 1] is weakest_j:
+                        for ji in sa.options("index"):
+                            if 0 < ji <= len(state.jokers) and state.jokers[ji - 1] is weakest_j:
                                 console.print(
                                     f"  -> Sell {weakest_j.name!r} (p={weakest_p:.1f}) "
                                     f"to make room for {best_name!r} (p={best_p:.1f})")
                                 return ActionRequest(
-                                    type=ActionType.SHOP_SELL_JOKER,
-                                    params={"joker_index": ji})
+                                    type=ActionType.SELL_JOKER,
+                                    params={"index": ji})
 
         # Lower buy threshold slightly (4.5) so affordable jokers are always bought
         if best_p >= 4.5:
@@ -594,7 +593,7 @@ def choose_shop_action(state: GameState, legal: LegalActions,
     if (rerolled_this_visit < max_rerolls
             and reroll_actions
             and state.can_add_joker()):
-        rc = reroll_actions[0].params.cost or 5
+        rc = reroll_actions[0].info.get("cost") or 5
         # Reroll when: no jokers and we can afford it, or cheap reroll with spare cash
         no_jokers_reroll = joker_count == 0 and money >= rc + 4
         cheap_reroll = rc <= 5 and money >= rc + 6
@@ -628,7 +627,7 @@ NO_SELECT_TAROT_PRIORITY: dict[str, float] = {
     "The Fool":             6.0,   # copy last consumable (situational)
 }
 
-# Tarots that require SELECT_CARDS first — priority when we have a good target.
+# Tarots that need hand targets (USE_CONSUMABLE {index, targets}) — priority when we have a good target.
 # Only tried in SELECTING_HAND where a hand of cards exists.
 TARGETING_TAROT_PRIORITY: dict[str, float] = {
     "The Star":       8.0,   # 3 cards → Spades  (great for flush building)
@@ -740,23 +739,44 @@ def get_tarot_target_cards(tarot_name: str, hand: list[CardData],
     return []
 
 
+def entry_targets(entry, wanted: list[int]) -> Optional[list[int]]:
+    """`wanted` hand positions filtered to the entry's `targets` subset domain.
+
+    Returns None when the entry has no targets domain or the filtered list
+    violates its min/max/must_include constraints.
+    """
+    spec = entry.subset("targets")
+    if spec is None:
+        return None
+    allowed = set(spec.get("of") or [])
+    targets = [i for i in wanted if i in allowed]
+    if not targets or not spec.get("min", 0) <= len(targets) <= spec.get("max", len(targets)):
+        return None
+    if any(i not in targets for i in spec.get("must_include") or []):
+        return None
+    return targets
+
+
+def needs_targets(entry) -> bool:
+    """True when the entry's `targets` domain is required with min > 0."""
+    domain = entry.params.get("targets")
+    return bool(domain) and not domain.get("optional") and (domain.get("subset") or {}).get("min", 0) > 0
+
+
 def choose_consumable_action(
     state: GameState, legal: LegalActions
 ) -> Optional[ActionRequest]:
     """Return the best consumable action available right now.
 
-    May return USE_CONSUMABLE (for planets / no-select tarots, or after cards
-    are already highlighted for a targeting tarot) or SELECT_CARDS (to
-    highlight target cards before a USE_CONSUMABLE next iteration).
+    Returns USE_CONSUMABLE {index} for planets / no-select tarots, or
+    USE_CONSUMABLE {index, targets} for a targeting tarot with good targets.
+    A consumable is usable only when a USE_CONSUMABLE entry lists its index.
 
     Returns None if no consumable action is worth taking.
     """
-    use_map = {a.params.index: a for a in legal.get_actions_of_type(ActionType.USE_CONSUMABLE)}
-    can_select = legal.has_action_type(ActionType.SELECT_CARDS)
+    use_map = {i: a for a in legal.get_actions_of_type(ActionType.USE_CONSUMABLE)
+               for i in a.options("index")}
     hand = state.hand  # empty list in SHOP phase
-
-    # Build index → ConsumableData for all consumables
-    consumable_by_idx = {c.index: c for c in state.consumables}
 
     best_priority = -1.0
     best_action: Optional[ActionRequest] = None
@@ -768,18 +788,21 @@ def choose_consumable_action(
         priority = -1.0
         action: Optional[ActionRequest] = None
         label = ""
+        entry = use_map.get(c.index)
+        if entry is None:
+            continue
 
         # -- Planet cards: always use immediately ------------------------------
         if ctype == "Planet":
-            if c.can_use and c.index in use_map:
+            if not needs_targets(entry):
                 priority = 10.0
                 action = ActionRequest(type=ActionType.USE_CONSUMABLE,
                                        params={"index": c.index})
                 label = f"Use planet {cname!r}"
 
-        # -- No-select tarots: use when can_use is True -----------------------
+        # -- No-select tarots: use when legal ----------------------------------
         elif ctype == "Tarot" and cname in NO_SELECT_TAROTS:
-            if c.can_use and c.index in use_map:
+            if not needs_targets(entry):
                 priority = NO_SELECT_TAROT_PRIORITY.get(cname, 6.0)
                 action = ActionRequest(type=ActionType.USE_CONSUMABLE,
                                        params={"index": c.index})
@@ -787,21 +810,12 @@ def choose_consumable_action(
 
         # -- Targeting tarots: need hand cards (only in SELECTING_HAND) -------
         elif ctype == "Tarot" and cname in TARGETING_TAROT_PRIORITY and hand:
-            tp = TARGETING_TAROT_PRIORITY[cname]
-            if c.can_use and c.index in use_map:
-                # Target cards already highlighted — execute the tarot now
-                priority = tp
+            targets = entry_targets(entry, get_tarot_target_cards(cname, hand, state.jokers))
+            if targets:
+                priority = TARGETING_TAROT_PRIORITY[cname]
                 action = ActionRequest(type=ActionType.USE_CONSUMABLE,
-                                       params={"index": c.index})
-                label = f"Use targeting tarot {cname!r}"
-            elif not c.can_use and can_select:
-                # Need to highlight target cards first
-                targets = get_tarot_target_cards(cname, hand, state.jokers)
-                if targets:
-                    priority = tp - 0.1   # slightly lower than the USE step
-                    action = ActionRequest(type=ActionType.SELECT_CARDS,
-                                           params={"card_indices": targets})
-                    label = f"Select targets for {cname!r}: {targets}"
+                                       params={"index": c.index, "targets": targets})
+                label = f"Use targeting tarot {cname!r} on {targets}"
 
         if priority > best_priority and action is not None:
             best_priority = priority
@@ -849,15 +863,25 @@ def choose_pack_action(state: GameState, legal: LegalActions) -> Optional[Action
     if not pack_cards_revealed(pack):
         return None
 
-    # Only cards the bridge deems selectable (e.g. jokers need a free joker slot)
-    legal_indices = {a.params.index for a in pick_actions if a.params.index is not None}
+    # Only cards the bridge deems selectable (e.g. jokers need a free joker slot);
+    # picks that need hand targets are kept only when we can supply valid ones.
+    names = {card.get("index"): card.get("name") or "" for card in pack.cards}
+    pick_params: dict[int, dict] = {}
+    for a in pick_actions:
+        for i in a.options("index"):
+            if not needs_targets(a):
+                pick_params[i] = {"index": i}
+            elif names.get(i) in TARGETING_TAROT_PRIORITY:
+                targets = entry_targets(a, get_tarot_target_cards(names[i], state.hand, state.jokers))
+                if targets:
+                    pick_params[i] = {"index": i, "targets": targets}
 
     best_idx: Optional[int] = None
     best_score = -1.0
 
     for card in pack.cards:
         idx = card.get("index")
-        if idx is None or idx not in legal_indices:
+        if idx is None or idx not in pick_params:
             continue
         ctype = card.get("type", "")
         name  = card.get("name", "")
@@ -895,10 +919,15 @@ def choose_pack_action(state: GameState, legal: LegalActions) -> Optional[Action
     if best_idx is not None:
         console.print(f"  -> Pick pack card {best_idx} (score {best_score:.1f})")
         return ActionRequest(type=ActionType.SELECT_PACK_CARD,
-                             params={"index": best_idx})
+                             params=pick_params[best_idx])
 
-    # fallback: first available
-    return pick_actions[0].to_request()
+    # fallback: first available, else skip (nothing pickable without targets)
+    if pick_params:
+        return ActionRequest(type=ActionType.SELECT_PACK_CARD,
+                             params=next(iter(pick_params.values())))
+    if legal.has_action_type(ActionType.SKIP_PACK):
+        return ActionRequest(type=ActionType.SKIP_PACK)
+    return None
 
 
 # -- TUI dashboard (ported from autopilot.py) ----------------------------------
@@ -1165,14 +1194,10 @@ def run_agent(client: BalatroClient, tui: bool = False, delay: float = 0.8):
     rerolled_this_shop = 0  # count of rerolls this shop visit
     failed_shop_slots: set[tuple] = set()
     prev_phase: Optional[GamePhase] = None
-    # When we send SELECT_CARDS to prepare for a targeting tarot, remember which
-    # consumable index we're preparing for.  If USE_CONSUMABLE still isn't
-    # available after one SELECT_CARDS attempt, we abandon (prevents loops).
-    awaiting_consumable: Optional[int] = None
 
     def _agent_loop():
         nonlocal rerolled_this_shop, failed_shop_slots, prev_phase
-        nonlocal awaiting_consumable, tui_state, tui_legal, status_msg
+        nonlocal tui_state, tui_legal, status_msg
         while True:
             # -- fetch state ------------------------------------------------
             try:
@@ -1213,7 +1238,6 @@ def run_agent(client: BalatroClient, tui: bool = False, delay: float = 0.8):
                 if phase == GamePhase.SHOP:
                     rerolled_this_shop = 0
                     failed_shop_slots.clear()
-                awaiting_consumable = None  # reset on any phase change
 
             if state.error:
                 tui_log(f"[yellow]  State error: {state.error}[/yellow]")
@@ -1232,7 +1256,7 @@ def run_agent(client: BalatroClient, tui: bool = False, delay: float = 0.8):
             # -- MENU ------------------------------------------------------
             if phase == GamePhase.MENU:
                 r = client.execute_action(
-                    ActionRequest(type=ActionType.START_RUN, params={"stake": 1}))
+                    ActionRequest(type=ActionType.START_RUN, params={"deck": "b_red", "stake": 1}))
                 if r.ok:
                     tui_log("[green]  Run started[/green]")
                     time.sleep(3.0)
@@ -1265,53 +1289,11 @@ def run_agent(client: BalatroClient, tui: bool = False, delay: float = 0.8):
                 # Use consumables before playing (planets / tarots)
                 consumable_action = choose_consumable_action(state, legal)
                 if consumable_action:
-                    is_select = consumable_action.type == ActionType.SELECT_CARDS
-                    prep_idx = None
-                    if is_select:
-                        for c in state.consumables:
-                            cname = c.name or ""
-                            if (c.type == "Tarot" and cname in TARGETING_TAROT_PRIORITY
-                                    and not c.can_use):
-                                prep_idx = c.index
-                                break
-                        if prep_idx is not None and awaiting_consumable == prep_idx:
-                            use_map = {a.params.index: a
-                                       for a in legal.get_actions_of_type(ActionType.USE_CONSUMABLE)}
-                            if prep_idx in use_map:
-                                tui_log(f"  -> USE_CONSUMABLE now ready for {prep_idx}")
-                                consumable_action = ActionRequest(
-                                    type=ActionType.USE_CONSUMABLE,
-                                    params={"index": prep_idx})
-                                is_select = False
-                            else:
-                                tui_log(f"[yellow]  SELECT_CARDS retry blocked for consumable {prep_idx}[/yellow]")
-                                awaiting_consumable = None
-                                consumable_action = None
-
-                if consumable_action:
                     r = client.execute_action(consumable_action)
                     if r.ok:
-                        if is_select:
-                            awaiting_consumable = prep_idx
-                            tui_log("[green]  Cards selected for tarot[/green]")
-                            for _ in range(8):
-                                time.sleep(0.3)
-                                try:
-                                    s2 = client.get_state()
-                                except BalatroConnectionError:
-                                    break
-                                for c in s2.consumables:
-                                    if c.index == prep_idx and c.can_use:
-                                        break
-                                else:
-                                    continue
-                                break
-                        else:
-                            awaiting_consumable = None
-                            tui_log("[green]  Consumable used[/green]")
-                            time.sleep(1.2)
+                        tui_log("[green]  Consumable used[/green]")
+                        time.sleep(1.2)
                     else:
-                        awaiting_consumable = None
                         tui_log(f"[yellow]  Consumable action failed: {r.error}[/yellow]")
                         time.sleep(0.5)
                     tui_update()
@@ -1390,9 +1372,7 @@ def run_agent(client: BalatroClient, tui: bool = False, delay: float = 0.8):
                     if action.type in (ActionType.SHOP_BUY,
                                        ActionType.SHOP_BUY_BOOSTER,
                                        ActionType.SHOP_BUY_VOUCHER):
-                        params = action.params or {}
-                        slot = (params.get("slot") if isinstance(params, dict)
-                                else getattr(params, "slot", None)) or 0
+                        slot = action.params.get("slot") or 0
                         failed_shop_slots.add((action.type, slot))
                         time.sleep(0.5)
                     else:
@@ -1434,7 +1414,7 @@ def run_agent(client: BalatroClient, tui: bool = False, delay: float = 0.8):
                     session.finish_run(won=False)
                 time.sleep(4.0)
                 r = client.execute_action(
-                    ActionRequest(type=ActionType.START_RUN, params={"stake": 1}))
+                    ActionRequest(type=ActionType.START_RUN, params={"deck": "b_red", "stake": 1}))
                 if r.ok:
                     tui_log("[green]  New run started[/green]")
                     time.sleep(3.0)

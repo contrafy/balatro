@@ -1,9 +1,18 @@
-"""Pydantic schemas for Balatro game state, legal actions, and action results."""
+"""Pydantic schemas for Balatro game state, legal actions, and action results.
+
+State models keep every field the bridge sends (`extra="allow"`): datasets and replays must not lose
+information when a state passes through these models. Shapes: docs/DATA_CONTRACT.md.
+"""
 
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+class OpenModel(BaseModel):
+    """Base for bridge payloads: unknown fields are kept, never dropped."""
+    model_config = ConfigDict(extra="allow")
 
 
 class GamePhase(str, Enum):
@@ -20,6 +29,7 @@ class GamePhase(str, Enum):
     ROUND_EVAL = "ROUND_EVAL"
     NEW_ROUND = "NEW_ROUND"
     PLAY_TAROT = "PLAY_TAROT"
+    WIN = "WIN"
     UNKNOWN = "UNKNOWN"
 
     @classmethod
@@ -30,9 +40,9 @@ class GamePhase(str, Enum):
         return cls.UNKNOWN
 
 
-class CardData(BaseModel):
-    """A playing card in hand or deck."""
-    id: str
+class CardData(OpenModel):
+    """A playing card in hand or deck. Face-down cards carry no id or identity (hidden information)."""
+    id: Optional[str] = None
     rank: Optional[Union[str, int]] = None
     suit: Optional[str] = None
     name: Optional[str] = None
@@ -44,6 +54,19 @@ class CardData(BaseModel):
     highlighted: bool = False
     hand_index: Optional[int] = None
     area_index: Optional[int] = None
+    perma_bonus: float = 0
+    perma_mult: float = 0
+
+    @model_validator(mode="before")
+    @classmethod
+    def mirror_bridge_keys(cls, data: Any) -> Any:
+        # Bridge 2.x reports `debuff` and the 1-based position as `index`; keep both spellings.
+        if isinstance(data, dict):
+            if "debuffed" not in data and "debuff" in data:
+                data = {**data, "debuffed": bool(data["debuff"])}
+            if "hand_index" not in data and isinstance(data.get("index"), int):
+                data = {**data, "hand_index": data["index"]}
+        return data
 
     @field_validator("id", mode="before")
     @classmethod
@@ -56,9 +79,9 @@ class CardData(BaseModel):
         return str(v) if v is not None else v
 
 
-class JokerData(BaseModel):
-    """A joker card."""
-    id: str
+class JokerData(OpenModel):
+    """A joker card. Face-down jokers (Amber Acorn) carry no id or identity."""
+    id: Optional[str] = None
     name: Optional[str] = None
     key: Optional[str] = None
     rarity: Optional[int] = None
@@ -74,7 +97,7 @@ class JokerData(BaseModel):
         return str(v) if v is not None else v
 
 
-class ConsumableData(BaseModel):
+class ConsumableData(OpenModel):
     """A consumable card (tarot, planet, spectral)."""
     index: int
     name: Optional[str] = None
@@ -84,7 +107,7 @@ class ConsumableData(BaseModel):
     ability: Optional[dict[str, Any]] = None
 
 
-class BlindData(BaseModel):
+class BlindData(OpenModel):
     """Current blind information."""
     name: Optional[str] = None
     chips_needed: Optional[int] = None
@@ -93,7 +116,7 @@ class BlindData(BaseModel):
     debuff_text: Optional[str] = None
 
 
-class ShopCard(BaseModel):
+class ShopCard(OpenModel):
     """A card in a shop area (jokers, vouchers, or boosters)."""
     index: int
     name: Optional[str] = None
@@ -105,7 +128,7 @@ class ShopCard(BaseModel):
     ability: Optional[dict[str, Any]] = None
 
 
-class ShopData(BaseModel):
+class ShopData(OpenModel):
     """Shop state with three separate card areas."""
     jokers: list[ShopCard] = Field(default_factory=list)
     vouchers: list[ShopCard] = Field(default_factory=list)
@@ -120,7 +143,7 @@ class ShopData(BaseModel):
         return v
 
 
-class PackData(BaseModel):
+class PackData(OpenModel):
     """Pack opening state."""
     cards: list[dict[str, Any]] = Field(default_factory=list)
     choices_remaining: int = 1
@@ -133,27 +156,29 @@ class PackData(BaseModel):
         return v
 
 
-class DeckCounts(BaseModel):
+class DeckCounts(OpenModel):
     """Deck and discard pile sizes."""
     deck_size: int = 0
     discard_size: int = 0
 
 
-class HandLevel(BaseModel):
-    """Poker hand upgrade level."""
+class HandLevel(OpenModel):
+    """Poker hand upgrade level and play counts."""
     level: int = 1
     mult: Optional[float] = None
     chips: Optional[int] = None
+    played: int = 0
+    played_this_round: int = 0
 
 
-class TagData(BaseModel):
+class TagData(OpenModel):
     """A tag held from skipping a blind."""
     key: Optional[str] = None
     name: Optional[str] = None
     orbital_hand: Optional[str] = None
 
 
-class BlindChoice(BaseModel):
+class BlindChoice(OpenModel):
     """One of the upcoming blinds offered on the blind-select screen."""
     key: Optional[str] = None
     name: Optional[str] = None
@@ -164,13 +189,13 @@ class BlindChoice(BaseModel):
     orbital_hand: Optional[str] = None
 
 
-class BlindSelectData(BaseModel):
+class BlindSelectData(OpenModel):
     """Blind-select screen: which blind is next and what each option offers."""
     on_deck: Optional[str] = None
     choices: dict[str, BlindChoice] = Field(default_factory=dict)
 
 
-class DeckComposition(BaseModel):
+class DeckComposition(OpenModel):
     """Draw-pile composition; reflects deck backs (Abandoned, Checkered, Erratic) and mid-run changes."""
     total_cards: int = 0
     by_suit: dict[str, int] = Field(default_factory=dict)
@@ -178,7 +203,7 @@ class DeckComposition(BaseModel):
     face_cards: int = 0
 
 
-class ShopRates(BaseModel):
+class ShopRates(OpenModel):
     """Shop appearance weights (Ghost Deck raises spectral, vouchers raise tarot/planet)."""
     joker: Optional[float] = None
     tarot: Optional[float] = None
@@ -187,13 +212,18 @@ class ShopRates(BaseModel):
     playing_card: Optional[float] = None
 
 
-class GameState(BaseModel):
-    """Complete game state snapshot."""
+class GameState(OpenModel):
+    """Complete game state snapshot (GET /state)."""
     schema_version: str
-    timestamp_ms: int
+    timestamp_ms: int = 0  # envelope field; absent in recorded step.obs
     phase: GamePhase
     phase_raw: Optional[str] = None  # Original phase string before enum mapping
     error: Optional[str] = None
+    # True when the game is at a stable decision point and accepts actions.
+    settled: Optional[bool] = None
+    won: bool = False
+    # Poker hand of the currently highlighted cards.
+    preview: Optional[dict[str, Any]] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -298,72 +328,89 @@ class GameState(BaseModel):
         return free is None or free > 0
 
     def is_decision_point(self) -> bool:
-        """Check if current phase requires a decision from the player."""
+        """Whether the bridge accepts actions now (falls back to the phase for old bridges)."""
+        if self.settled is not None:
+            return self.settled
         return self.phase in {
             GamePhase.SELECTING_HAND,
             GamePhase.SHOP,
             GamePhase.BLIND_SELECT,
             GamePhase.PACK_OPENING,
+            GamePhase.ROUND_EVAL,
         }
 
 
 class ActionType(str, Enum):
-    """Types of actions that can be taken."""
-    SELECT_CARDS = "SELECT_CARDS"
+    """Action types of the bridge Action API (docs/DATA_CONTRACT.md)."""
+    START_RUN = "START_RUN"
+    SELECT_BLIND = "SELECT_BLIND"
+    SKIP_BLIND = "SKIP_BLIND"
+    REROLL_BOSS = "REROLL_BOSS"
     PLAY_HAND = "PLAY_HAND"
     DISCARD = "DISCARD"
+    REORDER = "REORDER"
     SORT_HAND = "SORT_HAND"
+    USE_CONSUMABLE = "USE_CONSUMABLE"
+    SELL_JOKER = "SELL_JOKER"
+    SELL_CONSUMABLE = "SELL_CONSUMABLE"
+    CASH_OUT = "CASH_OUT"
     SHOP_BUY = "SHOP_BUY"
+    SHOP_BUY_AND_USE = "SHOP_BUY_AND_USE"
     SHOP_BUY_VOUCHER = "SHOP_BUY_VOUCHER"
     SHOP_BUY_BOOSTER = "SHOP_BUY_BOOSTER"
     SHOP_REROLL = "SHOP_REROLL"
-    SHOP_SELL_JOKER = "SHOP_SELL_JOKER"
     SHOP_END = "SHOP_END"
-    SELECT_BLIND = "SELECT_BLIND"
-    SKIP_BLIND = "SKIP_BLIND"
     SELECT_PACK_CARD = "SELECT_PACK_CARD"
-    SELECT_PACK_ITEM = "SELECT_PACK_ITEM"  # legacy alias
     SKIP_PACK = "SKIP_PACK"
-    USE_CONSUMABLE = "USE_CONSUMABLE"
-    CASH_OUT = "CASH_OUT"
-    START_RUN = "START_RUN"
-    REORDER_JOKERS = "REORDER_JOKERS"
-    SELL_CONSUMABLE = "SELL_CONSUMABLE"
 
 
-class ActionParams(BaseModel):
-    """Parameters for an action."""
-    card_indices: Optional[dict[str, Any]] = None
-    mode: Optional[list[str]] = None
-    slot: Optional[int] = None
-    cost: Optional[int] = None
-    joker_index: Optional[int] = None
-    sell_value: Optional[int] = None
-    options: Optional[list[str]] = None
-    choice_index: Optional[int] = None
-    index: Optional[int] = None  # for pack card selection, consumable use
-    stake: Optional[int] = None
-    order: Optional[list[int]] = None  # for REORDER_JOKERS
-
-
-class LegalAction(BaseModel):
-    """A single legal action that can be taken."""
+class LegalAction(OpenModel):
+    """One /legal entry: `params` maps each param name to its domain (`one_of`, `subset`,
+    `permutation`, `seed`; see balatro_env.data.legality). `info` is non-normative (cost, name, key)."""
     type: ActionType
-    description: str
-    params: ActionParams = Field(default_factory=ActionParams)
+    description: Optional[str] = None
+    params: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    info: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("params", "info", mode="before")
+    @classmethod
+    def convert_empty_list_to_dict(cls, v):
+        # Lua encodes empty tables as []
+        if isinstance(v, list) and len(v) == 0:
+            return {}
+        return v
+
+    def options(self, name: str) -> list[Any]:
+        """Values of a `one_of` param domain ([] when absent or not a one_of)."""
+        domain = self.params.get(name) or {}
+        values = domain.get("one_of")
+        return list(values) if isinstance(values, list) else []
+
+    def subset(self, name: str) -> Optional[dict[str, Any]]:
+        """The `subset` spec {of, min, max, must_include?} of a param, if any."""
+        domain = self.params.get(name) or {}
+        spec = domain.get("subset")
+        return spec if isinstance(spec, dict) else None
 
     def to_request(self) -> "ActionRequest":
-        """Convert to an ActionRequest for execution."""
-        return ActionRequest(
-            type=self.type,
-            params=self.params.model_dump(exclude_none=True),
-        )
+        """Concrete request when every required param domain is a single-valued `one_of`."""
+        params: dict[str, Any] = {}
+        for name, domain in self.params.items():
+            values = domain.get("one_of")
+            if isinstance(values, list) and len(values) == 1:
+                params[name] = values[0]
+            elif not domain.get("optional") and not (
+                name == "targets" and (domain.get("subset") or {}).get("min", 0) == 0
+            ):
+                raise ValueError(f"{self.type.value}: param {name!r} needs a choice from {domain}")
+        return ActionRequest(type=self.type, params=params)
 
 
-class LegalActions(BaseModel):
-    """Set of legal actions available in current state."""
+class LegalActions(OpenModel):
+    """Set of legal actions available in current state (GET /legal). Empty unless `settled`."""
     schema_version: str
     phase: GamePhase
+    settled: Optional[bool] = None
     actions: list[LegalAction] = Field(default_factory=list)
     error: Optional[str] = None
 
@@ -384,20 +431,22 @@ class LegalActions(BaseModel):
 
 
 class ActionRequest(BaseModel):
-    """Request to execute an action."""
+    """Request to execute an action. `meta` is stored verbatim on the recorded step (e.g. meta.why)."""
     type: ActionType
     params: dict[str, Any] = Field(default_factory=dict)
+    meta: Optional[dict[str, Any]] = None
 
 
-class ActionResult(BaseModel):
-    """Result of executing an action."""
+class ActionResult(OpenModel):
+    """Result of executing an action (`retry` = not settled yet, resend later)."""
     ok: bool
     error: Optional[str] = None
+    retry: Optional[bool] = None
     state: Optional[GameState] = None
     legal: Optional[LegalActions] = None
 
 
-class HealthResponse(BaseModel):
+class HealthResponse(OpenModel):
     """Health check response."""
     status: str
     version: str

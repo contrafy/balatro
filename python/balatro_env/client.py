@@ -165,7 +165,7 @@ class BalatroClient:
         Returns:
             ActionResult with success status and new state
         """
-        data = self._request("POST", "action", action.model_dump())
+        data = self._request("POST", "action", action.model_dump(mode="json", exclude_none=True))
         return ActionResult.model_validate(data)
 
     def reset(self, seed: str | None = None) -> tuple[GameState, LegalActions]:

@@ -125,16 +125,15 @@ class ActionEncoder:
         elif action_type == "SHOP_BUY":
             slot = action.params.get("slot", 1)
             return self.shop_buy_offset + slot - 1
-        elif action_type == "SHOP_SELL_JOKER":
-            joker_idx = action.params.get("joker_index", 1)
+        elif action_type == "SELL_JOKER":
+            joker_idx = action.params.get("index", 1)
             return self.sell_joker_offset + joker_idx - 1
-        elif action_type in ("SELECT_PACK_ITEM", "SELECT_PACK_CARD"):
-            choice_idx = action.params.get("choice_index") or action.params.get("index", 1)
+        elif action_type == "SELECT_PACK_CARD":
+            choice_idx = action.params.get("index", 1)
             return self.pack_select_offset + choice_idx - 1
         elif action_type == "SELECT_BLIND":
-            options = {"small": 0, "big": 1, "boss": 2}
-            option = action.params.get("option", "small")
-            return self.blind_select_offset + options.get(option, 0)
+            # The bridge selects the blind on deck; slots 1-2 of the blind block are never legal.
+            return self.blind_select_offset
         else:
             raise ValueError(f"Unknown action type: {action_type}")
 
@@ -172,14 +171,12 @@ class ActionEncoder:
             return ActionRequest(type=ActionType.SHOP_BUY, params={"slot": slot})
         elif self.sell_joker_offset <= action_idx < self.pack_select_offset:
             joker_idx = action_idx - self.sell_joker_offset + 1
-            return ActionRequest(type=ActionType.SHOP_SELL_JOKER, params={"joker_index": joker_idx})
+            return ActionRequest(type=ActionType.SELL_JOKER, params={"index": joker_idx})
         elif self.pack_select_offset <= action_idx < self.blind_select_offset:
             choice_idx = action_idx - self.pack_select_offset + 1
-            return ActionRequest(type=ActionType.SELECT_PACK_ITEM, params={"choice_index": choice_idx})
+            return ActionRequest(type=ActionType.SELECT_PACK_CARD, params={"index": choice_idx})
         elif self.blind_select_offset <= action_idx < self.action_space_size:
-            options = ["small", "big", "boss"]
-            option_idx = action_idx - self.blind_select_offset
-            return ActionRequest(type=ActionType.SELECT_BLIND, params={"option": options[option_idx]})
+            return ActionRequest(type=ActionType.SELECT_BLIND)
         else:
             raise ValueError(f"Invalid action index: {action_idx}")
 
@@ -208,53 +205,39 @@ class ActionEncoder:
             elif action_type == "SKIP_PACK":
                 mask[self.simple_actions["SKIP_PACK"]] = True
             elif action_type == "SORT_HAND":
-                mask[self.simple_actions["SORT_HAND_RANK"]] = True
-                mask[self.simple_actions["SORT_HAND_SUIT"]] = True
-            elif action_type == "PLAY_HAND":
-                # Mark all valid card combinations as legal
-                params = action.params
-                if params and params.card_indices:
-                    available = params.card_indices.get("available", list(range(1, hand_size + 1)))
-                    min_select = params.card_indices.get("min_select", 1)
-                    max_select = params.card_indices.get("max_select", 5)
-                    # Generate all valid combinations
-                    for size in range(min_select, min(max_select, len(available)) + 1):
-                        for combo in combinations(available, size):
-                            bitmap = self.card_indices_to_bitmap(list(combo))
-                            mask[self.play_hand_offset + bitmap] = True
-            elif action_type == "DISCARD":
-                params = action.params
-                if params and params.card_indices:
-                    available = params.card_indices.get("available", list(range(1, hand_size + 1)))
-                    min_select = params.card_indices.get("min_select", 1)
-                    max_select = params.card_indices.get("max_select", 5)
-                    for size in range(min_select, min(max_select, len(available)) + 1):
-                        for combo in combinations(available, size):
-                            bitmap = self.card_indices_to_bitmap(list(combo))
-                            mask[self.discard_offset + bitmap] = True
+                for mode in action.options("mode"):
+                    key = f"SORT_HAND_{str(mode).upper()}"
+                    if key in self.simple_actions:
+                        mask[self.simple_actions[key]] = True
+            elif action_type in ("PLAY_HAND", "DISCARD"):
+                spec = action.subset("card_indices")
+                if not spec:
+                    continue
+                offset = self.play_hand_offset if action_type == "PLAY_HAND" else self.discard_offset
+                available = [i for i in spec.get("of", []) if 1 <= i <= min(hand_size, self.MAX_HAND_SIZE)]
+                must = set(spec.get("must_include") or [])
+                for size in range(spec.get("min", 1), min(spec.get("max", 5), len(available)) + 1):
+                    for combo in combinations(available, size):
+                        if must <= set(combo):
+                            mask[offset + self.card_indices_to_bitmap(list(combo))] = True
             elif action_type == "SHOP_BUY":
-                params = action.params
-                if params and params.slot:
-                    slot = params.slot
+                for slot in action.options("slot"):
                     if 1 <= slot <= self.MAX_SHOP_SLOTS:
                         mask[self.shop_buy_offset + slot - 1] = True
-            elif action_type == "SHOP_SELL_JOKER":
-                params = action.params
-                if params and params.joker_index:
-                    joker_idx = params.joker_index
+            elif action_type == "SELL_JOKER":
+                for joker_idx in action.options("index"):
                     if 1 <= joker_idx <= self.MAX_JOKERS:
                         mask[self.sell_joker_offset + joker_idx - 1] = True
-            elif action_type in ("SELECT_PACK_ITEM", "SELECT_PACK_CARD"):
-                params = action.params
-                choice_idx = None
-                if params:
-                    choice_idx = params.choice_index or params.index
-                if choice_idx and 1 <= choice_idx <= self.MAX_PACK_CHOICES:
-                    mask[self.pack_select_offset + choice_idx - 1] = True
+            elif action_type == "SELECT_PACK_CARD":
+                # This encoder has no targets head: only picks that need no targets are encodable.
+                targets = action.params.get("targets")
+                if targets and not targets.get("optional") and (targets.get("subset") or {}).get("min", 0) > 0:
+                    continue
+                for choice_idx in action.options("index"):
+                    if 1 <= choice_idx <= self.MAX_PACK_CHOICES:
+                        mask[self.pack_select_offset + choice_idx - 1] = True
             elif action_type == "SELECT_BLIND":
-                # All three blind options
-                for i in range(3):
-                    mask[self.blind_select_offset + i] = True
+                mask[self.blind_select_offset] = True
 
         return mask
 
