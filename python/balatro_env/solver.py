@@ -1085,7 +1085,8 @@ class RoundSolver:
                     add(PLAY, [idx_of[id(c)] for c in fill],
                         f"{t2} {' '.join(c.label() for c in sc2)} est {int(s2)}"
                         + (f" + filler(s) {' '.join(c.label() for c in rest)}" if rest else "")
-                        + f" (draws {len(fill)} new cards)")
+                        + (f" (The Serpent: draws only 3, hand shrinks by {len(fill) - 3})" if self.serpent
+                           and len(fill) > 3 else f" (draws {3 if self.serpent else len(fill)} new cards)"))
                     break
         if self.final_dep and h >= 2 and vis and not self.psychic:
             hold = self._hold(vis, h, d, ctx)

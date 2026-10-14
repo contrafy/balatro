@@ -313,8 +313,9 @@ run that proved it. 2a explains the why; this is the what. Where a rule here and
 - Campfire: feed it with $1 rentals bought and sold in the same shop (+x0.25, no rent charged) (XRWKX6AS, 3IDYS1SA).
 
 **Advisor trust**
-- Solver P(clear) is overconfident (0.9-1.0 on lines that lost) [32 runs, 13 died at ante 1-2]; at ante 1-2 and when
-  jokerless, rank lines by est and the made hand, not by solver p.
+- Solver P(clear) at antes 1-2 is calibrated on 2985 recorded decisions: at p >= 0.95 it predicts 0.995 and 0.997
+  happened. Lost blinds at 0.9+ (reported in 32 runs) are the expected ~1-in-20 tail, not a bias. Trust p, but treat
+  an early line with 1-2 outs as fragile and don't break a made hand for it (step 5 above).
 - SIM p_next 0.00 (or ~1.00) for every option = uninformative; decide by SCORE CHECK ratio and step 4 order [7].
 - Follow SIM over heuristic text (LEAVE/AVOID/sell) when SIM gain >= +0.15 and the item has none of the blind spots
   below; text contradicted SIM and SIM was right in 12 runs (e.g. 1S259TVC LEAVE vs Duo +0.41).

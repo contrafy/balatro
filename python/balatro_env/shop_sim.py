@@ -493,18 +493,21 @@ class _OptionSim:
         self.n += 1
 
 
-def _resolve_weakest(sv, est, state, blinds, budget_s, seed):
-    """Index of the owned non-eternal joker whose sale lowers p_next the least (ties: higher sell value)."""
+def _resolve_weakest(sv, est, state, blinds, budget_s, seed, add=None):
+    """Index of the owned non-eternal joker whose sale lowers p_next the least (ties: higher sell value), judged
+    with the incoming joker `add` already in place (a retrigger/copy joker can make an owned one strong)."""
     cands = [j for j in _lst(state.get("jokers"))
              if not (j.get("eternal") or (j.get("ability") or {}).get("eternal"))]
     if not cands:
         return None
     if len(cands) == 1:
         return cands[0].get("index")
-    res = _run(sv, est, state, [{"label": f"sell {j.get('name')}", "sell": [j.get("index")]} for j in cands],
+    extra = {"add_joker": add} if add is not None else {}
+    res = _run(sv, est, state, [dict(extra, label=f"sell {j.get('name')}", sell=[j.get("index")]) for j in cands],
                blinds, budget_s, seed, min_samples=16)
-    best = max(res, key=lambda r: (r["p_next"] or 0, r["score_ratio"] or 0, r["money_after"] or 0))
-    return best["option"]["sell"][0]
+    best = max((r for r in res if r.get("p_next") is not None),
+               key=lambda r: (r["p_next"], r["score_ratio"] or 0, r["money_after"] or 0), default=None)
+    return best["option"]["sell"][0] if best else None
 
 
 def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_samples=400, term=None):
@@ -776,11 +779,22 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
     packs = [(i, o) for i, o in enumerate(options) if o.get("pack")]
     options = [o for o in options if not o.get("pack")] + subs
     t0 = time.perf_counter()
-    if any(o.get("sell") == "weakest" for o in options):
-        w = _resolve_weakest(sv, est, state, bl, budget_s * 0.25, seed)
+    weak = [o for o in options if o.get("sell") == "weakest"]
+    if weak:
         names = {j.get("index"): j.get("name") for j in _lst(state.get("jokers"))}
-        options = [dict(o, sell=[w], label=f"{o.get('label')} (sell {names.get(w)})") if o.get("sell") == "weakest" and w
-                   else o for o in options if not (o.get("sell") == "weakest" and not w)]
+        direct = [o for o in weak if not o["label"].startswith("_pack ")]
+        share = budget_s * 0.3 / max(1, len(direct) + 1)
+        shared = _resolve_weakest(sv, est, state, bl, share, seed)  # pack cards: one resolution without synergy
+        out = []
+        for o in options:
+            if o.get("sell") != "weakest":
+                out.append(o)
+                continue
+            w = shared if o["label"].startswith("_pack ") else _resolve_weakest(sv, est, state, bl, share, seed,
+                                                                                  add=o.get("add_joker"))
+            if w:
+                out.append(dict(o, sell=[w], label=f"{o.get('label')} (sell {names.get(w)})"))
+        options = out
     term = terminal_blind(state, len(bl), getattr(cli, "BLIND_BASE", None)) if terminal else None
     res = _run(sv, est, state, options, bl, max(0.1, budget_s - (time.perf_counter() - t0)), seed, min_samples,
                term=term)
