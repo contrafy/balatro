@@ -359,7 +359,12 @@ def show(d):
                                                           for j in lst(d.get("jokers")))))  # 7806 FA2MCBFK: Psychic vs a 5-card build
         if tk == "tag_boss" and not harmless and boss_n in ("The Wall", "Violet Vessel", "The Needle", "The Flint", "The Arm", "The Eye", "The Mouth", "The Psychic",
                                                             "The Plant", "Crimson Heart", "Cerulean Bell", "Amber Acorn", "Verdant Leaf", "The Water", "The Manacle"):
-            NOW_TAGS[tk] = f"rerolls {boss_n} right now (7807's win used a Boss Tag on The Wall)"
+            # ... and only when this boss is hard for THIS build: its simulated round under its rule below 1.25x its chips
+            # (7807 YYSKPHK2 rerolled a mild The Club into The Arm)
+            bc_t = int((ch.get("Boss") or {}).get("chips") or 0)
+            rq_bt = _round_q(dict(d, _misprint_roll=11.5, _plan_fillers=True), **_boss_kw(d, boss_n)) if bc_t else None
+            if rq_bt is None or rq_bt["round"][1] < 1.25 * bc_t:
+                NOW_TAGS[tk] = f"rerolls {boss_n} right now (7807's win used a Boss Tag on The Wall)"
         # The Big Blind comes BEFORE any shop, so it must be beaten with what you own plus what the tag pays right now.
         # Stake 2-3 data (2026-08-30) and Gold data (2026-10-13: 328/450 and 448/450 with zero jokers after skipping for a
         # Rare/Polychrome tag) show a jokerless deck loses the ante-1 Big Blind; a shop-time tag cannot help it.
@@ -1431,6 +1436,11 @@ _SOLVER = None
 
 
 _RQ_MEMO = {}
+_T0 = None  # set by main(): the command's start, for the wall-clock budget (None in tests: no budget)
+
+
+def _elapsed():
+    return 0.0 if _T0 is None else time.time() - _T0
 
 
 def _round_q(d, **kw):
@@ -1450,6 +1460,8 @@ def _round_q(d, **kw):
                          sorted((k, v if not isinstance(v, (list, set, tuple)) else sorted(v)) for k, v in kw.items())], default=str, sort_keys=True)
         if mk in _RQ_MEMO:
             return _RQ_MEMO[mk]
+        if _elapsed() > 15.0:
+            return None  # command budget spent: the deal-based fallbacks answer (Main 16:4x latency)
         r = fn(d, estimate, n=40, seed=7, time_budget_s=1.5, **kw)
         r = r if r and r.get("n") and r.get("round") and r["round"][1] > 0 else None
         _RQ_MEMO[mk] = r
@@ -2596,6 +2608,34 @@ AVOID_JOKERS = {"Madness": "destroys one of your jokers every blind", "Ceremonia
                 "Merry Andy": "-1 hand size"}
 
 
+def _xmult_like(d, aj):
+    """an xMult for the rental rules: an xMult class, a type xMult, Stencil/Throwback, or a Blueprint/Brainstorm next to an
+    owned xMult."""
+    nm = aj.get("name")
+    mh = main_hand(d)
+    return (classify_joker(nm, 0, mh)[0].startswith("XMULT") or nm in TYPE_X_JOKERS or nm in ("Joker Stencil", "Throwback")
+            or (nm in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") for j in lst(d.get("jokers")))))
+
+
+def _tier1(d, c, mh):
+    """PLAYBOOK 2b first buys: a permanent (no perishable/rental) joker that adds MULT on any hand you play, now: not
+    conditional on a rare type/suit, not decaying, not growth-from-zero."""
+    st = _stk(c)
+    nm = c.get("name")
+    if st["perishable"] or st["rental"] or c.get("debuff"):
+        return False
+    if nm in GROWTH_X or nm in ("Gros Michel", "Popcorn", "Ice Cream", "Turtle Bean", "Spare Trousers", "Ride the Bus", "Green Joker",
+                                "Flash Card", "Red Card", "Bootstraps", "Erosion", "Swashbuckler", "Ceremonial Dagger", "Fortune Teller"):
+        return False
+    cls = classify_joker(nm, 0, mh)[0]
+    if not (cls in ("PLUS", "PLUS(main hand)", "PLUS(fires on any pair-family hand)") or (cls.startswith("XMULT") and "conditional" not in cls and "growth" not in cls)):
+        return False
+    if "mult" not in JOKER_DESC.get(nm, "").lower() and _joker_edition(c) not in ("holo", "polychrome"):
+        return False
+    owned = any(c is j for j in lst(d.get("jokers")))
+    return (joker_share(d, c, mh) >= 0.1) if owned else marginal_gain(d, mh, c) >= 0.05
+
+
 def _eternal_bar(d, aj):
     """Eternal jokers the 3-blind SIM undervalues the cost of: an eternal Troubadour (-1 hand for the rest of the run)
     and a 2nd eternal utility (Drunkard/Juggler...) that locks a slot forever (Main 09:xx: 7806 AUZQFYQE, 7809 31V7KZ1X)."""
@@ -3091,6 +3131,18 @@ def shop_advise_sim(d, budget_s=6.0):
     adv_i = next((i for i, ln in enumerate(lines) if ln.startswith("ADVICE:")), None)
     if adv_i is None or d.get("phase") != "SHOP":
         print("\n".join(lines)); return
+    # wall-clock budget for the whole command (Main 16:4x: 30-90 s per shopadvise under 100% CPU): the SIM gets what is
+    # left of ~22 s and fewer minimum samples when short
+    left_s = 22.0 - _elapsed()
+    if left_s < 2.0:
+        lines.insert(adv_i, f"  (SIM skipped: command budget used ({_elapsed():.0f} s so far); the rule advice stands)")
+        print("\n".join(lines)); return
+    sim_lim = left_s < budget_s + 3
+    budget_s = min(budget_s, max(1.5, left_s - 3))
+    min_s = 24 if not sim_lim else 12
+    if sim_lim:
+        lines.insert(adv_i, f"  (SIM budget-limited: {budget_s:.1f} s, >= {min_s} samples per option)")
+        adv_i += 1
     try:
         ss = _shop_sim()
         opts = ss.options_from_state(d, packs=True)  # Buffoon/Celestial packs valued as their expected best pick
@@ -3104,7 +3156,7 @@ def shop_advise_sim(d, budget_s=6.0):
                 o["_cmd"] = f"pack {o.get('booster_index')}"
                 continue
             o["_cmd"] = f"buy {item.get('index')}" if item is not None and item.get("index") is not None else None
-        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate, seed=0, min_samples=24)  # fixed seed; packs need the larger budget
+        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate, seed=0, min_samples=min_s)  # fixed seed; packs need the larger budget
         # a second rental is barred before ante 6 unless it sells the first: offer that bundle as its own SIM option
         # (7801 4JA3JTD1: the bar flipped the advice to Uranus instead of "sell Popcorn, buy Half Joker")
         own_r = [j for j in lst(d.get("jokers")) if _stk(j)["rental"] and not _stk(j)["eternal"]]
@@ -3183,20 +3235,14 @@ def shop_advise_sim(d, budget_s=6.0):
     def allowed(r):
         aj = r["option"].get("add_joker") or {}
         st = _stk(aj)
+        if st["rental"] and ante_s <= 2 and not _xmult_like(d, aj):
+            # HARD (docs/analysis/rental_study.md, 470 stake-8 runs): a flat (non-xMult) rental at ante 1-2 drops P(reach ante
+            # 5) from 57% to 38% (26% when it is the first scorer), even at 0 scorers; one xMult rental stays allowed
+            return False
         if st["eternal"] and st["rental"] and ante_s < 7:
             # exception (7806 lost the ante-4 Small by 79 after a $1 eternal-rental The Trio at SIM +0.23 was blocked):
-            # an xMult while SCORE CHECK < 0.5 and the SIM gain is >= 0.15
-            x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or aj.get("name") in ("Joker Stencil", "Throwback") or \
-                (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
-            # a copier of an owned xMult is an xMult (7810 UIL7HPIQ: Blueprint doubling the only xMult Ramen was barred)
-            # exception: 0 scoring jokers at ante 1-2 and no other scorer on offer: an eternal-rental scorer is the only way
-            # through (7809 S634VB4Y died jokerless at ante 2; mirrors the players' rule)
-            jokerless = ante_s <= 2 and not any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers"))) and \
-                _is_scoring_cls(classify_joker(aj.get("name"), 0, main_hand(d))[0]) and \
-                not any(_is_scoring_cls(classify_joker((x["option"].get("add_joker") or {}).get("name"), 0, main_hand(d))[0])
-                        and not (_stk(x["option"].get("add_joker") or {})["eternal"] and _stk(x["option"].get("add_joker") or {})["rental"])
-                        for x in feas if x["option"].get("add_joker"))
-            if not ((x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15) or jokerless):
+            # an xMult (or a copier of one: 7810 UIL7HPIQ) while SCORE CHECK < 0.5 and the SIM gain is >= 0.15
+            if not (_xmult_like(d, aj) and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
                 return False
         # A second rental: before ante 5 only bundled with selling the first (the players' hard rule; 7816 FVPWB9XC ended
         # with five $1 rentals); at ante 5 also when both are xMults or the SIM gains +0.15 with the money path >= 0
@@ -3312,7 +3358,7 @@ def shop_advise_sim(d, budget_s=6.0):
                 forced = "EMERGENCY" in adv
             if g_m < -0.02 or (forced and g_m <= 0.0) or (sim_top_nothing and g_m <= 0.0) or barred_rule or weak_fade:
                 sim.append(f"  (rule advice was{' [BARRED: hard sticker rule]' if barred_rule else ''}: {adv[8:]})")
-                adv = ("ADVICE: LEAVE -> b endshop   (the rule pick is barred by a hard sticker rule: a 2nd permanent rental before ante 6 (unless both are xMults or you sell the first), an eternal rental, or an eternal non-scorer; nothing else raises P(clear) by more than 0.02)"
+                adv = ("ADVICE: LEAVE -> b endshop   (the rule pick is barred by a hard sticker rule: a flat rental at ante 1-2, a 2nd rental before ante 5 (unless you sell the first), an eternal rental, or an eternal non-scorer; nothing else raises P(clear) by more than 0.02)"
                        if barred_rule else
                        f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick is perishable/type-conditional and gains only {g_m:+.2f} (needs {_req(mine):+.2f}); nothing else clearly helps)"
                        if weak_fade else f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes P(clear all next 3 blinds) by {g_m:+.2f}; nothing on offer raises it by more than 0.02)")
@@ -3344,6 +3390,27 @@ def shop_advise_sim(d, budget_s=6.0):
         # the printed SCORE CHECK band says EMERGENCY: leaving with money contradicts it (7818 K9XMU63Y, Haiku); hunt a multiplier
         sim.append(f"  (rule advice was: {adv[8:]})")
         adv = f"ADVICE: REROLL -> b reroll   (EMERGENCY in SCORE CHECK: leaving with ${d.get('money')} does not fix the next boss; reroll for a multiplier (xMult > +mult scorer > Buffoon pack))"
+    # TIER 1 at ante 1-2 (PLAYBOOK 2b; Main 16:4x, ~8 runs: WZ1Z16GL 5SCKL21E H6YHXLVU 3IW3CJIZ 86BLGMNF IBXYJAUA): while you
+    # own < 2 permanent any-hand +mult scorers, such a joker is bought before any perishable/rental/conditional/
+    # start-at-zero item; others only when none is affordable (labelled tier 2)
+    if int(d.get("ante") or 1) <= 2 and d.get("phase") == "SHOP":
+        mh_t = main_hand(d)
+        own_t1 = sum(1 for j in lst(d.get("jokers")) if _tier1(d, j, mh_t))
+        if own_t1 < 2:
+            money_t = int(d.get("money") or 0)
+            free_t = int(d.get("joker_slots") or 5) - len(lst(d.get("jokers")))
+            t1 = [c for c in lst((d.get("shop") or {}).get("jokers")) if c.get("set") == "Joker" and int(c.get("cost") or 0) <= money_t
+                  and (free_t > 0 or _joker_edition(c) == "negative") and _tier1(d, c, mh_t)]
+            m_t = re.match(r"ADVICE: [A-Z ]+-> b (buy|buyuse|pack|reroll|endshop|vouch)\s*(\d*)", adv)
+            cur_t = next((x for x in lst((d.get("shop") or {}).get("jokers")) if m_t and m_t.group(2) and m_t.group(1) in ("buy", "buyuse")
+                          and x.get("index") == int(m_t.group(2))), None)
+            if t1 and not (cur_t is not None and _tier1(d, cur_t, mh_t)):
+                bt = max(t1, key=lambda c: marginal_gain(d, mh_t, c))
+                sim.append(f"  (advice was [tier 2 at ante 1-2]: {adv[8:]})")
+                adv = (f"ADVICE: BUY -> b buy {bt.get('index')}   (TIER 1 at ante 1-2: {bt.get('name')} ${bt.get('cost')} is a permanent any-hand +mult "
+                       f"scorer (+{marginal_gain(d, mh_t, bt):.0%} round est) and you own {own_t1}; perishable/rental/conditional/growth-from-zero items come after two of these)")
+            elif not t1 and cur_t is not None and not _tier1(d, cur_t, mh_t):
+                adv += "  [tier 2: no permanent any-hand +mult scorer is affordable here]"
     # FINAL GUARD (7804 IBXYJAUA: BUY a 2nd rental Supernova with a rented Obelisk at ante 2-3 slipped through the rule
     # path): before ante 5 a 2nd rental is bought only bundled with selling the rented one
     m_fg = re.match(r"ADVICE: [A-Z ]+-> b (?:buy|buyuse) (\d+)", adv)
@@ -3353,6 +3420,24 @@ def shop_advise_sim(d, budget_s=6.0):
         sim.append(f"  (rule advice was [BARRED: a 2nd rental before ante 5 needs the first one sold]: {adv[8:]})")
         adv = ("ADVICE: LEAVE -> b endshop   (a 2nd rental before ante 5 is barred unless you sell your rented joker for it "
                f"(`b sell N` then `b buy {m_fg.group(1)}` if the SIM row with that sell is better))")
+    m_fg = re.match(r"ADVICE: [A-Z ]+-> b (?:buy|buyuse) (\d+)", adv)
+    it_fg = next((x for x in lst((d.get("shop") or {}).get("jokers")) if m_fg and x.get("index") == int(m_fg.group(1))), None)
+    if it_fg is not None and it_fg.get("set") == "Joker" and _stk(it_fg)["rental"] and int(d.get("ante") or 1) <= 2 and not _xmult_like(d, it_fg):
+        # HARD (docs/analysis/rental_study.md, 470 runs): never a flat rental at ante 1-2, even at 0 scorers; stopgap = a
+        # perishable/permanent scorer or a Buffoon pack
+        money_g = int(d.get("money") or 0)
+        free_g = int(d.get("joker_slots") or 5) - len(lst(d.get("jokers")))
+        alt_j = [c for c in lst((d.get("shop") or {}).get("jokers")) if c.get("set") == "Joker" and not _stk(c)["rental"] and int(c.get("cost") or 0) <= money_g
+                 and free_g > 0 and _is_scoring_cls(classify_joker(c.get("name"), 0, main_hand(d))[0])]
+        buff_g = next((b for b in lst((d.get("shop") or {}).get("boosters")) if "Buffoon" in str(b.get("name")) and int(b.get("cost") or 0) <= money_g), None)
+        sim.append(f"  (advice was [BARRED: a flat rental at ante 1-2]: {adv[8:]})")
+        if alt_j:
+            bj = max(alt_j, key=lambda c: marginal_gain(d, main_hand(d), c))
+            adv = f"ADVICE: BUY -> b buy {bj.get('index')}   (no flat rental at ante 1-2: {bj.get('name')}{stickers(bj)} ${bj.get('cost')} is the scorer to take)"
+        elif buff_g is not None:
+            adv = f"ADVICE: PACK -> b pack {buff_g.get('index')}   (no flat rental at ante 1-2: a Buffoon pack is the joker view instead)"
+        else:
+            adv = "ADVICE: LEAVE -> b endshop   (no flat rental at ante 1-2 (470-run study: P(reach ante 5) 38% vs 57%); keep the money for the next shop's scorer)"
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
     print("\n".join(lines))
 
@@ -3407,22 +3492,20 @@ def pack_advise_sim(d, budget_s=3.5):
         rent_ok = not (st["rental"] and own_rent and ante_s < 6) or sells_rp or (ante_s >= 5 and big)
         # an eternal rental before ante 7 only for an xMult (or a copier of one) on a +0.15 gain (7810 YYBSWJIJ: an
         # eternal-rental Jolly at +0.51 was picked; Blue Joker 7809 D5KV79HL was the xMult-like case)
-        x_e = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or aj.get("name") in ("Joker Stencil", "Throwback") or \
-            (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
-        # 0 scorers at ante 1-2: an eternal-rental scorer is allowed (the players' rule exception; 7809 S634VB4Y)
-        jokerless_p = ante_s <= 2 and _is_scoring_cls(classify_joker(aj.get("name"), 0, main_hand(d))[0]) and \
-            not any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers")))
+        x_e = _xmult_like(d, aj)
+        if st["rental"] and ante_s <= 2 and not x_e:
+            return False  # HARD: no flat rental at ante 1-2, even free in a pack (docs/analysis/rental_study.md)
         bar_e = _eternal_bar(d, aj)
         if bar_e and bar_e.startswith("a 2nd ETERNAL") and base_p is not None and key(r) - key(base_p) >= 0.15:
             bar_e = None  # yields to a +0.15 SIM gain (7803 IX9HA65T)
-        return (((big and x_e) or jokerless_p or not (st["eternal"] and st["rental"] and ante_s < 7)) and rent_ok
+        return (((big and x_e) or not (st["eternal"] and st["rental"] and ante_s < 7)) and rent_ok
                 and not bar_e and not _sells_boss_carrier(d, r["option"]) and not _bad_swap(d, r["option"]))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
                                     f"P(clear next 3 blinds) {r.get('p_next') or 0:.2f}" + (f", vs {r['terminal']} {r.get('p_term') or 0:.2f}" if r.get("terminal") else "")
                                     + f"; value {key(r):.2f} ({r.get('delta_value', r.get('delta_adj', r.get('delta'))) or 0:+.2f} vs skipping)")
         + ("" if allowed(r) or not r["option"].get("_cmd") else
-           f"  [BARRED: {_eternal_bar(d, r['option'].get('add_joker') or {}) or 'eternal rental before ante 7 / 2nd permanent rental before ante 6'}]")
+           f"  [BARRED: {_eternal_bar(d, r['option'].get('add_joker') or {}) or 'flat rental at ante 1-2 / eternal rental before ante 7 / 2nd rental before ante 5'}]")
         for r in sorted(feas, key=lambda r: (allowed(r) or not r["option"].get("_cmd"), key(r)), reverse=True)[:6]]  # barred rows below the legal ones (Haiku 7818 VS127DSN)
     adv = lines[adv_i]
     base = next((r for r in feas if not r["option"].get("_cmd")), None)
@@ -3943,6 +4026,8 @@ def _shop_rules(d):
                 # 2b: treat it as already gone: 1-in-6 per round is ~42% destroyed within 3 rounds; never ranked above a
                 # permanent +mult joker, and bought only next to one (7810 1NA92BT7: '+750%' as the only mult source)
                 score = min(score, 48 if not owns_mult else int(45 + 30 * 0.58 * max(0.0, marginal_gain(d, mh, c))))
+            elif name == "Bootstraps" and money - cost < 5:
+                cls, score = f"PLUS(adds 0 now: +2 mult per $5 and you keep ${money - cost} after buying it)", min(score, 20)  # 7813 5Z56W9Z8
             elif name in ("Popcorn", "Ice Cream", "Turtle Bean"):
                 score = min(score, 60)  # decaying: below a permanent joker of the same gain (Main 16:xx, Ice Cream rated BUY)
             elif name == "Madness" and not any(not _stk(j)["eternal"] and (_is_scoring(classify_joker(j.get("name"), 0, mh)[0]) or joker_share(d, j, mh) >= 0.1)
@@ -3965,6 +4050,10 @@ def _shop_rules(d):
                 # shop too (7815 NBY8F68S: Half Joker NEEDED NOW before The Psychic, lost by 51)
                 score = min(score, 40)
                 st_notes = [n for n in st_notes if not n.startswith("NEEDED NOW")] + [f"DEAD against this ante's boss {boss_ahead}"]
+            if ante <= 2 and _stk(c)["rental"] and not _xmult_like(d, c):
+                # HARD (docs/analysis/rental_study.md, 470 runs): no flat rental at ante 1-2, even at 0 scorers
+                score = min(score, 3)
+                st_notes = [n for n in st_notes if not n.startswith("NEEDED NOW")] + ["BARRED: flat rental at ante 1-2 (P(reach ante 5) 38% vs 57%)"]
             needed = next((n for n in st_notes if n.startswith("NEEDED NOW")), "")
             options.append((score, cls, f"buy {c['index']}", (needed + " -> " if needed else "") + f"{name}{stickers(c)} ${cost} [{cls}]{' ' + ed if ed else ''}: {JOKER_DESC.get(name, 'unknown effect')}" + (f" | {'; '.join(n for n in st_notes if n != needed)}" if st_notes else ""), cost,
                             may_replace and ((cls.startswith("XMULT") and not cls.startswith("XMULT(conditional")) or cls == "COUNTER" or core_gain or (_fits_x(cls) and cls.startswith("XMULT(conditional") and n_x_now < 2 and ante >= 4) or (name in ("Blueprint", "Brainstorm") and n_x_now >= 1)),
@@ -4416,6 +4505,9 @@ def pack_advise(d):
             if gain <= -0.05:
                 sc = min(sc, 5)  # it lowers your rounds (fills a slot your Joker Stencil counts; 7805)
                 notes.append(f"{gain:.0%} round est: fills a slot your Stencil counts" if any(j.get("name") == "Joker Stencil" for j in jokers) else f"{gain:.0%} round est")
+            if ante <= 2 and _stk(c)["rental"] and not _xmult_like(d, c):
+                sc = min(sc, 3)  # HARD: no flat rental at ante 1-2, even free (docs/analysis/rental_study.md)
+                notes.append("BARRED: flat rental at ante 1-2")
             boss_pk = (((d.get("blind_select") or {}).get("choices") or {}).get("Boss") or {})
             if c.get("name") == "Pareidolia" and boss_pk.get("state") != "Defeated" and boss_pk.get("name") in ("The Mark", "The Plant"):
                 # every card becomes a face: The Mark deals them all face-down, The Plant debuffs them all (7809 2JAKDJCQ)
@@ -4950,7 +5042,8 @@ def show_preview(ints, d):
 
 
 def main():
-    global LEGAL
+    global LEGAL, _T0
+    _T0 = time.time()
     args, why, seed = parse_flags(sys.argv[1:])
     cmd, rest = (args[0], args[1:]) if args else ("s", [])
     # verbs the advice text uses are accepted as commands (7818 VHC4HWPP: Haiku typed `discard`)

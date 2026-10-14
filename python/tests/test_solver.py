@@ -569,3 +569,12 @@ def test_loyalty_card_counter_advances_inside_the_round():
     kk = rs.slots[:2]
     vals = [rs.score(kk, rs.slots[2:], h, 0, rs.ctx0)[0] for h in (4, 3, 2, 1)]
     assert sum(1 for v in vals if v == max(vals)) == 1 and max(vals) == 4 * min(vals)  # x4 on one hand of the 4
+
+
+def test_boss_calibration_is_capped_and_monotone():
+    # 2026-10-14 since 14:00: boss rounds mapped into 0.95-0.99 realized 0.895; raw p was calibrated there
+    ps = [i / 100 for i in range(101)]
+    boss = [solver.calibrate(p, boss=True) for p in ps]
+    assert all(b2 >= b1 for b1, b2 in zip(boss, boss[1:]))
+    assert solver.calibrate(0.95, boss=True) == pytest.approx(0.95) < solver.calibrate(0.95)
+    assert solver.calibrate(0.5, boss=True) == solver.calibrate(0.5)

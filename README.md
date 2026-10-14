@@ -137,7 +137,7 @@ Windows swarm runs (recorded and replay-verified under the data contract; live s
 
 | Milestone | Status |
 |-----------|--------|
-| Black Deck, Gold Stake (8) | **Beaten three times** in 328 runs. `7807_9IIGB2FF` (Opus): Clever + Stuntman + Abstract + Even Steven, foil Obelisk x3.6 and Throwback x3.75, skipped every Small and Big from ante 5, 402199/400000 vs Crimson Heart. `7807_2WEJC1IS` (Sonnet): Blueprint + Half Joker early, Throwback (copied by Blueprint) plus Brainstorm on Stuntman, skipped Small and Big from ante 3, 431900/400000 vs Cerulean Bell. `7802_IFYMR9UX` (Opus): Acrobat leftmost with Blueprint left of Brainstorm, x27 on the final hand, 460120/400000 vs Cerulean Bell |
+| Black Deck, Gold Stake (8) | **Beaten four times** in 482 runs. `7807_9IIGB2FF` (Opus): Clever + Stuntman + Abstract + Even Steven, foil Obelisk x3.6 and Throwback x3.75, skipped every Small and Big from ante 5, 402199/400000 vs Crimson Heart. `7807_2WEJC1IS` (Sonnet): Blueprint + Half Joker early, Throwback (copied by Blueprint) plus Brainstorm on Stuntman, skipped Small and Big from ante 3, 431900/400000 vs Cerulean Bell. `7802_IFYMR9UX` (Opus): Acrobat leftmost with Blueprint left of Brainstorm, x27 on the final hand, 460120/400000 vs Cerulean Bell. `7801_7RFNYICY` (Fable): Burglar + Card Sharp x3 on repeated Pairs, foil Supernova and holo Bull with money held as chips (two Handy Tags), 493996/400000 vs Cerulean Bell |
 
 ## Scripts
 

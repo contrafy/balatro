@@ -1,3 +1,6 @@
 # Run RYU4JRWY (port 7804, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
 
-Ante 1 (Charm/Holo/The Window 600, $4): started.
+Ante 1 (Charm/Holo/The Window 600, $4): Small Flush 300 (solver discards). Shop $6: Smiley{PERISHABLE} $4 (SIM 0.53 vs Buffoon 0.23). Big 2P QQTT 720. Shop $8: Hanging Chad $4, Buffoon -> Chaos the Clown{ETERNAL} (free reroll/shop). Window: Straight 332 + High KS (Chad x3 Smiley) 560.
+Ante 2 (Handy/Boss/The Club 2000, $6): EMERGENCY 0.09: free reroll, Jumbo Buffoon -> Gros Michel. Skipped Small (Handy +$4). Big: Straight K-9 4356 one-shot. Gros Michel died at round end. Shop $10: free reroll (Baseball), passed Celestial, kept $10. Club: Pair JJ 1100 + Pair QQ 1100.
+Ante 3 (Top-up/Foil/The Psychic 6400, $18): EMERGENCY 0.03: free reroll -> Mystic Summit $5, $5 reroll (passed Vampire{E}, nothing to feed it). Skipped Small for Top-up -> Even Steven + Greedy. Big: FH 777QQ 5151 one-shot (QD first for Chad). Shop: sold perished Smiley, free reroll -> Sly{E} $3, Jumbo Arcana -> Star (KC JC TC to diamonds for Greedy). Psychic: 2P 8844+JS 5100, 2P 5522+TH clears.
+Ante 4 (Double/Uncommon/The Mark 18000, $15): EMERGENCY 0.27: sold Greedy -> Seeing Double $6; Arcana -> Temperance +$12; $5 reroll -> sold Chad for Abstract{E} $4, sold Even Steven for Odd Todd{P,R} $1 (SIM P 0.71 vs 0.41); ratio 1.49. Played Small (Double tag useless): FH 55599 12232. Shop: sold Odd Todd -> Ramen{RENTAL} x2 (still one rental), free reroll -> Justice $3 held. Ratio 1.72 vs Mark.
