@@ -390,6 +390,17 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss
         fed = k * sum(feeders.count(n) for n in ("Certificate", "Marble Joker", "DNA"))
         now = [dict(j) for j in now]
         _feed_hologram(now, fed)
+        # sell values grow at round end: Gift Card +$1 to every joker, Egg +$3 to itself (Swashbuckler reads them)
+        gifts = feeders.count("Gift Card")
+        for j in now:
+            grow = gifts + (3 if j.get("name") == "Egg" and _active(j) else 0)
+            if grow:
+                j["sell_cost"] = int(j.get("sell_cost") or 0) + grow * k
+    if any(j.get("name") == "Swashbuckler" for j in now):
+        # card.lua update(): +mult = the sell values of every other joker (the set changes with buys/sells/growth)
+        now = [dict(j, ability=dict(j.get("ability") or {}, mult=sum(int(x.get("sell_cost") or 0) for x in now
+                                                                       if x is not j)))
+               if j.get("name") == "Swashbuckler" else j for j in now]
     if boss_passed:
         now = [dict(j, ability=dict(j.get("ability") or {}, x_mult=1.0)) if j.get("name") == "Campfire" else j
                for j in now]
@@ -611,9 +622,15 @@ def _resolve_weakest(sv, est, state, blinds, budget_s, seed, add=None):
     extra = {"add_joker": add} if add is not None else {}
     res = _run(sv, est, state, [dict(extra, label=f"sell {j.get('name')}", sell=[j.get("index")]) for j in cands],
                blinds, budget_s, seed, min_samples=16)
-    best = max((r for r in res if r.get("p_next") is not None),
-               key=lambda r: (r["p_next"], r["score_ratio"] or 0, r["money_after"] or 0), default=None)
-    return best["option"]["sell"][0] if best else None
+    ok = [r for r in res if r.get("p_next") is not None]
+    if not ok:
+        return None
+    # p_next differences below TIE_P are sampling noise (7802 4EP3BAN9 sold Half Joker over Misprint): among the
+    # near-best sales keep the build that scores the most (mean score ratio), then money
+    top = max(r["p_next"] for r in ok)
+    best = max((r for r in ok if r["p_next"] >= top - TIE_P),
+               key=lambda r: (r["score_ratio"] or 0, r["p_next"], r["money_after"] or 0))
+    return best["option"]["sell"][0]
 
 
 def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_samples=400, term=None):
@@ -986,23 +1003,23 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
 
 
 def _place_copy(state, opt, cli):
-    """For a new Blueprint (copies the joker to its right) or Brainstorm (copies the leftmost joker): the joker order
-    the player would set with `b order`, chosen by cli.typical_est over every insertion slot (Blueprint) or every
-    owned joker moved leftmost (Brainstorm). Returns the option with insert_at / lead set (unchanged otherwise)."""
+    """Joker order the player would set with `b order` when copy jokers are involved, chosen by cli.typical_est: a
+    new Blueprint (copies the joker to its right) or any new joker while a Blueprint / Brainstorm (copies the leftmost
+    joker) is kept tries every insertion slot; a new Brainstorm also tries every owned joker moved leftmost. Ties keep
+    the new joker rightmost. Returns the option with insert_at / lead set (unchanged otherwise)."""
     nj = opt.get("add_joker") or {}
     est_fn = getattr(cli, "typical_est", None)
-    if nj.get("name") not in ("Blueprint", "Brainstorm") or est_fn is None:
-        return opt
     sold = set(opt.get("sell") or []) if opt.get("sell") != "weakest" else set()
     owned = [j for j in _lst(state.get("jokers")) if j.get("index") not in sold]
+    copiers = ("Blueprint", "Brainstorm")
+    if not nj or est_fn is None or not (nj.get("name") in copiers or any(j.get("name") in copiers for j in owned)):
+        return opt
     hl = state.get("hand_levels") or {}
     mh = max(hl, key=lambda h: int((hl[h] or {}).get("played") or 0), default="Pair") if hl else "Pair"
     new = dict(nj, debuff=False)
-    tries = []
-    if nj.get("name") == "Blueprint":
-        tries = [(i, None) for i in range(len(owned) + 1)]
-    else:
-        tries = [(len(owned), None)] + [(len(owned), i) for i in range(len(owned))]
+    tries = [(len(owned), None)] + [(i, None) for i in range(len(owned))]
+    if nj.get("name") == "Brainstorm":
+        tries += [(len(owned), i) for i in range(len(owned))]
     best, best_s = None, -1.0
     for at, lead in tries:
         js = owned[:at] + [new] + owned[at:]
@@ -1015,7 +1032,9 @@ def _place_copy(state, opt, cli):
             return opt
         if s > best_s:
             best, best_s = (at, lead), s
-    return dict(opt, insert_at=best[0], lead=best[1]) if best else opt
+    if not best or best == (len(owned), None):
+        return opt
+    return dict(opt, insert_at=best[0], lead=best[1])
 
 
 def terminal_blind(state, n, blind_base):

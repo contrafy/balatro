@@ -894,3 +894,31 @@ def test_loyalty_card_timing_from_counters():
     fire = cli.estimate("Pair", cards, [], dict(base, run={"hands_played_total": 16}))
     early = cli.estimate("Pair", cards, [], dict(base, run={"hands_played_total": 15}))
     assert "fires on THIS hand" in " ".join(fire[1]) and fire[0] == 4 * early[0]
+
+
+def _rental_sim(gain):
+    class FakeSim:
+        def options_from_state(self, st, **kw):
+            items = (st.get("shop") or {}).get("jokers") or (st.get("pack") or {}).get("cards")
+            return [{"label": "baseline (buy nothing)"}, {"label": "take X", "add_joker": items[0], "cost": 1}]
+
+        def value_options(self, st, opts, **kw):
+            return [{"label": o["label"], "option": o, "feasible": True, "p_next": 0.30 if o["label"].startswith("baseline") else 0.30 + gain,
+                     "delta": 0.0 if o["label"].startswith("baseline") else gain, "money_after": 10 if o["label"].startswith("baseline") else 9} for o in opts]
+    return FakeSim()
+
+
+def test_second_rental_barred_before_ante_5_even_on_big_sim_gain(monkeypatch):
+    # 7816 FVPWB9XC ended with five $1 rentals; 7805 K3HGDAGZ: Blue Joker{RENTAL} as a 2nd rental at ante 3
+    d = shop(jokers=[joker("Joker", 1, rental=True)], shop_jokers=[{"index": 1, "name": "Blue Joker", "set": "Joker", "cost": 1, "rental": True}], money=14, ante=3)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
+    monkeypatch.setattr(cli, "_SHOP_SIM", _rental_sim(0.45))
+    adv = _advice(_out(cli.shop_advise_sim, d))
+    assert "b buy 1" not in adv or "b sell 1  then  b buy 1" in adv  # only bundled with selling the first rental
+
+
+def test_second_rental_pack_pick_barred_before_ante_5(monkeypatch):
+    d = {"phase": "PACK_OPENING", "stake": 8, "ante": 3, "money": 10, "joker_slots": 5, "jokers": [joker("Joker", 1, rental=True)], "hand_levels": {},
+         "pack": {"kind": "Buffoon", "choices_remaining": 1, "cards": [{"index": 1, "name": "Sly Joker", "set": "Joker", "rental": True}]}}
+    monkeypatch.setattr(cli, "_SHOP_SIM", _rental_sim(0.45))
+    assert "b pick 1" not in _advice(_out(cli.pack_advise_sim, d))

@@ -169,6 +169,7 @@ class RoundSolver:
         self.serpent = self.boss == "The Serpent"
         self.fish = self.boss == "The Fish"
         self.mark = self.boss == "The Mark"
+        self.wheel = self.boss == "The Wheel"
         self.tooth = self.boss == "The Tooth"
         # Mouth/Eye are applied here (the lock and the used types change during a rollout), not inside estimate
         lock = b.get("only_hand") if self.boss == "The Mouth" else None
@@ -1040,7 +1041,9 @@ class RoundSolver:
         growth = 0.0
         n_played = 0
         pos = 0
-        down = set()  # ids of face-down cards in hand (The Fish)
+        # ids of face-down cards in hand: the ones dealt face down now stay hidden, and The Fish / The Mark / The Wheel
+        # turn later draws face down; the policy decides on the face-up cards only
+        down = {id(hand[p]) for p in self.fd_pos}
         kind, sel = first[0], [hand[i] for i in first[1]]
         cards = list(hand)
         while True:
@@ -1073,19 +1076,30 @@ class RoundSolver:
                 if "Green Joker" in self.growth_j:
                     growth -= 1
             n = 3 if self.serpent else max(0, self.hand_size - len(rest))
+            drawn = order[pos:pos + n]
             if self.fish and kind == PLAY:  # The Fish: cards drawn after a played hand come face down
-                down.update(id(c) for c in order[pos:pos + n])
+                down.update(id(c) for c in drawn)
+            elif self.mark:  # The Mark: every face card is drawn face down
+                down.update(id(c) for c in drawn if c.face)
+            elif self.wheel:  # The Wheel: each drawn card 1 in 7 face down
+                down.update(id(c) for c in drawn if rng.random() < 1 / 7)
             rest.extend(order[pos:pos + n])
             pos += n
             cards = rest
             if not cards:
                 return self.bones_at is not None and total >= self.bones_at, total, h, self.d0 - d, growth, n_played
             up = [c for c in cards if id(c) not in down] if down else cards
-            if up:
-                # the player decides on the face-up cards only (face-down ones keep their place in hand)
-                kind, sel = self.policy(up, order[pos:], h, d, need, (lock, used, rtypes, ob))
-            else:
+            if not up:
                 kind, sel = PLAY, cards[:self.lim]  # all face down: played blind
+            elif len(up) < len(cards):
+                # the player decides on the face-up cards only; unknown cards are worth nothing held (they stay
+                # hidden), so they go along blind: fillers of a play (they may pair up) or discards (redrawn)
+                kind, sel = self.policy(up, order[pos:], h, d, need, (lock, used, rtypes, ob))
+                if not (kind == PLAY and self.psychic):
+                    blind = [c for c in cards if id(c) in down]
+                    sel = list(sel) + blind[:max(0, self.lim - len(sel))]
+            else:
+                kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes, ob))
 
     # ---- sampling ---------------------------------------------------------------------------------------------
     def _sample(self, s):
@@ -1285,7 +1299,7 @@ class RoundSolver:
             res[-1]["first_card"], res[-1]["order"] = self._first_for(c)
         # slices where p is less trustworthy: few samples, final-hand jokers (Acrobat/Dusk slice is mis-calibrated on
         # recorded data), face-down cards (their identity is sampled)
-        shaky = self.final_dep or bool(self.fd_pos) or self.fish
+        shaky = self.final_dep or bool(self.fd_pos) or self.fish or self.mark or self.wheel
         for r in res:
             r["low_confidence"] = r["low_n"] or shaky
             if r["certain"]:

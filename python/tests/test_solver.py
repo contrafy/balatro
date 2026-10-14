@@ -230,6 +230,15 @@ def test_round_score_quantiles_from_a_shop_state():
     assert one["round"][1] < q["round"][1]
 
 
+def test_face_down_draws_cannot_be_seen_by_the_policy():
+    # 7806 1VG6CJBW (The Fish): later draws come face down, the policy may not pick plays by their identity
+    hand = ["KS", "KH", "9C", "7D", "5S", "4H", "3C", "2D"]
+    plain = plan(state(hand, need=330, hands=3, discards=0, blind="Small Blind"), samples=300)[0]
+    for boss in ("The Fish", "The Mark"):
+        fish = plan(state(hand, need=330, hands=3, discards=0, blind=boss, boss=True), samples=300)[0]
+        assert fish["low_confidence"] and fish["p_model"] < plain["p_model"]
+
+
 def test_acrobat_x3_only_on_final_hand_and_forced_dig_is_reported_raw():
     # 7804 I9HDGAQA: 2 hands, 0 discards, 4 clubs kept by a dig; the 5th club is a plain hypergeometric draw
     st = state(["AC", "7C", "6C", "2C", "TS", "8D", "6H", "5H"], need=2000, hands=2, discards=0,

@@ -180,10 +180,11 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   only break SIM ties (within 0.03 in the shop, 0.01 in packs; a permanent joker beats a perishable/rental one) and
   decide what the SIM cannot model: vouchers, tarots, boss counters, main-hand planets (they level forever, unless the
   SIM shows the buy hurts). A rental SELL FIRST is simulated: the joker is kept when selling it costs > 0.02. Hard
-  rules stay: no eternal rental before ante 7, no second permanent rental before ante 6 unless both are xMults or the
-  buy sells the first, no eternal Troubadour / second eternal utility, the $ floor unless TIGHT/EMERGENCY or a +0.15
-  SIM gain. In packs (already paid) a sticker rule yields to a +0.15 rent-adjusted gain, and a free sticker-free joker
-  into a free slot is never skipped. Credit Card: in EMERGENCY the -$20 debt is spendable on rerolls for a scorer.
+  rules stay: no eternal rental before ante 7; no second rental (perishable too) before ante 5 unless the buy sells the
+  first (`SELL then BUY`), at ante 5 only for two xMults or a +0.15 SIM gain with money >= 0 through the boss; no
+  eternal Troubadour / second eternal utility; the $ floor unless TIGHT/EMERGENCY or a +0.15 SIM gain. In packs (already
+  paid) the eternal-rental bar yields to a +0.15 rent-adjusted gain, and a free sticker-free joker into a free slot is
+  never skipped. Credit Card: in EMERGENCY the -$20 debt is spendable on rerolls for a scorer.
 - INDICES SHIFT after a reroll/pick/sell: use a name guard, `b buy Clever` or `b buy 1 --expect Clever` (refused on a
   mismatch); every slot command echoes its target name.
 - THE MOUTH: the first played hand locks the type for all 3 hands. Open with a type you can repeat (main hand / Pair),

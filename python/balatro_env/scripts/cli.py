@@ -437,7 +437,8 @@ def show(d):
             base_pay = NOW_TAGS.get(tk) or LATER_TAGS.get(tk) or f"the {small.get('tag')} tag"
             pay_b = ((NOW_TAGS.get(big_tk) if big_tk != tk else None) or LATER_TAGS.get(big_tk) or f"the {big_t}") + pay[len(base_pay):]
             print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss {'with the 1.3x+ margin' if thr else 'with your carrier alive'}, so skip the Big too: {pay_b} ({big_t}); "
-                  f"Boss Tag rerolls a Wall/Violet boss, Garbage/Skip/Economy pay money for the post-boss shop. The boss is never skipped.)")
+                  f"Boss Tag rerolls a Wall/Violet boss, Garbage/Skip/Economy pay money for the post-boss shop. The boss is never skipped. "
+                  f"This is the PLAYBOOK 2b exception to 'never skip the Big': {'the Throwback plan' if thr else 'the perishable carrier would die before the boss'}.)")
         elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok or buff_x) and skip_ok:
             gold = f" Skipping also avoids one round-end ({sum(1 for j in lst(d.get('jokers')) if _stk(j)['rental'])} rental charge(s), one perishable tick)." if stake_n >= 8 and any(_stk(j)["rental"] or _stk(j)["perishable"] for j in lst(d.get("jokers"))) else ""
             print(f"ADVICE: b skip   (stake {stake_n}: the Small Blind pays $0, so skipping costs one shop visit; tag pays: {pay} ({small.get('tag')}). You own {scoring_j} scoring joker(s) for the Big Blind.{gold}"
@@ -1322,6 +1323,19 @@ TYPE_WORD = {v: k for k, v in HAND_WORDS.items()}
 _SOLVER = None
 
 
+def _round_q(d, **kw):
+    """DrawSolver's solver.round_score_quantiles (a round played with the round policy, discards included) or None when
+    the solver is unavailable (crash sweeps stub it)."""
+    try:
+        fn = getattr(_round_solver(), "round_score_quantiles", None)
+        if fn is None:
+            return None
+        r = fn(d, estimate, n=40, seed=7, time_budget_s=1.5, **kw)
+        return r if r and r.get("n") and r.get("round") and r["round"][1] > 0 else None
+    except Exception:
+        return None
+
+
 def _round_solver():
     """python/balatro_env/solver.py loaded by path (the package __init__ imports torch)."""
     global _SOLVER
@@ -1428,13 +1442,16 @@ def advise(d):
         early = int(d.get("ante") or 1) <= 2 or not any(not j.get("debuff") for j in lst(d.get("jokers")))
         at_pace = made_pf is not None and m is not None and m.group(1) == "PLAY" and made_pf[2] >= need_now / max(1, int(d.get("hands_remaining") or 1))
         strict = early and at_pace and breaks
-        better_p = mine and not (top.get("low_n") or top.get("low_confidence")) and top["p_clear"] > mine["p_clear"] + (0.10 if breaks else 0.05) \
-            and not (strict and int(top.get("n") or 0) < 300)
-        better_c = mine and not (top.get("low_n") or top.get("low_confidence")) and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
+        # low_confidence (Acrobat/Dusk, face-down) blocks small leads only: a +0.20 lead on a full sample still switches
+        # (7803 KMKQCHZS: FH dig .49 vs Two Pair .09 was kept)
+        gap = top["p_clear"] - (mine or {}).get("p_clear", 0)
+        conf_ok = not top.get("low_n") and (not top.get("low_confidence") or (gap >= 0.20 and int(top.get("n") or 0) >= 300))
+        better_p = mine and conf_ok and gap > (0.10 if breaks else 0.05) and not (strict and int(top.get("n") or 0) < 300)
+        better_c = mine and conf_ok and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
         if mine and not (better_p or better_c):
-            gap = top["p_clear"] - mine["p_clear"]
-            why_k = (f"breaking your made {made_pf[0]} needs +0.10 (the solver leads by {gap:+.2f})" if breaks and gap > 0.05 else
-                     f"the solver's best is low-confidence (n={top.get('n')})" if (top.get("low_n") or top.get("low_confidence")) and gap > 0.05 else
+            why_k = (f"the solver's best is low-confidence (n={top.get('n')}; it switches only on +0.20 with n >= 300; lead {gap:+.2f})" if gap > 0.05 and not conf_ok else
+                     f"breaking your made {made_pf[0]} needs +0.10 (the solver leads by {gap:+.2f})" if breaks and 0.05 < gap <= 0.10 else
+                     f"a made hand at pace at ante 1-2 / jokerless needs n >= 300 (lead {gap:+.2f}, n={top.get('n')})" if strict and gap > 0.05 else
                      f"the solver's best leads by only {gap:+.2f} (needs > 0.05 calibrated p)")
             sol.append(f"  (rule pick kept: {why_k})")
         if better_p or better_c:
@@ -1907,6 +1924,8 @@ def _advise_rules(d):
     # discard twice from an on-pace Two Pair). Shown explicitly; DrawSolver's p_clear will replace this.
     PACE_LATER = 0.85
     pace_total = int(best[2] * (1 + PACE_LATER * max(0, hands_left - 1)))
+    if hands_left >= 2 and any(j.get("name") == "Acrobat" and not j.get("debuff") for j in lst(d.get("jokers"))):
+        pace_total += int(2 * PACE_LATER * best[2])  # Acrobat: the final hand scores x3 (7803 KMKQCHZS)
     on_pace = pace_total >= need
     if not on_pace and discards > 0:
         print(f"PACE: {best[0]} est {best[2]} now + {max(0, hands_left - 1)} later hand(s) x {int(PACE_LATER * 100)}% = {pace_total} < need {need}: discard toward a bigger hand before playing.")
@@ -2844,17 +2863,18 @@ def shop_advise_sim(d, budget_s=6.0):
             # a copier of an owned xMult is an xMult (7810 UIL7HPIQ: Blueprint doubling the only xMult Ramen was barred)
             if not (x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
                 return False
-        # ANY second rental before ante 6 (perishable too, NEEDED NOW too) drains the run: allowed only when both are
-        # xMults or the buy sells the first (7801 FYPFR6AC; 7805 Q7MRDCJW: a perishable $1 second rental at SIM +0.25;
-        # PLAYBOOK 2b: the #1 killer, 32 runs)
+        # A second rental: before ante 5 only bundled with selling the first (the players' hard rule; 7816 FVPWB9XC ended
+        # with five $1 rentals); at ante 5 also when both are xMults or the SIM gains +0.15 with the money path >= 0
+        # (7809 ZSI1CNNI: Seltzer .79 vs .61 was vetoed); from ante 6 rent no longer drains the run (PLAYBOOK 2b: #1 killer)
         owned_r = [j for j in lst(d.get("jokers")) if _stk(j)["rental"]]
         sells_r = any(j.get("index") in (r["option"].get("sell") or []) for j in owned_r if isinstance(r["option"].get("sell"), list))
-        if st["rental"] and own_rent and ante_s < 6:
+        if st["rental"] and own_rent and ante_s < 6 and not sells_r:
+            if ante_s < 5:
+                return False
             both_x = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") and \
                 all(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in owned_r)
-            # exception: a SIM jump of +0.30 whose money path stays >= 0 (Main 12:0x: 0.20 -> 0.83 at ante 1 was barred)
-            jump = key(r) - key0 >= 0.30 and (r.get("shop_money") is None or r["shop_money"] >= 0)
-            if not (both_x or sells_r or jump):
+            jump = key(r) - key0 >= 0.15 and (r.get("shop_money") is None or r["shop_money"] >= 0)
+            if not (both_x or jump):
                 return False
         # a buy whose own money path goes negative before a later shop (rent) is a dead-shop buy, never NEEDED NOW
         if r.get("shop_money") is not None and r["shop_money"] < 0 <= ((base0 or {}).get("shop_money") if (base0 or {}).get("shop_money") is not None else 0) \
@@ -2998,7 +3018,10 @@ def pack_advise_sim(d, budget_s=3.5):
         # unless the rent-adjusted SIM (p_adj includes the run-long rent) still gains 0.15+ (7809 D5KV79HL: Blue Joker
         # 0.84 vs 0.00 was skipped)
         big = base_p is not None and not all_zero and key(r) - key(base_p) >= 0.15
-        return ((big or not (st["eternal"] and st["rental"] and ante_s < 7)) and (big or not (st["rental"] and own_rent and ante_s < 6))
+        sells_rp = isinstance(r["option"].get("sell"), list) and any(_stk(j)["rental"] and j.get("index") in r["option"]["sell"] for j in lst(d.get("jokers")))
+        # 2nd rental: before ante 5 only with a rental sold for it (7816 FVPWB9XC: five $1 rentals); ante 5 on a +0.15 gain
+        rent_ok = not (st["rental"] and own_rent and ante_s < 6) or sells_rp or (ante_s >= 5 and big)
+        return ((big or not (st["eternal"] and st["rental"] and ante_s < 7)) and rent_ok
                 and not _eternal_bar(d, aj) and not _sells_boss_carrier(d, r["option"]) and not _bad_swap(d, r["option"]))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
@@ -3110,11 +3133,18 @@ def _shop_rules(d):
         # 0.11 after it perished)
         surv = deck_best_est(dict(d, jokers=[j for j in jokers if alive_next(j)])) or surv
         print(f"  (SCORE CHECK for the next ante without {', '.join(str(j.get('name')) for j in dying)}: perishes before it)")
+    # discard-aware SCORE CHECK: DrawSolver's round simulation (round policy with discards, current jokers alive next ante)
+    # replaces the deal-only best hand (Main 12:1x, 3 reports: SL5MJZY1 / UDRRTZQ9 / S5XFPLXV read 0.33-0.52 while dug
+    # hands made 4-8k). The calibrated bands stay on the same per-hand scale: round p50 / hands.
+    rq = _round_q(dict(d, jokers=[j for j in jokers if alive_next(j)]))
+    if rq:
+        surv = max(surv, int(rq["round"][1] / max(1, _hands_pr(d))))
     sc_ratio = surv / (boss_next / _hands_pr(d)) if boss_next else 9  # Burglar +3 hands (7805 UH5NGY7A)
     emergency = ante >= 2 and boss_next and sc_ratio < 0.35
     if ante >= 2:
         band = "84%" if sc_ratio < 0.35 else "65%" if sc_ratio < 0.7 else "38%" if sc_ratio < 1 else "31%" if sc_ratio < 1.5 else "18%"
-        print(f"  SCORE CHECK: " + (f"best hand of a deal from your deck (75th pct of 40 deals, current jokers/levels) ~{deck_best}" if deck_best is not None
+        print(f"  SCORE CHECK: " + (f"a simulated round with discards (median of {rq['n']} rounds, jokers alive next ante) ~{int(rq['round'][1])} = ~{surv}/hand"
+                                    if rq else f"best hand of a deal from your deck (75th pct of 40 deals, current jokers/levels) ~{deck_best}" if deck_best is not None
                                     else f"best {mh if mh != 'undecided' else 'Pair'} of a round (KK, current jokers/levels) ~{best_hand}")
               + (f" vs boss/2 {boss_this // 2} this ante" if boss_this else "") + (f", boss/3 {boss_next // 3} next ante (ratio {sc_ratio:.2f}; recorded Gold runs at this ratio died {band} by the next ante)" if boss_next else "")
               + (": EMERGENCY: buy the cheapest multiplier, through the money floor (reliable/growth xMult > conditional xMult > Buffoon pack > main-hand planet)" if emergency else ""))
@@ -3136,6 +3166,14 @@ def _shop_rules(d):
         # -1 hand size: fewer cards to make the hand from, and fewer held Queens/Kings/Steel (7802 F64SACWK: Shoot the Moon
         # projected 1700-2400 vs 390-426 real)
         proj = int(round_est(d, mh) * ((deck_best_est(d, hs_delta=-1) or deck_best) / best_hand))
+    # discard-aware projection: DrawSolver's round simulation with the boss's own constraint (Water 0 discards, Needle
+    # 1 + 3 per Burglar hands, Manacle -1 hand size); the deal-based numbers above are the fallback
+    burg_n = sum(1 for j in jokers if j.get("name") == "Burglar" and not j.get("debuff"))
+    kw_b = ({"discards": 0} if bn_t == "The Water" else {"hands": 1 + 3 * burg_n} if bn_t == "The Needle" else
+            {"hand_size": max(1, int(d.get("hand_size") or 8) - 1)} if bn_t == "The Manacle" else {})
+    rq_b = (rq if (rq and not kw_b) else _round_q(d, **kw_b)) if need_next else None
+    if rq_b:
+        proj = int(rq_b["round"][1])
     # the last shop before a boss: below 1.25x the floor is off too (dying with money is the worst outcome)
     tight = bool(need_next) and proj < (1.25 if nk == "Boss" else 1.2) * need_next
     if emergency:
