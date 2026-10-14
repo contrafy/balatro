@@ -430,6 +430,14 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss
 _COMMONS = None
 
 
+def _invisible_copy(j):
+    """The duplicate Invisible Joker makes of joker j (card.lua: a Negative edition is not copied)."""
+    c = dict(j, ability=dict(j.get("ability") or {}), debuff=False)
+    if _edition(c) == "negative":
+        c["edition"] = None
+    return c
+
+
 def _commons():
     """Common jokers of the empirical Gold pool (pack_pool.json) without stickers: what Riff-raff creates."""
     global _COMMONS
@@ -458,6 +466,9 @@ class _OptionSim:
         self.daggers = [i for i, j in enumerate(self.jokers) if j.get("name") == "Ceremonial Dagger" and _active(j)]
         self.madness = [i for i, j in enumerate(self.jokers) if j.get("name") == "Madness" and _active(j)]
         self.riffraff = [i for i, j in enumerate(self.jokers) if j.get("name") == "Riff-raff" and _active(j)]
+        # Invisible Joker: sold once it has 2 rounds, duplicating a random other joker (the player sells it then)
+        self.invisible = [(i, int((j.get("ability") or {}).get("invis_rounds") or 0))
+                          for i, j in enumerate(self.jokers) if j.get("name") == "Invisible Joker" and _active(j)]
         self.slots = int(state.get("joker_slots") or 5)
         self.stats = [[0, 0, 0.0, 0.0] for _ in blinds]  # per blind: n, survived, sum min(1, total/need), $ hands
         self.n_eval = len(blinds) if n_eval is None else n_eval  # blinds after n_eval are the terminal check only
@@ -471,7 +482,8 @@ class _OptionSim:
         key = (k, removed, growth, added, ob)
         rs = self.solvers.get(key)
         if rs is None:
-            jk = [_commons()[i] for i in added]
+            # added: Riff-raff commons (index into _commons()) or, negative, -(i+1) for a copy of owned joker i
+            jk = [_commons()[i] if i >= 0 else _invisible_copy(self.jokers[-i - 1]) for i in added]
             boss_passed = any(b.get("kind") == "Boss" for b in self.blinds[:k])
             rs = self.sv.RoundSolver(_round_state(self.state, self.base, self.blinds[k], k, removed, growth, jk, ob,
                                                   boss_passed), self.est, seed=0)
@@ -525,6 +537,11 @@ class _OptionSim:
                 for g in self.gros:
                     if g not in removed and grng.random() < 1 / 6:
                         removed.add(g)
+            for i, held in self.invisible:
+                others = [x for x in range(len(self.jokers)) if x != i and x not in removed]
+                if i not in removed and held + k >= 2 and others:
+                    removed.add(i)
+                    added.append(-random.Random(f"{self.seed}:invis:{s}:{k}").choice(others) - 1)
             if self.daggers or self.madness or self.riffraff:
                 self._select_blind(blind, removed, growth, grng, added)
             rs = self.solver(k, frozenset(removed), tuple(sorted(growth.items())), tuple(sorted(added)), ob)

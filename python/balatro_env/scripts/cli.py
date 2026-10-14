@@ -791,7 +791,7 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
                         mult *= 2
             elif n == "Ancient Joker":
                 suit_a = ((state.get("run") or {}).get("ancient_card") or {}).get("suit")
-                if suit_a and SUIT.get(c.get("suit")) == SUIT.get(suit_a, suit_a[:1]):
+                if suit_a and _suit_matches(c, SUIT.get(suit_a, suit_a[:1]), jnames):  # Wild/Smeared count (7807 DJ5ZWVAG)
                     mult *= 1.5
                 elif not suit_a:
                     notes.append("Ancient Joker suit unknown: x1.5 per matching card not counted")
@@ -1384,8 +1384,16 @@ def advise(d):
         # PLAYBOOK 2b step 5: a DISCARD that breaks a made Pair/Two Pair/Trips needs a 0.10 margin (7805 RTJZMPXF broke
         # QQ66 at +0.07)
         made_pf = max((c for c in _candidates(d) if c[0] in ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")), key=lambda c: c[2], default=None)
-        breaks = top["action"] == "DISCARD" and made_pf is not None and bool(set(top.get("cards") or []) & set(made_pf[1]))
-        better_p = mine and not (top.get("low_n") or top.get("low_confidence")) and top["p_clear"] > mine["p_clear"] + (0.10 if breaks else 0.05)
+        # ... and so does a PLAY that drops cards of the made hand (7810 GLE6W9AC: "play Pair QQ + fillers" over made QQ66)
+        breaks = made_pf is not None and ((top["action"] == "DISCARD" and bool(set(top.get("cards") or []) & set(made_pf[1])))
+                                          or (top["action"] == "PLAY" and not set(made_pf[1]) <= set(top.get("cards") or [])))
+        # jokerless or ante 1-2: a made hand at pace (est >= need / hands left) is played unless the alternative wins by
+        # 0.10 on a full sample (n >= 300) (Main 11:4x: GLE6W9AC, YY9W2AKB lost the ante-1 Small)
+        early = int(d.get("ante") or 1) <= 2 or not any(not j.get("debuff") for j in lst(d.get("jokers")))
+        at_pace = made_pf is not None and m is not None and m.group(1) == "PLAY" and made_pf[2] >= need_now / max(1, int(d.get("hands_remaining") or 1))
+        strict = early and at_pace and breaks
+        better_p = mine and not (top.get("low_n") or top.get("low_confidence")) and top["p_clear"] > mine["p_clear"] + (0.10 if breaks else 0.05) \
+            and not (strict and int(top.get("n") or 0) < 300)
         better_c = mine and not (top.get("low_n") or top.get("low_confidence")) and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
         if mine and not (better_p or better_c):
             gap = top["p_clear"] - mine["p_clear"]
@@ -1856,6 +1864,15 @@ def _advise_rules(d):
     if not on_pace and discards > 0:
         print(f"PACE: {best[0]} est {best[2]} now + {max(0, hands_left - 1)} later hand(s) x {int(PACE_LATER * 100)}% = {pace_total} < need {need}: discard toward a bigger hand before playing.")
     used_disc = int((d.get("run") or {}).get("discards_used") or 0)
+    early_r = int(d.get("ante") or 1) <= 2 or not any(not j.get("debuff") for j in lst(d.get("jokers")))
+    if early_r and hands_left >= 1 and best[0] in ("Two Pair", "Three of a Kind", "Full House", "Four of a Kind", "Straight", "Flush") \
+            and best[2] * hands_left >= need and not summit:
+        # ante 1-2 / jokerless: a made hand at pace (est x hands left >= need) is played, not discarded around (Main 11:4x:
+        # GLE6W9AC / YY9W2AKB lost the ante-1 Small digging from a made Two Pair)
+        fl = fillers(best[1], best[0]) if len(best[1]) < 5 else []
+        print(f"ADVICE: PLAY -> b play {TYPE_WORD.get(best[0], 'HIGH')} {' '.join(map(str, best[1] + fl))}   (est {best[2]} x {hands_left} hand(s) >= need {need}: "
+              f"a made {best[0]} at pace is played at ante 1-2 / without jokers; keep the discards for the later hands)")
+        return
     if 0 < discards and (discards < hands_left or used_disc >= 1) and hands_left >= 2 and best[2] >= 0.6 * need / hands_left and feasible_after and not summit and on_pace:
         fl = fillers(best[1], best[0]) if len(best[1]) < 5 else []
         print(f"ADVICE: PLAY -> b play {TYPE_WORD.get(best[0], 'HIGH')} {' '.join(map(str, best[1] + fl))}   (est {best[2]}; {discards} discard(s) for {hands_left} hands: pacing, keep discards for later hands)")
@@ -2818,7 +2835,12 @@ def shop_advise_sim(d, budget_s=6.0):
         """switch bar: a perishable or type-conditional joker must clearly win: its value fades / fires rarely beyond
         the horizon (7806 FA2MCBFK: perishable The Family bought on +0.05)"""
         aj_b = ((r or {}).get("option") or {}).get("add_joker") or {}
-        return 0.02 + (0.05 if _stk(aj_b)["perishable"] else 0) + (0.05 if classify_joker(aj_b.get("name"), 0, main_hand(d))[0].startswith("XMULT(conditional") else 0)
+        swap = isinstance((r or {}).get("option", {}).get("sell"), list) and bool(r["option"]["sell"])
+        cls_b = classify_joker(aj_b.get("name"), 0, main_hand(d))[0]
+        if swap and "other hand" in cls_b:
+            return 9.0  # a sell-for-buy swap into a joker that does not fire on the main hand is never advised (7804 K4GMJRB5)
+        # a swap (sell X, buy Y) must win by 0.10: the sale is permanent and boss locks / sell-value jokers move it
+        return (0.10 if swap else 0.02) + (0.05 if _stk(aj_b)["perishable"] else 0) + (0.05 if cls_b.startswith("XMULT(conditional") else 0)
     if not keep_rule:
         if best is not None and gain > _req(best):
             new_cmd = best["option"]["_cmd"]
@@ -2848,7 +2870,7 @@ def shop_advise_sim(d, budget_s=6.0):
             else:
                 sim.append(f"  (SIM neutral on the rule pick ({g_m:+.2f}): the rules decide)")
     # INVARIANT: an affordable item with SIM gain >= 0.10 that passes the hard rules is never answered with LEAVE
-    if adv.startswith("ADVICE: LEAVE") and best is not None and gain >= 0.10:
+    if adv.startswith("ADVICE: LEAVE") and best is not None and gain >= max(0.10, _req(best)):
         sim.append(f"  (rule advice was: {adv[8:]})")
         sell_ix = best["option"].get("sell")
         sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
@@ -4221,6 +4243,31 @@ def show_preview(ints, d):
     hn = pr.get("hand")
     print(f"Preview of {ints}: {hn} scoring {pr.get('scoring')} L{pr.get('level')} {pr.get('chips')}x{pr.get('mult')} (base, jokers not applied)"
           + (" | the blind debuffs this hand" if pr.get("blind_debuffed") else ""))
+    sel_c = _cards_by_idx(d, ints)
+    fd_sel = [c for c in sel_c if c.get("rank") is None and "Stone" not in _enh(c)]
+    if fd_sel:
+        # face-down cards: the preview cannot see them; sample them from the remaining deck (rank-sorted bounds applied) and
+        # report the est range of the best hand inside this selection (7809 6SGZCHWF: `sel` returned None)
+        import random
+        rng = random.Random(5)
+        pool = [c for c in lst((d.get("deck") or {}).get("cards")) if c.get("remaining") and c.get("rank") is not None]
+        fd_b = _fd_bounds(lst(d.get("hand")))
+        vis = [c for c in sel_c if c not in fd_sel]
+        ests = []
+        for _ in range(40 if pool else 0):
+            drawn = []
+            for c in fd_sel:
+                lo, hi = fd_b.get(c.get("index"), (2, 14))
+                sub = [x for x in pool if lo <= RANK_VAL.get(_r(x), 0) <= hi and x not in drawn] or [x for x in pool if x not in drawn]
+                if sub:
+                    drawn.append(dict(rng.choice(sub), index=c.get("index"), facing="front", debuff=False))
+            sub_d = dict(d, hand=vis + drawn)
+            ests.append(max((e for _h, _i, e in _candidates(sub_d)), default=0))
+        if ests:
+            ests.sort()
+            print(f"  face-down card(s) {[c.get('index') for c in fd_sel]}: est over your remaining deck ~{int(sum(ests) / len(ests))} "
+                  f"(10th pct {ests[len(ests) // 10]}, 90th pct {ests[9 * len(ests) // 10]})")
+        return
     if hn and pr.get("scoring"):
         est, notes = estimate(hn, _cards_by_idx(d, pr["scoring"]), _held(d, ints), d, repeat=_repeat_flag(d, hn), played_n=len(ints))
         print(f"  est with jokers {est}" + (f" | notes: {'; '.join(notes)}" if notes else ""))

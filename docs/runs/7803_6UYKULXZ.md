@@ -1,2 +1,5 @@
 # Run 6UYKULXZ (port 7803, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (Charm/Rare/The Club 600, $4): Small jokerless: disc x2, 2P JJ33 92 + Straight 8-4 240 = 332. Shop $5: Buffoon -> Popcorn{PERISH} (over Drunkard{E}). Big: disc for hearts, Flush 1560 one-shot. Shop $7: Buffoon (overrode SIM Zany{ETERNAL}, trips-only) -> Jolly{RENTAL}. Club: 2P AA66 1404 one-shot.
+Ante 2 (Rare/Standard/The Wall 4000, $7): foil Smiley $6. Skipped Small for Rare tag ($1, shop useless). Big: Broadway 4061 one-shot. Shop: Rare tag -> The Tribe $0 (x2 Flush). Wall: club Flush 5588 one-shot.
+Ante 3 (Investment/Top-up/The Mouth 6400, $8): EMERGENCY 0.32; sold Popcorn, passed Baron $8 (held Kings, SIM +0.02), reroll -> Joker $2. Skipped Small (Investment, $3 shop useless). Big 4800: 2P QQ88 2544 + Straight Flush J-7 6596. Shop $5 TIGHT: Arcana -> Emperor -> Judgement (Onyx Agate) + Hierophant. Mouth: disc, Hierophant on QQ, Pair QQ 4340 (locks Pair) + TT 1680 + JJ 2480. $28 after Investment.

@@ -289,3 +289,14 @@ def test_red_card_buy_and_skip_option():
     assert opt["label"] == "buy+skip Standard Pack $4 (Red Card +3)" and opt["booster_index"] == 1
     st2, err, notes = shop_sim.apply_option(st, opt)
     assert err is None and st2["money"] == 2 and st2["jokers"][0]["ability"]["mult"] == 3
+
+
+def test_invisible_joker_duplicates_an_owned_joker_after_two_rounds():
+    st = shop_state(jokers=[joker("Joker", ability={"mult": 4}), joker("Invisible Joker", ability={"invis_rounds": 1})])
+    sim = shop_sim._OptionSim(shop_sim._solver(), estimate, st, shop_sim.upcoming_blinds(st, 2, BLIND_BASE), 0)
+    sim.base = st
+    sim.sample(0)
+    keys = sorted(sim.solvers, key=lambda key: key[0])
+    assert keys[0][3] == () and 1 not in keys[0][1]  # round 1: Invisible still held
+    assert keys[1][3] == (-1,) and 1 in keys[1][1]  # round 2: sold, a copy of the Joker added
+    assert [j["name"] for j in sim.solvers[keys[1]].state["jokers"]] == ["Joker", "Joker"]

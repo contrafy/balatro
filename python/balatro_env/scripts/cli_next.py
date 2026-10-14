@@ -2831,11 +2831,23 @@ def shop_advise_sim(d, budget_s=6.0):
         # beyond them (7807 SWXRQQVU ante 2); the rules (next-ante SCORE CHECK, levels, scorers) decide
         sim.append("  SIM SATURATED: the next 3 blinds clear with or without any buy (all deltas < 0.02); ranking by the rules / next-ante SCORE CHECK instead")
         keep_rule = True
+    noise = base is not None and not saturated and (max((r.get("p_next") or 0) for r in feas) < 0.15
+                                                    or all(abs(key(r) - key(base)) < 0.05 for r in feas if r is not base))
+    if noise and not (mine0 is not None and not allowed(mine0)):
+        # every option is under p 0.15 (or within 0.05 of buying nothing): the SIM is noise here and cannot switch the
+        # advice; the rule line decides (7818 L7B2D714 bought a $6 Jumbo Celestial to $0 twice on +0.04/+0.03)
+        sim.append("  SIM NOISE: every option is under P 0.15 or within 0.05 of buying nothing; the rule line decides")
+        keep_rule = True
     def _req(r):
         """switch bar: a perishable or type-conditional joker must clearly win: its value fades / fires rarely beyond
         the horizon (7806 FA2MCBFK: perishable The Family bought on +0.05)"""
         aj_b = ((r or {}).get("option") or {}).get("add_joker") or {}
-        return 0.02 + (0.05 if _stk(aj_b)["perishable"] else 0) + (0.05 if classify_joker(aj_b.get("name"), 0, main_hand(d))[0].startswith("XMULT(conditional") else 0)
+        swap = isinstance((r or {}).get("option", {}).get("sell"), list) and bool(r["option"]["sell"])
+        cls_b = classify_joker(aj_b.get("name"), 0, main_hand(d))[0]
+        if swap and "other hand" in cls_b:
+            return 9.0  # a sell-for-buy swap into a joker that does not fire on the main hand is never advised (7804 K4GMJRB5)
+        # a swap (sell X, buy Y) must win by 0.10: the sale is permanent and boss locks / sell-value jokers move it
+        return (0.10 if swap else 0.02) + (0.05 if _stk(aj_b)["perishable"] else 0) + (0.05 if cls_b.startswith("XMULT(conditional") else 0)
     if not keep_rule:
         if best is not None and gain > _req(best):
             new_cmd = best["option"]["_cmd"]
@@ -2865,7 +2877,7 @@ def shop_advise_sim(d, budget_s=6.0):
             else:
                 sim.append(f"  (SIM neutral on the rule pick ({g_m:+.2f}): the rules decide)")
     # INVARIANT: an affordable item with SIM gain >= 0.10 that passes the hard rules is never answered with LEAVE
-    if adv.startswith("ADVICE: LEAVE") and best is not None and gain >= 0.10:
+    if adv.startswith("ADVICE: LEAVE") and best is not None and gain >= max(0.10, _req(best)) and not noise:
         sim.append(f"  (rule advice was: {adv[8:]})")
         sell_ix = best["option"].get("sell")
         sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
