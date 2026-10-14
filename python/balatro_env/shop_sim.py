@@ -36,6 +36,10 @@ PLANET_HAND = {"Pluto": "High Card", "Mercury": "Pair", "Uranus": "Two Pair", "V
                "Neptune": "Straight Flush", "Planet X": "Five of a Kind", "Ceres": "Flush House", "Eris": "Flush Five"}
 RENT = 3
 TIE_P = 0.02  # p differences below this are sampling noise: ties rank by mean score ratio, then money
+# Rent is money the next shops cannot spend. Gold shops convert ~$5 into a scorer worth ~+0.05..0.3 survival, so one
+# rent dollar is charged DOLLAR_P of p (heuristic); a later shop entered with negative money buys nothing.
+DOLLAR_P = 0.01
+DEAD_SHOP_P = 0.05
 
 
 def _lst(v):
@@ -76,7 +80,7 @@ def upcoming_blinds(state, n=3, blind_base=None):
         if not c or (c.get("state") or "Upcoming") in skip or not c.get("chips"):
             continue
         out.append({"ante": ante, "kind": kind, "name": c.get("name") or kind, "boss": bool(c.get("boss")),
-                    "chips": int(c.get("chips"))})
+                    "chips": int(c.get("chips")), "dollars": int(c.get("dollars") or 0)})
     if blind_base:
         stake = int(state.get("stake") or 1)
         table = blind_base[3 if stake >= 6 else (2 if stake >= 3 else 1)]
@@ -86,9 +90,10 @@ def upcoming_blinds(state, n=3, blind_base=None):
         while len(out) < n and a < len(table):
             a += 1
             base = int(table[a - 1] * k)
-            out += [{"ante": a, "kind": "Small", "name": "Small Blind", "boss": False, "chips": base},
-                    {"ante": a, "kind": "Big", "name": "Big Blind", "boss": False, "chips": int(base * 1.5)},
-                    {"ante": a, "kind": "Boss", "name": "Boss (unknown)", "boss": False, "chips": base * 2}]
+            small_d = 0 if stake >= 2 else 3  # Red Stake and up: the Small Blind pays nothing
+            out += [{"ante": a, "kind": "Small", "name": "Small Blind", "boss": False, "chips": base, "dollars": small_d},
+                    {"ante": a, "kind": "Big", "name": "Big Blind", "boss": False, "chips": int(base * 1.5), "dollars": 4},
+                    {"ante": a, "kind": "Boss", "name": "Boss (unknown)", "boss": False, "chips": base * 2, "dollars": 5}]
     return out[:n]
 
 
@@ -550,9 +555,33 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
             r["notes"].append(f"Madness/Ceremonial Dagger destroy {sim.destroyed / n:.1f} joker(s) over these blinds")
         if sim.created:
             r["notes"].append(f"Riff-raff creates {sim.created / n:.1f} Common joker(s) over these blinds")
+        r["money_path"] = _money_path(state, sim.state, blinds, sim.stats, r["money_after"])
+        r["shop_money"] = min(r["money_path"]) if r["money_path"] else r["money_after"]
+        r["rent_horizon"] = r["rent_per_round"] * len(blinds)
+        if r["shop_money"] < 0:
+            r["notes"].append(f"rent drives money to ${r['shop_money']} before a later shop: that shop is dead")
+        elif r["rent_per_round"] >= 2 * RENT:
+            r["notes"].append(f"{r['rent_per_round'] // RENT} rentals: -${r['rent_per_round']} every round")
     for r in res:
         r.setdefault("p_next", None)
     return res
+
+
+def _money_path(base, st, blinds, stats, money):
+    """Expected money entering the shop after each simulated blind (Gold cash-out order): rent of every rental is
+    charged at round end, then the blind reward, $1 per unused hand (simulated mean) and interest ($1 per $5 held,
+    capped; none below $0 or with no_interest)."""
+    rentals = sum(1 for j in _lst(st.get("jokers")) if j.get("rental"))
+    cap = int(base.get("interest_cap") or 25)
+    amt = int(base.get("interest_amount") or 1)
+    out = []
+    m = float(money)
+    for b, s in zip(blinds, stats):
+        m -= RENT * rentals
+        interest = 0 if base.get("no_interest") or m < 5 else amt * (min(m, cap) // 5)
+        m += int(b.get("dollars") or 0) + s[3] / max(1, s[0]) + interest
+        out.append(int(round(m)))
+    return out
 
 
 _POOL = None
@@ -639,7 +668,7 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
     if r["money_after"] < 0:
         return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
     rng = random.Random(f"{seed}:virtual:{r['label']}")
-    keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round")
+    keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money")
     acc = dict.fromkeys(keys, 0.0)
     acc_bl = [0.0] * len(base["p_blinds"])
     picks = Counter()
@@ -656,7 +685,7 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
                     names.append(n)
             cards = [by_label.get(f"_pack Celestial: {n}") for n in names]
         cands = [c for c in cards if c is not None and c.get("p_next") is not None] + [base]
-        best = max(cands, key=lambda c: (c["p_next"], c["score_ratio"], c.get("money_after") or 0))
+        best = max(cands, key=lambda c: (_p_adj(c), c["score_ratio"], c.get("money_after") or 0))
         picks[best["label"]] += 1
         for k in keys:
             acc[k] += best.get(k) or 0.0
@@ -666,6 +695,7 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         r[k] = acc[k] / PACK_VIRTUAL
     r["p_blinds"] = [p / PACK_VIRTUAL for p in acc_bl]
     r["money_after_rent"] = r["money_after"] - r["rent_per_round"] * n_blinds
+    r["shop_money"] -= int(o.get("cost") or 0)  # sub-options were simulated with the pack's cost unpaid
     subs = [by_label[k] for k in by_label if k.startswith(f"_pack {plan['kind']}:")]
     r["n"] = min([s["n"] for s in subs if s.get("n")] + [base["n"]])
     top = ", ".join(f"{('skip' if lab == base['label'] else lab.split(': ', 1)[1])} {c / PACK_VIRTUAL:.0%}"
@@ -691,8 +721,11 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
     of the per-blind p_blinds, each mapped by solver.calibrate to the clear rate Gold players achieve), p_next_model /
     p_blinds_model (raw rollout frequencies under the solver's greedy policy; p_next_model is the joint frequency),
     delta (p_next - baseline), score_ratio (mean min(1, scored/need) per blind), dollars (unused hands $ over the
-    blinds), money_after, rent_per_round, money_after_rent, n, notes, blinds}. Ranking: p_next (options within
-    TIE_P are tied), then score_ratio, then money_after.
+    blinds), money_after, rent_per_round, rent_horizon (rent of every rental over the simulated blinds), rent_run
+    (eternal rentals' rent to the end of the run), money_path (expected $ entering each later shop: rent charged,
+    blind reward, unused hands, interest), shop_money (its minimum), p_adj (p_next - DOLLAR_P per rent $ -
+    DEAD_SHOP_P per later shop entered below $0), delta_adj, n, notes, blinds}. Ranking: p_adj (options within TIE_P
+    are tied), then score_ratio, then shop_money.
     Pack options cost extra simulation: up to PACK_REPS jokers per Buffoon and PACK_PLANETS planets per Celestial
     are simulated as hidden sub-options sharing the budget; their p is an upper-biased max over noisy estimates."""
     sv = _solver()
@@ -725,13 +758,24 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
     for r in res:
         r["blinds"] = [f"a{b['ante']} {b['name']} {b['chips']}" for b in bl]
         r["delta"] = (r["p_next"] - bp) if (r.get("p_next") is not None and bp is not None) else None
-    top = max((r["p_next"] for r in res if r.get("p_next") is not None), default=0.0)
+        r["p_adj"] = _p_adj(r) if r.get("p_next") is not None else None
+        r["delta_adj"] = (r["p_adj"] - _p_adj(base)) if (r["p_adj"] is not None and base) else None
+    top = max((r["p_adj"] for r in res if r.get("p_adj") is not None), default=0.0)
 
     def rank(r):
-        if r.get("p_next") is None:
+        if r.get("p_adj") is None:
             return (0, 0, 0.0, 0.0, 0)
-        tied = r["p_next"] >= top - TIE_P
-        return (1, tied, 1.0 if tied else r["p_next"], r["score_ratio"], r["money_after"] - r.get("rent_run", 0))
+        tied = r["p_adj"] >= top - TIE_P
+        return (1, tied, 1.0 if tied else r["p_adj"], r["score_ratio"], r.get("shop_money", r["money_after"]))
 
     res.sort(key=rank, reverse=True)
     return res
+
+
+def _p_adj(r):
+    """p_next charged for rent: DOLLAR_P per $ of rent over the horizon (all rentals) and, for eternal rentals,
+    per $ of rent for the rest of the run; with a horizon money path that goes negative, the dead shops cost
+    another DEAD_SHOP_P each."""
+    rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0)
+    dead = sum(1 for m in r.get("money_path") or [] if m < 0)
+    return r["p_next"] - DOLLAR_P * rent - DEAD_SHOP_P * dead

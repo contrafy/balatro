@@ -173,3 +173,17 @@ def test_eternal_rental_is_flagged_with_run_rent_and_constellation_grows_on_plan
     con = shop_state(jokers=[joker("Constellation", ability={"x_mult": 1.2})])
     st3, err, notes = shop_sim.apply_option(con, {"levels": ["Pair"], "cost": 3})
     assert err is None and st3["jokers"][0]["ability"]["x_mult"] == pytest.approx(1.3)
+
+
+def test_every_rental_pays_rent_each_round_and_dead_shops_are_flagged():
+    # 7807 B6JW7ICP: a 2nd rental was rated +0.56 with no rent; two rentals at $4 leave every later shop below $0
+    owned = joker("Joker", ability={"mult": 4}, rental=True)
+    second = joker("Jolly Joker", ability={"t_mult": 8, "type": "Pair"}, rental=True, cost=1)
+    st = shop_state(jokers=[owned], money=4, ante=1, small="Defeated")
+    res = by_label(run(st, [{"label": "base"}, {"label": "2nd rental", "add_joker": second, "cost": 1}],
+                       budget_s=2, min_samples=16))
+    two, base = res["2nd rental"], res["base"]
+    assert two["rent_per_round"] == 6 and two["rent_horizon"] == 18 and base["rent_horizon"] == 9
+    assert two["money_path"][0] < 0 and any("shop is dead" in n for n in two["notes"])
+    assert two["money_path"][-1] <= base["money_path"][-1] - 6  # $1 cost + $9 rent, partly offset by more unused hands
+    assert two["delta_adj"] <= two["delta"] - 0.09 + 1e-9
