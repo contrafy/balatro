@@ -1613,7 +1613,10 @@ def consumable_options(state, estimate_fn=None, *, time_budget_s=3.0, samples=12
     plans = []
     for c, (fx, lim) in cons:
         if fx == "copy":
-            sets = [(a, b) for a in weak for b in strong if a != b]
+            # card.lua 1433-1438: every selected card becomes a copy of the RIGHTMOST one (highest hand index), so
+            # only pairs with the converted card left of the model are playable as given (7805 35N2BV9W)
+            sets = [(a, b) for a in weak for b in strong
+                    if a != b and int(hand[a].get("index") or a) < int(hand[b].get("index") or b)]
         elif fx in SUITS:
             off = sorted((i for i in range(n) if hand[i].get("suit") != fx), key=lambda i: rs.slots[i].val)[:5]
             sets = [s for k in range(1, lim + 1) for s in itertools.combinations(off, k)]

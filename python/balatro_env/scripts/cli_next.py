@@ -2642,8 +2642,12 @@ def _xmult_like(d, aj):
     owned xMult."""
     nm = aj.get("name")
     mh = main_hand(d)
-    return (classify_joker(nm, 0, mh)[0].startswith("XMULT") or nm in TYPE_X_JOKERS or nm in ("Joker Stencil", "Throwback")
-            or (nm in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") for j in lst(d.get("jokers")))))
+    cls = classify_joker(nm, 0, mh)[0]
+    x = (cls.startswith("XMULT") or nm in TYPE_X_JOKERS or nm in ("Joker Stencil", "Throwback")
+         or (nm in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") for j in lst(d.get("jokers")))))
+    if x and ("growth" in cls or "conditional" in cls) and not any(aj is j for j in lst(d.get("jokers"))) and marginal_gain(d, mh, aj) < 0.05:
+        return False  # an xMult that is x1 on your deck now (Vampire with no enhanced cards: 7802 DQD8BD9U) is not one yet
+    return x
 
 
 def _tier1(d, c, mh):
@@ -2675,6 +2679,8 @@ def _eternal_bar(d, aj):
         return f"ETERNAL {nm}: {AVOID_JOKERS[nm]} for the rest of the run"
     if nm in ("Blueprint", "Brainstorm") and any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers"))):
         return None  # a copier of a scoring joker is a scorer (7802 NRDPBB88: Blueprint next to The Trio barred)
+    if int(d.get("joker_slots") or 5) - len(lst(d.get("jokers"))) >= 3:
+        return None  # 2+ slots stay free after it: no slot is lost yet (4th Gold win 7801 7RFNYICY: Walkie{E} barred at 3/6)
     cls = classify_joker(nm, 0, main_hand(d))[0]
     if (cls.startswith("UTIL") or cls.startswith("AVOID")) and any(_stk(j)["eternal"] for j in lst(d.get("jokers"))) and \
             nm not in ("Smeared Joker", "Four Fingers", "Shortcut", "Pareidolia", "Splash") and marginal_gain(d, main_hand(d), aj) < 0.5:
@@ -4976,7 +4982,9 @@ def pre_checks(cmd, typ, params, ints, d):
     if cmd in ("use", "pick") and name == "Death" and len(tg) == 2:
         hc = _cards_by_idx(d, tg)
         if len(hc) == 2:
-            print(f"Death: {card_str(hc[0])} (idx {tg[0]}) becomes a copy of {card_str(hc[1])} (idx {tg[1]}). The LEFT (lower index) card is overwritten.")
+            lo_c, hi_c = sorted(hc, key=lambda x: x.get("index") or 0)
+            print(f"Death: {card_str(lo_c)} (idx {lo_c.get('index')}) becomes a copy of {card_str(hi_c)} (idx {hi_c.get('index')}): the game copies the "
+                  "RIGHTMOST selected card (higher hand index), whatever order you type. To duplicate the left card, `b move hand` it to the right first.")
     if cmd == "play":
         b = d.get("blind") or {}
         if b.get("boss") and b.get("name") == "The Psychic" and len(ints) != 5:

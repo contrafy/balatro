@@ -9356,3 +9356,19 @@
 7804	a4	$13	jokers=6/6	xmult_owned=0	PLUS:Raised Fist{PERISHABLE(5 rounds left)} $5 | PACK:Jumbo Arcana Pack $6 | UTIL:Splash $3 | PACK:Standard Pack $4 | VOUCHER:Telescope $10
 7811	a2	$7	jokers=2/6	xmult_owned=0	PLUS(bridge: +172% on your Two Pair now; decays):Ice Cream $5 | PLUS:Banner{RENTAL(-$3/round)} $1 | PACK:Celestial Pack $4 | PACK:Standard Pack $4 | VOUCHER:Grabber $10
 7818	a2	$4	jokers=3/6	xmult_owned=0	PACK:Celestial Pack $4 | XMULT(growth: must be fed):Hologram{RENTAL(-$3/round)} $1 | VOUCHER:Crystal Ball $10 | TAROT:The High Priestess $3
+7813	a3	$18	jokers=3/6	xmult_owned=0	PACK:Arcana Pack $4 | XMULT(conditional, unreliable):Baseball Card{ETERNAL,RENTAL(-$3/round)} $1 | PACK:Standard Pack $4 | VOUCHER:Hone $10 | UTIL:Pareidolia{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7804	a4	$13	jokers=6/6	xmult_owned=0	PACK:Jumbo Arcana Pack $6 | PLUS(<=3 cards: not your main hand):Half Joker{PERISHABLE(5 rounds left)} $5 | PLUS:Blue Joker{ETERNAL,RENTAL(-$3/round)} $1 | PACK:Standard Pack $4 | VOUCHER:Telescope $10
+7809	a3	$6	jokers=3/6	xmult_owned=0	PACK:Mega Celestial Pack $8 | PACK:Arcana Pack $4 | UTIL:Burglar $11 | VOUCHER:Planet Merchant $10 | PLUS(adds ~0 now: grows only with its condition):Fortune Teller{RENTAL(-$3/round)} $1
+7810	a2	$3	jokers=2/6	xmult_owned=0	PACK:Mega Celestial Pack $8 | PLANET:Mercury $3 | TAROT:The Fool $3 | PACK:Standard Pack $4 | VOUCHER:Wasteful $10
+7807	a4	$23	jokers=6/6	xmult_owned=0	PACK:Celestial Pack $4 | XMULT(growth: must be fed):Vampire $7 | PACK:Arcana Pack $4 | VOUCHER:Overstock $10 | UTIL:Marble Joker $6
+7805	a1	$5	jokers=0/6	xmult_owned=0	PLUS(bridge: +750% on your Pair now; 1-in-6 destroyed each round):Gros Michel{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | COUNTER:Luchador{PERISHABLE(5 rounds left)} $5 | PACK:Buffoon Pack $4 | VOUCHER:Hieroglyph $10 | PACK:Jumbo Arcana Pack $6
+7777	a2	$13	jokers=5/6	xmult_owned=0	PACK:Arcana Pack $4 | PACK:Standard Pack $4 | VOUCHER:Grabber $10
+7777	a2	$8	jokers=5/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Raised Fist{ETERNAL} $5 | PLANET:Jupiter $3 | PACK:Arcana Pack $4 | PACK:Standard Pack $4 | VOUCHER:Grabber $10
+7777	a2	$10	jokers=4/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Raised Fist{ETERNAL} $5 | PLANET:Jupiter $3 | PACK:Arcana Pack $4 | PACK:Standard Pack $4 | VOUCHER:Grabber $10
+7806	a3	$14	jokers=4/6	xmult_owned=0	PACK:Jumbo Spectral Pack $6 | TAROT:The Star $3 | UTIL:Marble Joker $6 | PACK:Standard Pack $4 | VOUCHER:Paint Brush $10
+7811	a2	$3	jokers=3/6	xmult_owned=0	PLUS:Even Steven $4 | PACK:Celestial Pack $4 | VOUCHER:Grabber $10 | PACK:Standard Pack $4 | UTIL:8 Ball{RENTAL(-$3/round)} $1
+7813	a3	$11	jokers=4/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PLUS(bridge: +43% on your Two Pair now; decays):Popcorn $5 | PLUS(<=3 cards: not your main hand):Half Joker{PERISHABLE(5 rounds left)} $5 | PACK:Jumbo Standard Pack $6 | VOUCHER:Hone $10
+7818	a2	$6	jokers=3/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Crystal Ball $10 | PLANET:Jupiter $3 | TAROT:The Devil $3 | PACK:Standard Pack $4
+7817	a4	$6	jokers=6/6	xmult_owned=0	PACK:Jumbo Arcana Pack $6 | UTIL:Shortcut $0 | VOUCHER:Clearance Sale $10 | PACK:Jumbo Standard Pack $6 | XMULT(growth: +x0.2 per hand of a type that is not strictly your most played):Obelisk{ETERNAL,RENTAL(-$3/round)} $1
+7809	a4	$13	jokers=3/6	xmult_owned=0	PACK:Arcana Pack $4 | VOUCHER:Blank $10 | PACK:Standard Pack $4 | PLUS(+mult = sell value of your other jokers):Swashbuckler{PERISHABLE(5 rounds left)} $4 | PLUS(adds ~0 now: grows only with its condition):Clever Joker{ETERNAL} $4
+7805	a1	$7	jokers=1/6	xmult_owned=0	VOUCHER:Hieroglyph $10 | PACK:Arcana Pack $4 | TAROT:The Wheel of Fortune $3 | PACK:Standard Pack $4 | UTIL:Reserved Parking{ETERNAL} $6

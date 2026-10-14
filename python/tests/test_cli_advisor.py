@@ -1026,3 +1026,24 @@ def test_tier1_permanent_mult_first_at_ante_1(monkeypatch):
             return [{"label": o["label"], "option": o, "feasible": True, "p_next": p[o["label"]], "delta": p[o["label"]] - 0.30, "money_after": 6} for o in opts]
     monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
     assert _advice(_out(cli.shop_advise_sim, d)).startswith("ADVICE: BUY -> b buy 2")
+
+
+def test_death_use_line_moves_converted_left_of_model(monkeypatch):
+    # 7805 35N2BV9W: solver USE Death targets [5, 2] ([converted QH, model AD]); the game copies the RIGHTMOST card, so
+    # the advice must move card 5 left of card 2 first
+    hand = [("King", "Spades"), ("Ace", "Diamonds"), ("Ace", "Spades"), ("King", "Hearts"), ("Queen", "Hearts")]
+    d = _hand_state(hand, need=3000, hands=3, discards=0, ante=3)
+    d["consumables"] = [{"index": 1, "name": "Death", "set": "Tarot"}]
+
+    class FakeRS:
+        def best_round_plan(self, st, est, **kw):
+            return [{"action": "PLAY", "cards": [1, 2, 3, 4], "p_clear": 0.26, "p_model": 0.26, "n": 400, "note": "Two Pair est 100", "value": 0, "exp_score": 100}]
+
+        def evaluate_action(self, st, a, cards, est, **kw):
+            return {"action": a, "cards": cards, "p_clear": 0.26, "p_model": 0.26, "n": 400, "note": "", "value": 0, "exp_score": 100}
+
+        def consumable_options(self, st, est, **kw):
+            return [{"action": "USE", "consumable": 1, "name": "Death", "targets": [5, 2], "p_clear": 0.73, "low_confidence": False, "note": "QH becomes AD"}]
+    monkeypatch.setattr(cli, "_round_solver", lambda: FakeRS())
+    adv = _advice(_out(cli.advise, d))
+    assert adv.startswith("ADVICE: MOVE then USE -> b move hand 5 2  then  b use 1 2 3"), adv

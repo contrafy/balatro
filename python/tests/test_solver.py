@@ -486,7 +486,7 @@ def test_classify_and_odds():
 
 def test_tarot_use_options_change_hand_cards_then_plan():
     # 7802 4EP3BAN9: Death was held at The Needle, every line read 0.02 without it
-    st = state(["KS", "KH", "KD", "9C", "7H", "4C", "3S", "2D"], need=420, hands=1, discards=0)
+    st = state(["2D", "KS", "KH", "KD", "9C", "7H", "4C", "3S"], need=420, hands=1, discards=0)  # junk left of KKK
     st["consumables"] = [{"index": 1, "key": "c_death", "name": "Death", "set": "Tarot"}]
     plain = plan(st, samples=60)[0]
     res = solver.consumable_options(st, estimate, time_budget_s=3, samples=60)
@@ -578,3 +578,11 @@ def test_boss_calibration_is_capped_and_monotone():
     assert all(b2 >= b1 for b1, b2 in zip(boss, boss[1:]))
     assert solver.calibrate(0.95, boss=True) == pytest.approx(0.95) < solver.calibrate(0.95)
     assert solver.calibrate(0.5, boss=True) == solver.calibrate(0.5)
+
+
+def test_death_targets_have_the_model_rightmost():
+    # 7805 35N2BV9W / card.lua 1433-1438: Death copies the RIGHTMOST selected card onto the others
+    st = state(["KS", "KH", "KD", "9C", "7H", "4C", "3S", "2D"], need=420, hands=1, discards=0)
+    st["consumables"] = [{"index": 1, "key": "c_death", "name": "Death", "set": "Tarot"}]
+    for r in solver.consumable_options(st, estimate, time_budget_s=2, samples=30):
+        assert r["targets"][0] < r["targets"][1]
