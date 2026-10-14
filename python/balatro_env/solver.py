@@ -691,6 +691,15 @@ class RoundSolver:
             spare = [c for c in ranked if c.rank not in self.held_keep]
             if spare:
                 plays.append([max(spare, key=lambda c: (c.rank, c.val))])
+            # every play padded with the lowest cards (Raised Fist: the lowest HELD rank doubles, so the low cards go
+            # out as fillers and the high ones stay; 7807 ELNXY7D1); scoring decides whether a filler pays
+            extra = []
+            for p in plays:
+                pids = {id(c) for c in p}
+                fill = [c for c in low if id(c) not in pids][:lim - len(p)]
+                if fill:
+                    extra.append(p + fill)
+            plays = plays + extra
         if self.blackboard:  # variants that play the red cards away so only black ones stay held
             reds = sorted((c for c in cards if not self._black(c)), key=lambda c: c.val)
             extra = []

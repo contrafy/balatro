@@ -558,3 +558,14 @@ def test_raised_fist_plays_low_fillers_and_holds_high_cards():
     s, play, t = rs.best_play(rs.slots, 3, 0, rs.ctx0)
     held = [c for c in rs.slots if c not in play]
     assert t == "Pair" and min(c.rank for c in held) >= 5 and len(play) == 5
+
+
+def test_loyalty_card_counter_advances_inside_the_round():
+    # 7808 W99CGI9N: Loyalty Card x4 was counted on every simulated hand; it fires once every 6 hands
+    st = state(["KS", "KD", "9C", "7H", "5S", "4C", "3D", "2D"], need=10 ** 9, hands=4, discards=0,
+               jokers=["Loyalty Card"], run={"hands_played_total": 10})
+    st["jokers"][0]["ability"] = {"extra": {"every": 5, "Xmult": 4}, "hands_played_at_create": 5}
+    rs = solver.RoundSolver(st, estimate)
+    kk = rs.slots[:2]
+    vals = [rs.score(kk, rs.slots[2:], h, 0, rs.ctx0)[0] for h in (4, 3, 2, 1)]
+    assert sum(1 for v in vals if v == max(vals)) == 1 and max(vals) == 4 * min(vals)  # x4 on one hand of the 4

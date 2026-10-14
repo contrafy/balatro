@@ -28,7 +28,8 @@ SHORT = {2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7", 8: "8", 9: "9", 10: "T"
 CHIPV = {2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 10, 12: 10, 13: 10, 14: 11}
 SUIT_DEBUFF = {"The Club": "C", "The Goad": "S", "The Window": "D", "The Head": "H"}
 HELD_JOKERS = {"Shoot the Moon", "Raised Fist", "Baron", "Blackboard"}  # estimate reads the held cards
-HD_JOKERS = {"Dusk", "Acrobat", "Banner", "Mystic Summit", "Green Joker", "Ice Cream"}  # estimate reads hands/discards
+HD_JOKERS = {"Dusk", "Acrobat", "Banner", "Mystic Summit", "Green Joker", "Ice Cream",
+             "Loyalty Card"}  # estimate reads hands/discards (Loyalty: hands played)
 GROWTH_JOKERS = {"Square Joker", "Runner", "Spare Trousers", "Ride the Bus", "Green Joker", "Supernova", "Hiker",
                  "Wee Joker"}
 TIE_P = 0.015  # p_clear differences below this are Monte-Carlo noise: rank those options by secondary value
@@ -412,6 +413,13 @@ class RoundSolver:
                                                  + self.htr_extra * jd))
                     js.append(j)
                 st["jokers"] = js
+            if played and "Loyalty Card" in self.jn:
+                # Loyalty Card reads run.hands_played_total: it fires once every 6 hands, not on every later hand
+                # (7808 W99CGI9N counted x4 on every simulated hand)
+                run = dict(self._base.get("run") or {})
+                if run.get("hands_played_total") is not None:
+                    run["hands_played_total"] = int(run["hands_played_total"]) + played
+                    st["run"] = run
             if ob is not None:
                 counts = dict(ob[1])
                 st["hand_levels"] = {k: dict(v, played=counts.get(k, 0))

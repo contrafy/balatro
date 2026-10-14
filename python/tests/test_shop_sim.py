@@ -398,3 +398,9 @@ def test_stretch_check_looks_past_perishables_and_keeps_a_signal():
     sure = {"p_blinds": [1.0] * 3, "p_next": 1.0, "p_term": 0.0, "score_ratio_term": 0.6, "score_ratio_stretch": 0.2}
     more = dict(sure, score_ratio_term=0.9, score_ratio_stretch=0.3)
     assert shop_sim._value(more) > shop_sim._value(sure)  # score gains register when every p is 0 or 1
+
+
+def test_perish_tally_inside_ability_is_read():
+    # 7808 W99CGI9N: a top-level perish_tally=None hid ability.perish_tally, the joker never perished in the sim
+    j = joker("Joker", ability={"mult": 4, "perish_tally": 1}, perishable=True, perish_tally=None)
+    assert shop_sim._jokers_at([j], 1, set())[0].get("debuff")

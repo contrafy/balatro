@@ -3488,6 +3488,9 @@ def _shop_rules(d):
     def alive_next(j):
         """still scoring after the blinds left in this ante: perishables count only if their tally outlasts them"""
         s_a = _stk(j)
+        if j.get("name") == "Seltzer" and isinstance((j.get("ability") or {}).get("extra"), (int, float)) and \
+                (j.get("ability") or {}).get("extra") <= 3 * max(1, bl_left):
+            return False  # Seltzer's retriggers run out after ~3 hands per blind left (Main 16:2x)
         return not s_a["perishable"] or s_a["perish_tally"] is None or s_a["perish_tally"] > bl_left
     expiring = [j for j in jokers if _stk(j)["perishable"] and _stk(j)["perish_tally"] is not None and _stk(j)["perish_tally"] <= 3]
     if expiring:
