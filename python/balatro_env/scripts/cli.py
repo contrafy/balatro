@@ -484,6 +484,14 @@ def show(d):
             pay += f"; Throwback gains x0.25 forever (x{1 + 0.25 * int((d.get('run') or {}).get('skips') or 0):g} -> x{1 + 0.25 * (int((d.get('run') or {}).get('skips') or 0) + 1):g})"
         if perish_key:
             pay += "; no round end, so your perishable carrier does not tick and stays alive for the boss"
+        if stake_n >= 2 and bs.get("on_deck") == "Big" and thr_ok and (ch.get("Big") or {}).get("tag_key") not in \
+                ("tag_buffoon", "tag_charm", "tag_meteor", "tag_ethereal", "tag_standard", "tag_top_up", "tag_orbital"):
+            # skipping the Big means NO shop before the boss: a tag that pays only in the next shop (Rare, Uncommon, editions,
+            # Coupon, D6...) needs the boss SAFE on the simulated round, 1.25x with the jokers you own (7807 JJLWEZDK, ante 5)
+            boss_c_b = int((ch.get("Boss") or {}).get("chips") or 0)
+            rq_b2 = _round_q(dict(d, _misprint_roll=11.5, _plan_fillers=True), **_boss_kw(d, (ch.get("Boss") or {}).get("name")))
+            if boss_c_b and rq_b2 and rq_b2["round"][1] < 1.25 * boss_c_b:
+                thr_ok = False
         if stake_n >= 2 and bs.get("on_deck") == "Big" and thr_ok:
             big_t = (ch.get("Big") or {}).get("tag") or "Big Blind tag"
             big_tk = (ch.get("Big") or {}).get("tag_key")
@@ -492,7 +500,8 @@ def show(d):
             pay_b = ((NOW_TAGS.get(big_tk) if big_tk != tk else None) or LATER_TAGS.get(big_tk) or f"the {big_t}") + pay[len(base_pay):]
             print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss {'with the 1.3x+ margin' if thr else 'with your carrier alive'}, so skip the Big too: {pay_b} ({big_t}); "
                   f"Boss Tag rerolls a Wall/Violet boss, Garbage/Skip/Economy pay money for the post-boss shop. The boss is never skipped. "
-                  f"This is the PLAYBOOK 2b exception to 'never skip the Big': {'the Throwback plan' if thr else 'the perishable carrier would die before the boss'}.)")
+                  f"This is the PLAYBOOK 2b exception to 'never skip the Big': {'the Throwback plan' if thr else 'the perishable carrier would die before the boss'}. "
+                  "NOTE: there is NO shop before the boss after this skip.)")
         elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok or buff_x or poor) and skip_ok:
             gold = f" Skipping also avoids one round-end ({sum(1 for j in lst(d.get('jokers')) if _stk(j)['rental'])} rental charge(s), one perishable tick)." if stake_n >= 8 and any(_stk(j)["rental"] or _stk(j)["perishable"] for j in lst(d.get("jokers"))) else ""
             print(f"ADVICE: b skip   (stake {stake_n}: the Small Blind pays $0, so skipping costs one shop visit; tag pays: {pay} ({small.get('tag')}). You own {scoring_j} scoring joker(s) for the Big Blind.{gold}"
@@ -557,7 +566,7 @@ JOKER_DESC = {
     "Mail-In Rebate": "$5 per discarded card of a rank", "To Do List": "$4 if listed hand played", "Trading Card": "destroy lone discard for $3",
     "Business Card": "faces held 1/2 chance $2", "Gift Card": "+$1 sell value to jokers per round", "Golden Ticket": "$4 per Gold card scored",
     "Midas Mask": "faces become Gold when played", "Driver's License": "x3 if 16+ enhanced cards", "Burnt Joker": "level up first discarded hand",
-    "Perkeo": "copies consumable at end of shop", "Chicot": "disables boss", "Canio": "x1 per face destroyed", "Yorick": "x1 per 23 discards",
+    "Perkeo": "copies consumable at end of shop", "Chicot": "disables boss", "Canio": "x1 per face destroyed", "Caino": "x1 +1x per face card destroyed", "Yorick": "x1 per 23 discards",
     "Showman": "duplicates allowed", "Oops! All 6s": "doubles probabilities", "Invisible Joker": "duplicate a joker after 2 rounds",
     "Certificate": "adds sealed card at round start", "Hallucination": "1/2 tarot when pack opened", "Seance": "spectral on Straight Flush",
     "Superposition": "tarot if Ace in Straight", "Cartomancer": "tarot at blind select", "Mr. Bones": "survive at 25% of blind, destroys self",
@@ -792,11 +801,14 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         n0 = j.get("name")
         if j.get("debuff"):
             notes.append(f"{n0} is DEBUFFED: counts for nothing")
+            if int(j.get("rarity") or 0) == 2:
+                # Baseball Card still fires on a debuffed Uncommon at its position (7815 4Y4GD5CC: 6790 exact with it)
+                resolved.append({"name": "(debuffed)", "_placeholder": True, "_rarity": 2})
             continue
         if n0 in ("Blueprint", "Brainstorm"):
             tgt = _copy_target(i, frozenset())
             if tgt is not None:
-                resolved.append(dict(tgt, edition=j.get("edition")))
+                resolved.append(dict(tgt, edition=j.get("edition"), _rarity=j.get("rarity")))  # the copy is a card of its own rarity
             elif _joker_edition(j):
                 resolved.append(j)  # copies nothing, but its own edition still scores
         else:
@@ -949,8 +961,13 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
                     mult += 2 * (11 if lo == 14 else min(lo, 10))
                 elif n0 == "Baron" and (_r(c) == "K" if not fd_face else True):
                     mult *= 1 + (0.5 if not fd_face else 0.5 / 3) * p_k
+    n_bb = jnames.count("Baseball Card")
     for j in jokers:
         n = j.get("name")
+        if j.get("_placeholder"):
+            if n_bb:
+                mult *= 1.5 ** n_bb
+            continue
         ab = j.get("ability") or {}
         ed = _joker_edition(j)
         if ed == "foil":
@@ -989,10 +1006,10 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Yorick":
             mult *= float(ab.get("x_mult") or 1)
         elif n == "Baseball Card":
-            # x1.5 per Uncommon joker CARD owned: a Blueprint/Brainstorm copy of an Uncommon is a Rare card and does not
-            # count (7813 L28P5GTT: Blueprint copying Ramen added a third x1.5, est 1.4-2.6x high)
-            unc = sum(1 for j2 in lst(state.get("jokers")) if int(j2.get("rarity") or 0) == 2)
-            mult *= 1.5 ** unc
+            # state_events.lua: Baseball fires in context.other_joker, i.e. x1.5 right after EACH Uncommon joker card's own
+            # effect, at that joker's position in the row (applied below); at its own position it adds nothing (7815
+            # 4Y4GD5CC: est 12-30% high with the x1.5s applied at Baseball's slot)
+            pass
         elif n == "Loyalty Card":
             # card.lua: rem = (every-1-hands_since_create) % (every+1) is recomputed DURING scoring and fires when it reaches
             # `every`; the stored value is the previous hand's, so it cycles ..., 1, 0, then fires on the next hand.
@@ -1105,9 +1122,6 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
             mult += float(state.get("_misprint_roll", 11.5))
             if "_misprint_roll" not in state:
                 notes.append("Misprint random 0-23 mult, using its mean 11.5 (7815 94FRAYL6: the old 6 ran ests 2-3x low)")
-        elif n == "Baseball Card":
-            # x1.5 for each Uncommon joker owned (rarity 2); with none it is x1 (Fable 7801: ranked 89 with 0 Uncommons)
-            mult *= 1.5 ** sum(1 for x in lst(state.get("jokers")) if int(x.get("rarity") or 0) == 2 and not x.get("debuff") and x is not j)
         elif n == "Flower Pot":
             if {"S", "H", "C", "D"} <= _suit_cover(scoring, jnames):
                 mult *= 3
@@ -1140,6 +1154,8 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
                 mult *= xm0; applied = True
             if not applied and n not in MODELED:
                 notes.append(f"{n} not modeled")
+        if int(j.get("_rarity", j.get("rarity")) or 0) == 2 and n_bb:
+            mult *= 1.5 ** n_bb  # Baseball Card (and copies of it), right after this Uncommon's own effect
         if ed == "polychrome":
             mult *= 1.5
     if "Misprint" in jnames and "_misprint_roll" not in state and any(x.get("name") == "Misprint" and not x.get("debuff") for x in jokers):
@@ -1655,9 +1671,9 @@ def advise(d):
         made_pf = max((c for c in _candidates(d) if c[0] in ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")), key=lambda c: c[2], default=None)
         if made_pf is not None and made_pf[0] == "Pair" and made_pf[2] * max(1, int(d.get("hands_remaining") or 1)) < 0.8 * need_now:
             made_pf = None  # a Pair far off pace is not a made hand worth shielding (7818 VP4RNVT2: est 36 vs need 300)
-        # ... and so does a PLAY that drops cards of the made hand (7810 GLE6W9AC: "play Pair QQ + fillers" over made QQ66)
-        breaks = made_pf is not None and ((top["action"] == "DISCARD" and bool(set(top.get("cards") or []) & set(made_pf[1])))
-                                          or (top["action"] == "PLAY" and not set(made_pf[1]) <= set(top.get("cards") or [])))
+        # only a DISCARD of a component breaks it; a PLAY that scores part of it now (QQ of QQ22, the 22 stay in hand) is not
+        # a break (Main 16:2x, 7817 HH1TRLD1 kept a .91 discard over the solver's .96 "play QQ" line)
+        breaks = made_pf is not None and top["action"] == "DISCARD" and bool(set(top.get("cards") or []) & set(made_pf[1]))
         # jokerless or ante 1-2: a made hand at pace (est >= need / hands left) is played unless the alternative wins by
         # 0.10 on a full sample (n >= 300) (Main 11:4x: GLE6W9AC, YY9W2AKB lost the ante-1 Small)
         early = int(d.get("ante") or 1) <= 2 or not any(not j.get("debuff") for j in lst(d.get("jokers")))
@@ -2662,7 +2678,7 @@ def classify_joker(name, cost, mh):
         return "PLUS(weak/conditional)", 25
     if name in SUIT_JOKERS:
         return "PLUS(one suit)", 18  # ~1 matching card per pair-family hand: +3 mult on average, not worth a slot
-    if name in ("Hologram", "Vampire", "Constellation", "Campfire", "Madness", "Lucky Cat", "Glass Joker", "Steel Joker", "Canio", "Yorick"):
+    if name in ("Hologram", "Vampire", "Constellation", "Campfire", "Madness", "Lucky Cat", "Glass Joker", "Steel Joker", "Canio", "Caino", "Yorick"):
         return "XMULT(growth: must be fed)", 80
     if dl.startswith("x") or " x" in dl or "xmult" in dl:
         return "XMULT", 100
@@ -3328,6 +3344,15 @@ def shop_advise_sim(d, budget_s=6.0):
         # the printed SCORE CHECK band says EMERGENCY: leaving with money contradicts it (7818 K9XMU63Y, Haiku); hunt a multiplier
         sim.append(f"  (rule advice was: {adv[8:]})")
         adv = f"ADVICE: REROLL -> b reroll   (EMERGENCY in SCORE CHECK: leaving with ${d.get('money')} does not fix the next boss; reroll for a multiplier (xMult > +mult scorer > Buffoon pack))"
+    # FINAL GUARD (7804 IBXYJAUA: BUY a 2nd rental Supernova with a rented Obelisk at ante 2-3 slipped through the rule
+    # path): before ante 5 a 2nd rental is bought only bundled with selling the rented one
+    m_fg = re.match(r"ADVICE: [A-Z ]+-> b (?:buy|buyuse) (\d+)", adv)
+    it_fg = next((x for x in lst((d.get("shop") or {}).get("jokers")) if m_fg and x.get("index") == int(m_fg.group(1))), None)
+    if it_fg is not None and it_fg.get("set") == "Joker" and _stk(it_fg)["rental"] and int(d.get("ante") or 1) < 5 \
+            and any(_stk(j)["rental"] for j in lst(d.get("jokers"))) and "b sell" not in adv:
+        sim.append(f"  (rule advice was [BARRED: a 2nd rental before ante 5 needs the first one sold]: {adv[8:]})")
+        adv = ("ADVICE: LEAVE -> b endshop   (a 2nd rental before ante 5 is barred unless you sell your rented joker for it "
+               f"(`b sell N` then `b buy {m_fg.group(1)}` if the SIM row with that sell is better))")
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
     print("\n".join(lines))
 
@@ -3488,6 +3513,9 @@ def _shop_rules(d):
     def alive_next(j):
         """still scoring after the blinds left in this ante: perishables count only if their tally outlasts them"""
         s_a = _stk(j)
+        if j.get("name") == "Seltzer" and isinstance((j.get("ability") or {}).get("extra"), (int, float)) and \
+                (j.get("ability") or {}).get("extra") <= 3 * max(1, bl_left):
+            return False  # Seltzer's retriggers run out after ~3 hands per blind left (Main 16:2x)
         return not s_a["perishable"] or s_a["perish_tally"] is None or s_a["perish_tally"] > bl_left
     expiring = [j for j in jokers if _stk(j)["perishable"] and _stk(j)["perish_tally"] is not None and _stk(j)["perish_tally"] <= 3]
     if expiring:
@@ -3917,6 +3945,11 @@ def _shop_rules(d):
                 score = min(score, 48 if not owns_mult else int(45 + 30 * 0.58 * max(0.0, marginal_gain(d, mh, c))))
             elif name in ("Popcorn", "Ice Cream", "Turtle Bean"):
                 score = min(score, 60)  # decaying: below a permanent joker of the same gain (Main 16:xx, Ice Cream rated BUY)
+            elif name == "Madness" and not any(not _stk(j)["eternal"] and (_is_scoring(classify_joker(j.get("name"), 0, mh)[0]) or joker_share(d, j, mh) >= 0.1)
+                                               for j in jokers):
+                # nothing valuable to destroy (only joker, or only eternal/dead weight): a free growing xMult, +0.5 per Small/Big
+                # (7807 ELNXY7D1: AVOID as the only joker)
+                cls, score = "XMULT(growth: +x0.5 per Small/Big; nothing of value for it to destroy)", max(score, 70)
             score, st_notes, may_replace = sticker_adjust(c, cls, base_sc, score, ante, rounds_left, len(rentals), (ante <= 3 and scoring_now < 2) or bool(emergency), core_hint=core_gain)
             if any("ETERNAL on a" in s_n for s_n in st_notes) and len(jokers) >= 3:
                 score = min(score, 15)  # 3+ jokers owned: a weak Eternal takes one of the last slots meant for an xMult, forever
@@ -4303,16 +4336,18 @@ def _shop_rules(d):
             print(f"ADVICE: SELL -> b sell {j.get('index')}   (fund {o[3].split(' [')[0]} (${o[4]}, score {o[0]}): {j.get('name')}{stickers(j)} "
                   f"{'dies within a round' if _stk(j)['perishable'] else 'is a flat rental costing $3 a round'}; sell it (${j.get('sell_cost')}), then re-run shopadvise)")
             return
-    if emergency and money >= 4:
-        # EMERGENCY with $4+: never a bare LEAVE; interest is worth nothing if the run ends (7815 3CR57DK4 left at 0.18)
-        em_o = [o for o in options if o[4] <= money and o[0] >= 20 and not o[1].startswith("AVOID") and refused not in o[3] and "ETERNAL on a" not in o[3]
-                and not (o[6] and free <= 0)]
+    if (emergency or tight) and money >= 4:
+        # EMERGENCY / TIGHT with $4+: never a bare LEAVE; interest is worth nothing if the run ends (7815 3CR57DK4 left at
+        # 0.18; 7816 QIB6QXEF left a TIGHT 1.08x shop with $4 and lost the Flint by 5)
+        tag_e = "EMERGENCY" if emergency else "TIGHT"
+        em_o = [o for o in options if o[4] <= money and o[0] >= (20 if emergency else 30) and not o[1].startswith("AVOID") and refused not in o[3] and "ETERNAL on a" not in o[3]
+                and not (o[6] and free <= 0) and (emergency or not o[1].startswith(("ECON", "UTIL", "VOUCHER")))]
         if em_o:
             o = max(em_o, key=lambda t: t[0])
             lab_e = "PACK" if o[2].startswith("pack") else "VOUCHER" if o[2].startswith("vouch") else "BUY"
-            print(f"ADVICE: {lab_e} -> b {o[2]}   (EMERGENCY: the best affordable item beats leaving with ${money}; {o[3]})")
+            print(f"ADVICE: {lab_e} -> b {o[2]}   ({tag_e}: the best affordable item beats leaving with ${money}; {o[3]})")
             return
-        if money - reroll - rent_due >= 1:
+        if emergency and money - reroll - rent_due >= 1:
             print(f"ADVICE: REROLL -> b reroll   (EMERGENCY: nothing here helps; a reroll for a +mult joker beats leaving with ${money}; ${money - reroll} left after)")
             return
     print("ADVICE: LEAVE -> b endshop   (nothing worth buying at this money level)")

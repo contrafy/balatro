@@ -1009,3 +1009,20 @@ def test_final_advice_never_buys_second_rental_before_ante_5(monkeypatch):
                     for k, o in enumerate(opts)]
     monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
     assert not _advice(_out(cli.shop_advise_sim, d)).startswith("ADVICE: BUY")
+
+
+def test_tier1_permanent_mult_first_at_ante_1(monkeypatch):
+    # Main 16:4x (~8 runs): ante 1-2 with < 2 permanent any-hand +mult scorers buys one of those before a rental/perishable
+    d = shop(jokers=[], shop_jokers=[{"index": 1, "name": "Wily Joker", "set": "Joker", "cost": 1, "rental": True},
+                                     {"index": 2, "name": "Joker", "set": "Joker", "cost": 4, "ability": {"mult": 4}}], money=6, ante=1)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
+
+    class FakeSim:
+        def options_from_state(self, st, **kw):
+            return [{"label": "baseline (buy nothing)"}] + [{"label": f"buy {c['name']} ${c['cost']}", "add_joker": c, "cost": c["cost"]} for c in st["shop"]["jokers"]]
+
+        def value_options(self, st, opts, **kw):
+            p = {"baseline (buy nothing)": 0.30, "buy Wily Joker $1": 0.60, "buy Joker $4": 0.50}
+            return [{"label": o["label"], "option": o, "feasible": True, "p_next": p[o["label"]], "delta": p[o["label"]] - 0.30, "money_after": 6} for o in opts]
+    monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
+    assert _advice(_out(cli.shop_advise_sim, d)).startswith("ADVICE: BUY -> b buy 2")
