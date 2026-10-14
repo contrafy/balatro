@@ -997,7 +997,9 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Reserved Parking" or n == "Business Card":
             pass
         elif n == "Blackboard":
-            reds = [c for c in held if SUIT.get(c.get("suit")) not in {"S", "C"} and "Wild" not in _enh(c)]
+            # every HELD card counts, debuffed ones too, and a debuffed Wild is just its printed suit (7806 HA3Z5VN7: x3
+            # kept under The Club)
+            reds = [c for c in held_all if c.get("rank") is not None and SUIT.get(c.get("suit")) not in {"S", "C"} and not ("Wild" in _enh(c) and not c.get("debuff"))]
             # a planned round (SCORE CHECK deals) plays the red cards away as fillers: x3 when they fit beside the hand
             # (7805 16N52CRZ: SCORE CHECK omitted Blackboard while it made 16k one-shots)
             if not reds or (state.get("_plan_fillers") and len(reds) <= max(0, 5 - int(played_n or len(scoring)))):
@@ -1446,12 +1448,13 @@ def advise(d):
         # (7803 KMKQCHZS: FH dig .49 vs Two Pair .09 was kept)
         gap = top["p_clear"] - (mine or {}).get("p_clear", 0)
         conf_ok = not top.get("low_n") and (not top.get("low_confidence") or (gap >= 0.20 and int(top.get("n") or 0) >= 300))
-        better_p = mine and conf_ok and gap > (0.10 if breaks else 0.05) and not (strict and int(top.get("n") or 0) < 300)
+        # breaking a made pair-family hand needs a full sample (n >= 300) at every ante (7806 HA3Z5VN7: n=64 at The Tooth)
+        better_p = mine and conf_ok and gap > (0.10 if breaks else 0.05) and not (breaks and int(top.get("n") or 0) < 300)
         better_c = mine and conf_ok and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
         if mine and not (better_p or better_c):
             why_k = (f"the solver's best is low-confidence (n={top.get('n')}; it switches only on +0.20 with n >= 300; lead {gap:+.2f})" if gap > 0.05 and not conf_ok else
                      f"breaking your made {made_pf[0]} needs +0.10 (the solver leads by {gap:+.2f})" if breaks and 0.05 < gap <= 0.10 else
-                     f"a made hand at pace at ante 1-2 / jokerless needs n >= 300 (lead {gap:+.2f}, n={top.get('n')})" if strict and gap > 0.05 else
+                     f"breaking your made {made_pf[0]} needs a full solver sample (n >= 300; this lead {gap:+.2f} is on n={top.get('n')})" if breaks and gap > 0.10 else
                      f"the solver's best leads by only {gap:+.2f} (needs > 0.05 calibrated p)")
             sol.append(f"  (rule pick kept: {why_k})")
         if better_p or better_c:
@@ -2500,7 +2503,8 @@ def deck_round_est(d, jokers=None, samples=30, seed=11):
     if len(cards) < hs:
         return None
     h = _hands_pr(d, jokers)
-    base = dict(d, phase="SELECTING_HAND", blind={}, jokers=lst(d.get("jokers")) if jokers is None else jokers, _plan_fillers=True)
+    # planning rounds value Misprint at its mean (+11.5), not the conservative 6 of a single play (7816 6G4RGQHP)
+    base = dict(d, phase="SELECTING_HAND", blind={}, jokers=lst(d.get("jokers")) if jokers is None else jokers, _plan_fillers=True, _misprint_roll=11.5)
     st_ord = dict(base, hands_remaining=h, discards_remaining=int(d.get("discards_per_round") or 3))
     st_fin = dict(base, hands_remaining=1, discards_remaining=0)
     # Mystic Summit plan: burn the discards first, then every hand carries +15 (7807 sold Summit for a perishable Ice Cream)
@@ -2551,7 +2555,7 @@ def deck_best_est(d, samples=40, pct=0.75, seed=7, hs_delta=0):
         return None
     rng = random.Random(seed)
     base = dict(d, phase="SELECTING_HAND", blind={}, hands_remaining=1, discards_remaining=0,
-                hands_per_round=d.get("hands_per_round") or 3, _plan_fillers=True)
+                hands_per_round=d.get("hands_per_round") or 3, _plan_fillers=True, _misprint_roll=11.5)
     keep_disc = dict(base, discards_remaining=int(d.get("discards_per_round") or 3))  # Banner/Delayed Gratification
     vals = []
     splash = any(j.get("name") == "Splash" and not j.get("debuff") for j in lst(d.get("jokers")))
@@ -3144,7 +3148,7 @@ def _shop_rules(d):
     # discard-aware SCORE CHECK: DrawSolver's round simulation (round policy with discards, current jokers alive next ante)
     # replaces the deal-only best hand (Main 12:1x, 3 reports: SL5MJZY1 / UDRRTZQ9 / S5XFPLXV read 0.33-0.52 while dug
     # hands made 4-8k). The calibrated bands stay on the same per-hand scale: round p50 / hands.
-    rq = _round_q(dict(d, jokers=[j for j in jokers if alive_next(j)]))
+    rq = _round_q(dict(d, jokers=[j for j in jokers if alive_next(j)], _misprint_roll=11.5, _plan_fillers=True))
     if rq:
         surv = max(surv, int(rq["round"][1] / max(1, _hands_pr(d))))
     sc_ratio = surv / (boss_next / _hands_pr(d)) if boss_next else 9  # Burglar +3 hands (7805 UH5NGY7A)
@@ -3210,7 +3214,12 @@ def _shop_rules(d):
         print(f"  GOLD CHECK: {n_rg} reliable/growth xMult alive next ante; target {rg_target} by the end of ante {2 if ante <= 2 else (5 if ante <= 5 else 7)}"
               + (" (incl. a growing one)" if rg_target == 3 else "")
               + (". Pair builds with 0 xMult top out ~10k/hand at ante 5 (16.7k needed)." if (surv or 0) < 10000 else f". Your deck already reaches ~{surv}/hand; the xMult is for antes 6-8."))
-    if mh in ("Flush", "Straight") and stake >= 6:
+    eng = sum(1 for j in jokers if not j.get("debuff") and j.get("name") in (("Droll Joker", "Crafty Joker", "The Tribe", "Smeared Joker", "Four Fingers", "Flower Pot")
+                                                                          + tuple(SUIT_JOKERS) if mh == "Flush" else
+                                                                          ("Crazy Joker", "Devious Joker", "The Order", "Shortcut", "Four Fingers", "Runner")))
+    # an owned Flush/Straight engine (2+ of its jokers) is the build, not a mistake (7808 4L773NBI: told to shift right
+    # after Gluttonous + Droll + Crafty cleared The Plant)
+    if mh in ("Flush", "Straight") and stake >= 6 and eng < 2:
         print(f"  BUILD: your main hand is {mh}; at Gold 0 of 6 Flush/Straight-main runs reached ante 4 (17 of 28 pair-family runs did). "
               "Shift to Pair/Two Pair/Trips: their jokers and planets are ranked above Flush/Straight ones.")
     # Joker order matters only between joker-main effects that touch MULT: a +mult joker (or holo edition) right of a
@@ -3995,7 +4004,7 @@ def pack_advise(d):
                 "Hex": (55 if len(strong_j) == 1 and n_j <= 2 else 5, None, "Polychrome on a random joker, destroys the others"),
                 "Immolate": ((80 if money < 6 and any(_stk(j)["rental"] for j in jokers) else 72 if money < 8 else 60 if money < 20 else 40), None,
                              "destroys 5 random hand cards, +$20 (at Gold $20 is an xMult purchase; losing 5 random cards thins the deck)"),
-                "Ectoplasm": (40, None, "Negative on a random joker (+1 slot), -1 hand size"),
+                "Ectoplasm": (40 if int(d.get("hand_size") or 8) >= 8 else 15, None, "Negative on a random joker (+1 slot), -1 hand size (every hand and the SCORE CHECK lose a card)"),
                 "Grim": (25, None, "destroys a random card, adds 2 Aces"), "Familiar": (25, None, "destroys a random card, adds 3 faces"),
                 "Incantation": (25, None, "destroys a random card, adds 4 numbered cards"),
                 "Medium": (20, tgt, "Purple Seal on the target card"), "Trance": (20, tgt, "Blue Seal on the target card"),

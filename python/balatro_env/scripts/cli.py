@@ -2962,6 +2962,14 @@ def shop_advise_sim(d, budget_s=6.0):
                        if weak_fade else f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes P(clear all next 3 blinds) by {g_m:+.2f}; nothing on offer raises it by more than 0.02)")
             else:
                 sim.append(f"  (SIM neutral on the rule pick ({g_m:+.2f}): the rules decide)")
+    m_sb = re.match(r"ADVICE: SELL then BUY -> b sell (\d+)  then  b (buy|buyuse) (\d+)", adv)
+    if m_sb:
+        # the sale that makes room is the one the SIM resolved for this buy, not the rule's weakest guess (7804 Y8NDGHJ8
+        # sold Walkie Talkie while the SIM sold Greedy)
+        row = next((r for r in feas if r["option"].get("_cmd") == f"buy {m_sb.group(3)}" and isinstance(r["option"].get("sell"), list) and r["option"]["sell"]), None)
+        if row and row["option"]["sell"][0] != int(m_sb.group(1)):
+            nm_s = next((j.get("name") for j in lst(d.get("jokers")) if j.get("index") == row["option"]["sell"][0]), "?")
+            adv = adv.replace(f"b sell {m_sb.group(1)}  then", f"b sell {row['option']['sell'][0]}  then", 1) + f"  [sell {nm_s}: the SIM's choice]"
     # INVARIANT: an affordable item with SIM gain >= 0.10 that passes the hard rules is never answered with LEAVE
     if adv.startswith("ADVICE: LEAVE") and best is not None and gain >= max(0.10, _req(best)) and not noise:
         sim.append(f"  (rule advice was: {adv[8:]})")

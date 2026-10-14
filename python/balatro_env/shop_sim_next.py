@@ -841,9 +841,24 @@ def _expand_packs(state, options, seed):
                 tele = "v_telescope" in [str(v.get("key") if isinstance(v, dict) else v)
                                          for v in _lst(state.get("used_vouchers"))]
                 main = next((n for n, h in PLANET_HAND.items() if top and h == top[0]), None)
-                reps[kind] = {"names": names, "weights": [planets[n] for n in names], "telescope": main if tele else None}
+                reps[kind] = {"names": names, "weights": [planets[n] for n in names], "telescope": main if tele else None,
+                              "main": main}
         plans[oi] = dict(reps[kind], kind=kind, size=int(pk.get("size") or 2), choose=int(pk.get("choose") or 1))
     return subs, plans
+
+
+PLANET_TIE = 0.05  # simulated planet values closer than this are noise: the main hand's planet wins
+
+
+def _pick_value(c, base, plan):
+    """Value of one pack card for choosing the pick: a planet never ranks below skipping (a level-up cannot lower a
+    score: anything lower is sampling noise), and the planet of the most played hand gets PLANET_TIE on top
+    (7804: Jupiter beat Saturn, the hand being made, on noise)."""
+    v = _value(c)
+    if c is base or plan.get("kind") != "Celestial":
+        return v
+    v = max(v, _value(base))
+    return v + (PLANET_TIE if plan.get("main") and c["label"] == f"_pack Celestial: {plan['main']}" else 0.0)
 
 
 def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
@@ -875,9 +890,9 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
                     names.append(n)
             cards = [by_label.get(f"_pack Celestial: {n}") for n in names]
         cands = [c for c in cards if c is not None and c.get("p_next") is not None] + [base]
-        best = max(cands, key=lambda c: (_value(c) - DEAD_SHOP_P * sum(1 for m in c.get("money_path") or []
-                                                                       if 0 <= m < cost), c.get("score_ratio_term") or 0,
-                                         c["score_ratio"], c.get("money_after") or 0))
+        best = max(cands, key=lambda c: (_pick_value(c, base, plan) - DEAD_SHOP_P * sum(
+            1 for m in c.get("money_path") or [] if 0 <= m < cost), c.get("score_ratio_term") or 0,
+            c["score_ratio"], c.get("money_after") or 0))
         dead += sum(1 for m in best.get("money_path") or [] if m - cost < 0)
         picks[best["label"]] += 1
         for k in keys:
@@ -990,13 +1005,23 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
             r["notes"].append("level-up valued at baseline (sim noise below it)")
         r["delta_value"] = r["value"] - bv
     top = max((r["value"] for r in res if r.get("value") is not None), default=0.0)
+    hl = state.get("hand_levels") or {}
+    main = max(hl, key=lambda h: int((hl[h] or {}).get("played") or 0)) if hl else None
+
+    def pure_lv(r):
+        o = r["option"]
+        return bool(o.get("levels")) and not (o.get("add_joker") or o.get("sell") or o.get("add_cards"))
+
+    top_planet = any(pure_lv(r) and r["value"] >= top - 1e-12 for r in res if r.get("value") is not None)
 
     def rank(r):
         if r.get("value") is None:
-            return (0, 0, 0.0, 0.0, 0.0, 0)
-        tied = r["value"] >= top - TIE_P
-        return (1, tied, 1.0 if tied else r["value"], r.get("score_ratio_term") or 0.0, r["score_ratio"],
-                r.get("shop_money", r["money_after"]))
+            return (0, 0, 0.0, 0, 0.0, 0.0, 0)
+        # planets closer than PLANET_TIE to the best planet are noise apart: the most played hand's planet wins
+        main_lv = pure_lv(r) and r["option"]["levels"] == [main]
+        tied = r["value"] >= top - TIE_P or (top_planet and main_lv and r["value"] >= top - PLANET_TIE)
+        return (1, tied, 1.0 if tied else r["value"], tied and main_lv, r.get("score_ratio_term") or 0.0,
+                r["score_ratio"], r.get("shop_money", r["money_after"]))
 
     res.sort(key=rank, reverse=True)
     return res

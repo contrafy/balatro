@@ -539,10 +539,12 @@ class RoundSolver:
         (base with every Misprint at 0, score per Misprint mult point, Misprint count, score per Lucky +20 hit,
         Lucky triggers, Bloodstone x1.5 chances, score of a Space Joker level-up, Space Joker count)."""
         st = self._state(h, d, ob)
+        if self.n_misprint:  # cli.estimate takes the roll from _misprint_roll (default its mean): pin it at 6
+            st = dict(st, _misprint_roll=6)
         scd = [c.d for c in sc]
         hd = [c.d for c in held if c.known]
         n = max(5, len(played)) if self.psychic else len(played)  # The Psychic: every real play is 5 cards
-        s6 = self._est(t, scd, hd, st, rep, n)  # estimate counts each Misprint as +6
+        s6 = self._est(t, scd, hd, st, rep, n)  # every Misprint at +6 mult
         base, slope = s6, 0.0
         if self.n_misprint:
             st0 = dict(st, jokers=[dict(j, name="_misprint_zero") if j.get("name") == "Misprint" else j

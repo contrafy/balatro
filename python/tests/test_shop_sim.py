@@ -183,10 +183,11 @@ def test_every_rental_pays_rent_each_round_and_dead_shops_are_flagged():
     res = by_label(run(st, [{"label": "base"}, {"label": "2nd rental", "add_joker": second, "cost": 1}],
                        budget_s=2, min_samples=16))
     two, base = res["2nd rental"], res["base"]
-    assert two["rent_per_round"] == 6 and two["rent_horizon"] == 18 and base["rent_horizon"] == 9
+    # sellable rentals count RENT_KEEP (6) blinds of rent at least (7817 D5DGN1SY: 3 blinds made two rentals cheap)
+    assert two["rent_per_round"] == 6 and two["rent_horizon"] == 36 and base["rent_horizon"] == 18
     assert two["money_path"][0] < 0 and any("shop is dead" in n for n in two["notes"])
     assert two["money_path"][-1] <= base["money_path"][-1] - 6  # $1 cost + $9 rent, partly offset by more unused hands
-    assert two["p_adj"] == pytest.approx(two["p_next"] * max(0.1, 1 - 0.18 - 0.05 * two["dead_shops"]))
+    assert two["p_adj"] == pytest.approx(two["p_next"] * max(0.1, 1 - 0.36 - 0.05 * two["dead_shops"]))
 
 
 def test_obelisk_growth_carries_across_simulated_rounds():
@@ -310,3 +311,56 @@ def test_the_needle_with_burglar_gives_one_plus_three_hands():
     plain = shop_sim._round_state(shop_state(boss="The Needle"), shop_state(boss="The Needle"),
                                   {"name": "The Needle", "boss": True, "chips": 600}, 1, set())
     assert plain["hands_remaining"] == 1
+
+
+def test_income_jokers_feed_the_money_path():
+    # 7801 4JA3JTD1: Golden Joker (+$4 per round) was worth $0 in the sim
+    st = shop_state(money=10)
+    bl = shop_sim.upcoming_blinds(st, 3, BLIND_BASE)
+    stats = [[1, 1, 1.0, 0.0] for _ in bl]
+    gold = dict(st, jokers=[dict(joker("Golden Joker", ability={"extra": 4}), index=1)])
+    assert shop_sim._income(gold, bl) == [4.0, 4.0, 4.0]
+    plain = shop_sim._money_path(st, st, bl, stats, 10)
+    rich = shop_sim._money_path(st, gold, bl, stats, 10)
+    assert rich[-1] >= plain[-1] + 12
+    assert shop_sim._rent_factor({"income": 12.0}) == pytest.approx(1.12)
+
+
+def test_gift_card_grows_sell_values_and_swashbuckler():
+    # 7802 4EP3BAN9: Gift Card (+$1 sell value per joker per round) feeding Swashbuckler was valued -0.14
+    st = shop_state(jokers=[joker("Swashbuckler", sell_cost=2), joker("Gift Card", sell_cost=3),
+                            joker("Joker", ability={"mult": 4}, sell_cost=1)])
+    r0 = shop_sim._round_state(st, st, {"name": "Small Blind", "boss": False, "chips": 300}, 0, set())
+    r2 = shop_sim._round_state(st, st, {"name": "Big Blind", "boss": False, "chips": 450}, 2, set())
+    assert r0["jokers"][0]["ability"]["mult"] == 4  # 3 + 1
+    assert r2["jokers"][0]["ability"]["mult"] == 8  # (3 + 2) + (1 + 2)
+
+
+def test_grim_familiar_incantation_add_enhanced_cards():
+    st = shop_state(pack=[{"name": "Grim", "set": "Spectral"}])
+    st["hand"] = [dict(c, index=i + 1) for i, c in enumerate(st["deck"]["cards"][:8])]
+    opt = next(o for o in shop_sim.options_from_state(st) if o["label"] == "take Grim")
+    assert len(opt["add_cards"]) == 2 and all(c["rank"] == "Ace" and c["enhancement"] != "m_stone"
+                                              for c in opt["add_cards"])
+    st2, err, _n = shop_sim.apply_option(st, opt)
+    assert err is None and len(st2["deck"]["cards"]) == len(st["deck"]["cards"]) + 1
+
+
+def test_new_joker_goes_leftmost_when_brainstorm_is_owned():
+    # 7807 2WEJC1IS: Stuntman read +0.00 although Brainstorm copies the leftmost joker
+    import balatro_env.scripts.cli as cli_mod
+    st = shop_state(jokers=[joker("Egg"), joker("Brainstorm")])
+    o = shop_sim._place_copy(st, {"add_joker": joker("Ramen", ability={"x_mult": 2.0})}, cli_mod)
+    assert o.get("insert_at") == 0
+    plain = shop_state(jokers=[joker("Egg")])
+    assert "insert_at" not in shop_sim._place_copy(plain, {"add_joker": joker("Ramen", ability={"x_mult": 2.0})},
+                                                   cli_mod)
+
+
+def test_planet_pick_prefers_the_main_hand_within_noise():
+    base = {"label": "skip", "p_next": 0.5, "p_term": 0.5}
+    sat = {"label": "_pack Celestial: Saturn", "p_next": 0.49, "p_term": 0.5}
+    jup = {"label": "_pack Celestial: Jupiter", "p_next": 0.52, "p_term": 0.5}
+    plan = {"kind": "Celestial", "main": "Saturn"}
+    assert shop_sim._pick_value(sat, base, plan) >= shop_sim._value(base)  # never below skipping
+    assert shop_sim._pick_value(sat, base, plan) > shop_sim._pick_value(jup, base, plan)

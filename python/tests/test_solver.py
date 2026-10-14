@@ -157,6 +157,12 @@ def test_a_certain_clear_with_cards_in_hand_beats_tied_discard_lines():
     top = res[0]
     assert top["action"] == "PLAY" and top["certain"] and "certain" in top["note"]
     assert not any(r["certain"] for r in res if r["action"] == "DISCARD")
+    # 7807 E1PM6PSH: with Blackboard the next hand also holds the cards drawn now (a red one breaks x3): Pair KK now
+    # + Pair QQ next is certain without it, not with it
+    hand = ["KS", "KC", "QS", "QC", "9C", "7S", "4C", "2D"]
+    for jokers, want in (((), True), (("Blackboard",), False)):
+        rs = solver.RoundSolver(state(hand, need=110, hands=2, discards=2, jokers=jokers), estimate)
+        assert rs._certain({"kind": solver.PLAY, "pos": (0, 1)}) is want
 
 
 def test_blackboard_plays_red_cards_away_as_fillers():
