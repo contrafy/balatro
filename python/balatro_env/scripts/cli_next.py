@@ -2603,6 +2603,15 @@ AVOID_JOKERS = {"Madness": "destroys one of your jokers every blind", "Ceremonia
                 "Merry Andy": "-1 hand size"}
 
 
+def _xmult_like(d, aj):
+    """an xMult for the rental rules: an xMult class, a type xMult, Stencil/Throwback, or a Blueprint/Brainstorm next to an
+    owned xMult."""
+    nm = aj.get("name")
+    mh = main_hand(d)
+    return (classify_joker(nm, 0, mh)[0].startswith("XMULT") or nm in TYPE_X_JOKERS or nm in ("Joker Stencil", "Throwback")
+            or (nm in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") for j in lst(d.get("jokers")))))
+
+
 def _tier1(d, c, mh):
     """PLAYBOOK 2b first buys: a permanent (no perishable/rental) joker that adds MULT on any hand you play, now: not
     conditional on a rare type/suit, not decaying, not growth-from-zero."""
@@ -3221,20 +3230,14 @@ def shop_advise_sim(d, budget_s=6.0):
     def allowed(r):
         aj = r["option"].get("add_joker") or {}
         st = _stk(aj)
+        if st["rental"] and ante_s <= 2 and not _xmult_like(d, aj):
+            # HARD (docs/analysis/rental_study.md, 470 stake-8 runs): a flat (non-xMult) rental at ante 1-2 drops P(reach ante
+            # 5) from 57% to 38% (26% when it is the first scorer), even at 0 scorers; one xMult rental stays allowed
+            return False
         if st["eternal"] and st["rental"] and ante_s < 7:
             # exception (7806 lost the ante-4 Small by 79 after a $1 eternal-rental The Trio at SIM +0.23 was blocked):
-            # an xMult while SCORE CHECK < 0.5 and the SIM gain is >= 0.15
-            x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or aj.get("name") in ("Joker Stencil", "Throwback") or \
-                (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
-            # a copier of an owned xMult is an xMult (7810 UIL7HPIQ: Blueprint doubling the only xMult Ramen was barred)
-            # exception: 0 scoring jokers at ante 1-2 and no other scorer on offer: an eternal-rental scorer is the only way
-            # through (7809 S634VB4Y died jokerless at ante 2; mirrors the players' rule)
-            jokerless = ante_s <= 2 and not any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers"))) and \
-                _is_scoring_cls(classify_joker(aj.get("name"), 0, main_hand(d))[0]) and \
-                not any(_is_scoring_cls(classify_joker((x["option"].get("add_joker") or {}).get("name"), 0, main_hand(d))[0])
-                        and not (_stk(x["option"].get("add_joker") or {})["eternal"] and _stk(x["option"].get("add_joker") or {})["rental"])
-                        for x in feas if x["option"].get("add_joker"))
-            if not ((x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15) or jokerless):
+            # an xMult (or a copier of one: 7810 UIL7HPIQ) while SCORE CHECK < 0.5 and the SIM gain is >= 0.15
+            if not (_xmult_like(d, aj) and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
                 return False
         # A second rental: before ante 5 only bundled with selling the first (the players' hard rule; 7816 FVPWB9XC ended
         # with five $1 rentals); at ante 5 also when both are xMults or the SIM gains +0.15 with the money path >= 0
@@ -3350,7 +3353,7 @@ def shop_advise_sim(d, budget_s=6.0):
                 forced = "EMERGENCY" in adv
             if g_m < -0.02 or (forced and g_m <= 0.0) or (sim_top_nothing and g_m <= 0.0) or barred_rule or weak_fade:
                 sim.append(f"  (rule advice was{' [BARRED: hard sticker rule]' if barred_rule else ''}: {adv[8:]})")
-                adv = ("ADVICE: LEAVE -> b endshop   (the rule pick is barred by a hard sticker rule: a 2nd permanent rental before ante 6 (unless both are xMults or you sell the first), an eternal rental, or an eternal non-scorer; nothing else raises P(clear) by more than 0.02)"
+                adv = ("ADVICE: LEAVE -> b endshop   (the rule pick is barred by a hard sticker rule: a flat rental at ante 1-2, a 2nd rental before ante 5 (unless you sell the first), an eternal rental, or an eternal non-scorer; nothing else raises P(clear) by more than 0.02)"
                        if barred_rule else
                        f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick is perishable/type-conditional and gains only {g_m:+.2f} (needs {_req(mine):+.2f}); nothing else clearly helps)"
                        if weak_fade else f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes P(clear all next 3 blinds) by {g_m:+.2f}; nothing on offer raises it by more than 0.02)")
@@ -3412,6 +3415,24 @@ def shop_advise_sim(d, budget_s=6.0):
         sim.append(f"  (rule advice was [BARRED: a 2nd rental before ante 5 needs the first one sold]: {adv[8:]})")
         adv = ("ADVICE: LEAVE -> b endshop   (a 2nd rental before ante 5 is barred unless you sell your rented joker for it "
                f"(`b sell N` then `b buy {m_fg.group(1)}` if the SIM row with that sell is better))")
+    m_fg = re.match(r"ADVICE: [A-Z ]+-> b (?:buy|buyuse) (\d+)", adv)
+    it_fg = next((x for x in lst((d.get("shop") or {}).get("jokers")) if m_fg and x.get("index") == int(m_fg.group(1))), None)
+    if it_fg is not None and it_fg.get("set") == "Joker" and _stk(it_fg)["rental"] and int(d.get("ante") or 1) <= 2 and not _xmult_like(d, it_fg):
+        # HARD (docs/analysis/rental_study.md, 470 runs): never a flat rental at ante 1-2, even at 0 scorers; stopgap = a
+        # perishable/permanent scorer or a Buffoon pack
+        money_g = int(d.get("money") or 0)
+        free_g = int(d.get("joker_slots") or 5) - len(lst(d.get("jokers")))
+        alt_j = [c for c in lst((d.get("shop") or {}).get("jokers")) if c.get("set") == "Joker" and not _stk(c)["rental"] and int(c.get("cost") or 0) <= money_g
+                 and free_g > 0 and _is_scoring_cls(classify_joker(c.get("name"), 0, main_hand(d))[0])]
+        buff_g = next((b for b in lst((d.get("shop") or {}).get("boosters")) if "Buffoon" in str(b.get("name")) and int(b.get("cost") or 0) <= money_g), None)
+        sim.append(f"  (advice was [BARRED: a flat rental at ante 1-2]: {adv[8:]})")
+        if alt_j:
+            bj = max(alt_j, key=lambda c: marginal_gain(d, main_hand(d), c))
+            adv = f"ADVICE: BUY -> b buy {bj.get('index')}   (no flat rental at ante 1-2: {bj.get('name')}{stickers(bj)} ${bj.get('cost')} is the scorer to take)"
+        elif buff_g is not None:
+            adv = f"ADVICE: PACK -> b pack {buff_g.get('index')}   (no flat rental at ante 1-2: a Buffoon pack is the joker view instead)"
+        else:
+            adv = "ADVICE: LEAVE -> b endshop   (no flat rental at ante 1-2 (470-run study: P(reach ante 5) 38% vs 57%); keep the money for the next shop's scorer)"
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
     print("\n".join(lines))
 
@@ -3466,22 +3487,20 @@ def pack_advise_sim(d, budget_s=3.5):
         rent_ok = not (st["rental"] and own_rent and ante_s < 6) or sells_rp or (ante_s >= 5 and big)
         # an eternal rental before ante 7 only for an xMult (or a copier of one) on a +0.15 gain (7810 YYBSWJIJ: an
         # eternal-rental Jolly at +0.51 was picked; Blue Joker 7809 D5KV79HL was the xMult-like case)
-        x_e = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or aj.get("name") in ("Joker Stencil", "Throwback") or \
-            (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
-        # 0 scorers at ante 1-2: an eternal-rental scorer is allowed (the players' rule exception; 7809 S634VB4Y)
-        jokerless_p = ante_s <= 2 and _is_scoring_cls(classify_joker(aj.get("name"), 0, main_hand(d))[0]) and \
-            not any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers")))
+        x_e = _xmult_like(d, aj)
+        if st["rental"] and ante_s <= 2 and not x_e:
+            return False  # HARD: no flat rental at ante 1-2, even free in a pack (docs/analysis/rental_study.md)
         bar_e = _eternal_bar(d, aj)
         if bar_e and bar_e.startswith("a 2nd ETERNAL") and base_p is not None and key(r) - key(base_p) >= 0.15:
             bar_e = None  # yields to a +0.15 SIM gain (7803 IX9HA65T)
-        return (((big and x_e) or jokerless_p or not (st["eternal"] and st["rental"] and ante_s < 7)) and rent_ok
+        return (((big and x_e) or not (st["eternal"] and st["rental"] and ante_s < 7)) and rent_ok
                 and not bar_e and not _sells_boss_carrier(d, r["option"]) and not _bad_swap(d, r["option"]))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
                                     f"P(clear next 3 blinds) {r.get('p_next') or 0:.2f}" + (f", vs {r['terminal']} {r.get('p_term') or 0:.2f}" if r.get("terminal") else "")
                                     + f"; value {key(r):.2f} ({r.get('delta_value', r.get('delta_adj', r.get('delta'))) or 0:+.2f} vs skipping)")
         + ("" if allowed(r) or not r["option"].get("_cmd") else
-           f"  [BARRED: {_eternal_bar(d, r['option'].get('add_joker') or {}) or 'eternal rental before ante 7 / 2nd permanent rental before ante 6'}]")
+           f"  [BARRED: {_eternal_bar(d, r['option'].get('add_joker') or {}) or 'flat rental at ante 1-2 / eternal rental before ante 7 / 2nd rental before ante 5'}]")
         for r in sorted(feas, key=lambda r: (allowed(r) or not r["option"].get("_cmd"), key(r)), reverse=True)[:6]]  # barred rows below the legal ones (Haiku 7818 VS127DSN)
     adv = lines[adv_i]
     base = next((r for r in feas if not r["option"].get("_cmd")), None)

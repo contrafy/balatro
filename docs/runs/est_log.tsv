@@ -13470,3 +13470,12 @@
 7801	a7	The Tooth	Pair	4D 4D	Burglar,Greedy Joker,Walkie Talkie,Supernova(foil),Bull(holo),Card Sharp	est=53352	actual=51528	OK
 7809	a2	The Wall	Straight	JH TH 9H 8D 7S	Greedy Joker,Supernova,Raised Fist	est=1406	actual=1406	OK
 7810	a1	-	Two Pair	7H 7D 4H 4C	Bootstraps	est=84	actual=84	OK
+7818	a3	-	Two Pair	KS KC JH JD	Mad Joker,Greedy Joker(holo),Onyx Agate,Popcorn,Golden Joker,The Duo	est=5760	actual=5760	OK
+7801	a7	The Tooth	Pair	KS KD	Burglar,Greedy Joker,Walkie Talkie,Supernova(foil),Bull(holo),Card Sharp	est=43164	actual=42372	OK
+7809	a2	The Wall	High Card	AS	Greedy Joker,Supernova,Raised Fist	est=352	actual=352	OK
+7810	a1	-	Flush	TS 9S 8S 5S 4S	Bootstraps	est=284	actual=284	OK
+7801	a7	The Tooth	Pair	TH(bonus) TC	Burglar,Greedy Joker,Walkie Talkie,Supernova(foil),Bull(holo),Card Sharp	est=57024	actual=56160	OK
+7812	a1	-	High Card	AC	Riff-raff,Scholar,Banner	est=480	actual=480	OK
+7814	a2	The Psychic	Pair	2C 2D	Stuntman,Odd Todd,Brainstorm	est=1028	actual=1028	OK
+7809	a2	The Wall	Straight	AD KH QD JS TC	Greedy Joker,Supernova,Raised Fist	est=1863	actual=1863	OK
+7814	a2	The Psychic	Two Pair	KH KC 7H 7C	Stuntman,Odd Todd,Brainstorm	est=1232	actual=1232	OK

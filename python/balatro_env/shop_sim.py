@@ -348,7 +348,9 @@ def _jokers_at(jokers, k, removed, growth=(), perish_k=None):
                 ab["mult"] = float(ab.get("mult") or 0) + grow[i]
             elif n == "Madness":
                 ab["x_mult"] = max(1.0, float(ab.get("x_mult") or 1)) + grow[i]
-        tally = j.get("perish_tally", ab.get("perish_tally"))
+        tally = j.get("perish_tally")
+        if tally is None:  # the obs may carry it only inside ability (a present-but-None key hid it: 7808 W99CGI9N)
+            tally = ab.get("perish_tally")
         if (j.get("perishable") or ab.get("perishable")) and tally is not None and int(tally) - pk <= 0:
             j["debuff"] = True
         if k:
@@ -460,10 +462,16 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss
         nid = max([int(c.get("id") or 0) for c in cards] + [0]) + 5000
         cards = cards + [{"id": nid + i, "rank": None, "suit": None, "enhancement": "m_stone", "remaining": True}
                          for i in range(stones)]
+    extra = {}
+    names = {j.get("name") for j in now if _active(j)}
+    if k and "Loyalty Card" in names and "Blackboard" not in names:
+        # Loyalty Card's x4 phase in a later round is unknown: estimate's planned-round mode counts its expected
+        # factor 1 + 3/6 per hand (7808 W99CGI9N); the current round (k = 0) keeps the real counter
+        extra["_plan_fillers"] = True
     return dict(st, phase="SELECTING_HAND", hand=[], jokers=now, money=int(st.get("money") or 0) - RENT * rentals * k,
                 hand_size=max(1, int(round(hs))), hands_remaining=max(1, int(hp)), discards_remaining=max(0, int(ds)),
                 blind={"name": name, "boss": boss, "chips_needed": blind["chips"], "chips_scored": 0, "disabled": False},
-                deck=dict(st.get("deck") or {}, cards=cards, draw_pile=len(cards)), hand_levels=hl)
+                deck=dict(st.get("deck") or {}, cards=cards, draw_pile=len(cards)), hand_levels=hl, **extra)
 
 
 # ---- simulation ---------------------------------------------------------------------------------------------------

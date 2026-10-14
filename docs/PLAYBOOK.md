@@ -229,14 +229,15 @@ From 438 Gold runs (`data/swarm_results.jsonl`; wins 9IIGB2FF, 2WEJC1IS, IFYMR9U
 5. SOLVER line shown: take the highest-p line; heuristics (bank the made hand...) only break ties within ~0.05.
 
 **Ante 1-2: economy and first scorers**
-- 0 scorers: any affordable scorer that adds mult (suit-gated, eternal or $1 rental OK) before packs/rerolls/planets;
-  it beats a Buffoon pack, which beats a chips-only/utility/perishable-rental joker [22].
+- 0 scorers: any affordable NON-RENTAL scorer that adds mult (suit-gated, eternal or perishable OK) before packs/
+  rerolls/planets; none on offer = Buffoon pack. Chips-only/utility jokers are not scorers [22].
 - Scorers 1-2 must ADD MULT; chips-only (Sly, Banner, Odd Todd, Scary) on base mult 2-3 never scales [20].
 - Skip the ante-1 Small only for a tag that gives a joker NOW (Buffoon/Top-up with a free slot).
-- Rentals [80 rent deaths]: one $1 rental scorer is fine at 0 scorers, never one leaving < $5 when a clean $4 joker is
-  buyable; a flat rental with < $8 at two shops in a row is sold (T7Y25BBZ).
-- 2nd rental before ante 6 only if the same shop sells the first, both are xMults, it is bought and sold in one shop
-  (Campfire feed), or it is a perishable for ONE named blind sold right after; rent >= income froze 3-5 rental runs [27].
+- Ante 1-2: NEVER a flat (non-xMult) rental, even at 0 scorers (of runs reaching ante 3, P(ante 5) 38% vs 57%; first scorer
+  a rental 26% vs clean 44%; rental_study). One xMult rental OK; stopgap = perishable scorer or Buffoon pack. Target 2+
+  permanent non-rental +mult by end of ante 2 (55% vs 41%).
+- Ante 3+: 2nd rental before ante 6 only if the same shop sells the first, both are xMults, bought and sold in one shop
+  (Campfire feed), or a perishable for ONE named blind; a flat rental with < $8 two shops in a row is sold [27].
 - Eternal rental: never before ante 7 (9IIGB2FF passed Raised Fist{E,R}, -$66), EXCEPT an xMult with SCORE CHECK
   < 0.5 AND SIM >= +0.15 (RHQLHNTL lost by 79 passing the Trio), or a copier next to an owned xMult (IFYMR9UX).
 - Eternal WITHOUT rent is free on a real scorer that fires on your hands (IFYMR9UX won on Acrobat{E}); never a 4th
