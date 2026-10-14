@@ -370,7 +370,7 @@ def test_terminal_build_drops_perishables_expiring_at_the_horizon_end():
     # 7817 6GRAU5IC: both carriers perish exactly at the end of the 3 blinds; the terminal round must play without
     st = shop_state(jokers=[joker("Joker", ability={"mult": 4}, perishable=True, perish_tally=3)])
     blind = {"name": "Boss (unknown)", "boss": False, "chips": 800}
-    assert not shop_sim._round_state(st, st, blind, 2, set())["jokers"][0]["debuff"]
+    assert not shop_sim._round_state(st, st, blind, 2, set())["jokers"][0].get("debuff")
     assert shop_sim._round_state(st, st, blind, 3, set())["jokers"][0]["debuff"]
 
 

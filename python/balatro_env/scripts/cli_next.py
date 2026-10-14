@@ -3050,7 +3050,11 @@ def pack_advise_sim(d, budget_s=3.5):
         sells_rp = isinstance(r["option"].get("sell"), list) and any(_stk(j)["rental"] and j.get("index") in r["option"]["sell"] for j in lst(d.get("jokers")))
         # 2nd rental: before ante 5 only with a rental sold for it (7816 FVPWB9XC: five $1 rentals); ante 5 on a +0.15 gain
         rent_ok = not (st["rental"] and own_rent and ante_s < 6) or sells_rp or (ante_s >= 5 and big)
-        return ((big or not (st["eternal"] and st["rental"] and ante_s < 7)) and rent_ok
+        # an eternal rental before ante 7 only for an xMult (or a copier of one) on a +0.15 gain (7810 YYBSWJIJ: an
+        # eternal-rental Jolly at +0.51 was picked; Blue Joker 7809 D5KV79HL was the xMult-like case)
+        x_e = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or \
+            (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
+        return (((big and x_e) or not (st["eternal"] and st["rental"] and ante_s < 7)) and rent_ok
                 and not _eternal_bar(d, aj) and not _sells_boss_carrier(d, r["option"]) and not _bad_swap(d, r["option"]))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
@@ -3069,6 +3073,9 @@ def pack_advise_sim(d, budget_s=3.5):
         # a SIM-higher Mercury)
         tied = [r for r in cands_s if key(r) >= top_k - 0.005]
         best = next((r for r in tied if r["option"]["_cmd"] == rule_pick), None) or max(tied, key=key)
+        if "the type your owned xMult joker needs" in adv and any(r["option"].get("_cmd") == rule_pick for r in feas):
+            # a level for the type an owned type-xMult needs is worth more than the 3-blind SIM sees (7812 AGE5D9GU)
+            best = next(r for r in feas if r["option"].get("_cmd") == rule_pick)
         if key(best) - key(base) > 0.02:
             sell_ix = best["option"].get("sell")
             sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
@@ -3550,7 +3557,10 @@ def _shop_rules(d):
             # Obelisk grown: the hands you PLAY are the non-max types (the max type resets it), so level those (7809 7C89CEFK)
             ob_g = any(j.get("name") == "Obelisk" and not j.get("debuff") and float((j.get("ability") or {}).get("x_mult") or 1) >= 1.5 for j in jokers)
             mh_p, sh2 = (sh2, mh) if (ob_g and sh2) else (mh, sh2)
-            good = name == PLANET_FOR.get(mh_p)
+            # an owned type xMult carrying the build makes its type's planet a main planet too (7812 AGE5D9GU: Trio)
+            tx_pl = {PLANET_FOR.get(TYPE_X_JOKERS[j.get("name")][0]) for j in jokers if j.get("name") in TYPE_X_JOKERS and not j.get("debuff")
+                     and joker_share(d, j, mh) >= 0.2}
+            good = name == PLANET_FOR.get(mh_p) or name in tx_pl
             if not good and sh2 and name == PLANET_FOR.get(sh2):
                 options.append(((20, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [planet for {sh2}, your Obelisk max type: you avoid playing it]", cost, False, False)) if ob_g else
                                (66, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [planet for your second-most-played hand {sh2}: boss insurance]", cost, True, False))
@@ -3991,7 +4001,8 @@ def pack_advise(d):
         # undecided main hand: one lucky Straight/Flush is not a plan, only pair-family levels count (7801: Jupiter at ante 1)
         want = [PLANET_FOR.get(mh)] + [PLANET_FOR.get(h or "") for h in (most, second_hand(d)) if mh != "undecided" or h in PAIR_FAM]
         gate_x = next((TYPE_X_JOKERS[j.get("name")][0] for j in jokers if j.get("name") in TYPE_X_JOKERS and not j.get("debuff")
-                       and (mh in ("undecided", "Flush", "Straight") or hand_contains(mh, TYPE_X_JOKERS[j.get("name")][0]))), None)
+                       and (mh in ("undecided", "Flush", "Straight") or hand_contains(mh, TYPE_X_JOKERS[j.get("name")][0])
+                            or joker_share(d, j, mh) >= 0.2)), None)  # 7812 AGE5D9GU: Trio carried the build on a "Pair" main
         want = [PLANET_FOR.get(gate_x or "")] + want  # an owned type xMult (The Trio...) decides which level pays most
         for w in want:
             hit = next(((i, c) for i, c in planets if w and c.get("name") == w), None)
