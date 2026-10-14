@@ -11105,3 +11105,22 @@
 7803	a4	The Club	Two Pair	QS QH 9S 9D	Raised Fist,Mystic Summit,Arrowhead,Ice Cream,Abstract Joker,Odd Todd	est=19950	actual=19950	OK
 7801	a1	-	Flush	QC TC 9C 7C 6C		est=308	actual=308	OK
 7805	a2	-	Two Pair	KH KD 8S 8H	Raised Fist,Space Joker,Shoot the Moon	est=1624	actual=1624	OK
+7813	a6	The Arm	High Card	4C	Photograph,Scary Face,Smiley Face,Brainstorm,Mail-In Rebate(holo),Blackboard	est=99	actual=99	OK
+7813	a6	The Arm	High Card	KD	Photograph,Scary Face,Smiley Face,Brainstorm,Mail-In Rebate(holo),Blackboard	est=3240	actual=3240	OK
+7810	a4	-	Three of a Kind	JH JC JD	Half Joker,Ride the Bus(polychrome),Joker Stencil	est=8280	actual=8280	OK
+7809	a1	-	Pair	AH AC		est=64	actual=64	OK
+7816	a5	-	Two Pair	KS KD 5C 5D	Space Joker,Crazy Joker,Odd Todd,Abstract Joker,Misprint,Blue Joker	est=7839	actual=10296	MISS
+7810	a4	-	High Card	AS	Half Joker,Ride the Bus(polychrome),Joker Stencil	est=3588	actual=3588	OK
+7813	a6	The Arm	Straight	AC 5C 4S 3S 2C	Photograph,Scary Face,Smiley Face,Brainstorm,Mail-In Rebate(holo),Blackboard	est=770	actual=770	OK
+7812	a4	The Plant	High Card	3C	Swashbuckler,Brainstorm,Gift Card(holo),Odd Todd,Blueprint,Card Sharp	est=2769	actual=2769	OK
+7802	a1	-	Flush	QC 8C 7C 6C 3C	Photograph	est=552	actual=552	OK
+7810	a4	-	High Card	AC	Half Joker,Ride the Bus(polychrome),Joker Stencil	est=3744	actual=3744	OK
+7814	a1	-	Two Pair	QH QD TS TH		est=120	actual=120	OK
+7812	a4	The Plant	High Card	7D	Swashbuckler,Brainstorm,Gift Card(holo),Odd Todd,Blueprint,Card Sharp	est=27477	actual=27477	OK
+7808	a2	The Manacle	Two Pair	AH AC JH JD	Devious Joker,Abstract Joker,Gluttonous Joker	est=868	actual=868	OK
+7809	a1	-	Two Pair	JS JD TH TC		est=120	actual=120	OK
+7816	a5	-	Straight	AD KH QD JH TH	Space Joker,Crazy Joker,Odd Todd,Abstract Joker,Misprint,Blue Joker	est=9991	actual=11124	OK
+7807	a1	-	Flush	KD 9D 6D 4D 2D	Scary Face	est=384	actual=384	OK
+7801	a1	-	Two Pair	7S 7H 3C 3D	Fibonacci	est=720	actual=720	OK
+7818	a1	-	Full House	QS QC 2H 2C 2D		est=264	actual=264	OK
+7809	a1	-	Full House	KC KD 9S 9H 9C		est=348	actual=348	OK
