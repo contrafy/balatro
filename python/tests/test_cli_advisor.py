@@ -730,3 +730,22 @@ def test_main_hand_hysteresis_keeps_previous_until_two_shops():
     assert cli.main_hand(d) == other  # remembered main hand kept
     d["_mh_hyst"] = {"mh": other, "pend": raw, "n": 2}
     assert cli.main_hand(d) == raw
+
+
+def test_sim_veto_covers_needed_now(monkeypatch):
+    # 7810: Banner{ETERNAL} 'NEEDED NOW' advised although its own SIM was 0.71 vs baseline 0.72
+    d = shop(jokers=[], shop_jokers=[{"index": 1, "name": "Banner", "set": "Joker", "cost": 5, "eternal": True}], money=8, ante=1)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
+
+    class FakeSim:
+        def options_from_state(self, st):
+            return [{"label": "baseline (buy nothing)"}, {"label": "buy Banner $5", "add_joker": st["shop"]["jokers"][0], "cost": 5}]
+
+        def value_options(self, st, opts, **kw):
+            return [{"label": "baseline (buy nothing)", "option": opts[0], "feasible": True, "p_next": 0.72, "delta": 0.0, "money_after": 8},
+                    {"label": "buy Banner $5", "option": opts[1], "feasible": True, "p_next": 0.71, "delta": -0.01, "money_after": 3}]
+    monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
+    rules = _advice(_out(cli.shop_advise, d))
+    out = _out(cli.shop_advise_sim, d)
+    assert "b buy 1" in rules
+    assert "SIM veto" in _advice(out) and "b buy 1" not in _advice(out)

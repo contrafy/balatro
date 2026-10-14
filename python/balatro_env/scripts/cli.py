@@ -217,7 +217,9 @@ def show(d):
         print("  suits " + " ".join(f"{k}{v}" for k, v in suits.most_common()) + " | ranks " + " ".join(f"{k}x{v}" for k, v in ranks.most_common() if v > 1))
     jk = lst(d.get("jokers"))
     if jk:
-        print(f"Jokers ({len(jk)}/{d.get('joker_slots')}) cons_slots {d.get('consumable_slots')} hand_size {d.get('hand_size')}: " + " | ".join(f"[{j.get('index', i + 1)}] {j.get('name')}{stickers(j)} ({JOKER_DESC.get(j.get('name'), 'effect not in table')}) sell${j.get('sell_cost')}"
+        idol = (d.get("run") or {}).get("idol_card") or {}
+        idol_s = f" (this round: {idol.get('rank')} of {idol.get('suit')})" if isinstance(idol, dict) and idol.get("rank") else ""
+        print(f"Jokers ({len(jk)}/{d.get('joker_slots')}) cons_slots {d.get('consumable_slots')} hand_size {d.get('hand_size')}: " + " | ".join(f"[{j.get('index', i + 1)}] {j.get('name')}{stickers(j)} ({JOKER_DESC.get(j.get('name'), 'effect not in table')}{idol_s if j.get('name') == 'The Idol' else ''}) sell${j.get('sell_cost')}"
                                     + (f" {j['edition'].get('type', j['edition']) if isinstance(j.get('edition'), dict) else j['edition']}" if j.get("edition") else "")
                                     + (f" ab={compact_ability(j.get('ability'))}" if compact_ability(j.get('ability')) else "")
                                     for i, j in enumerate(jk)))
@@ -314,6 +316,14 @@ def show(d):
             if thr_ok and bs.get("on_deck") == "Small" and tk:
                 skip_ok = True
                 NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag")
+        if skip_ok and tk not in ("tag_buffoon", "tag_top_up") and not thr_ok and ante_n >= 2:
+            # EMERGENCY (best hand < 0.35 x next boss/3: 84% died) - only a tag that pays a scorer NOW is worth the skip;
+            # the Small's shop is the chance to buy a multiplier (7804 skipped for Ethereal at EMERGENCY 0.13)
+            nxt_s = next_ante_targets(d)
+            b_e = deck_best_est(d) or typical_est(d, main_hand(d), best=True)
+            if nxt_s and nxt_s[3] and b_e < 0.35 * nxt_s[3] / 3:
+                skip_ok = False
+                weak_hand = True
         if skip_ok and 3 <= ante_n <= 4 and not thr_ok:
             # GOLD_ANALYSIS.md: ante 3-4 skippers died 40-46% vs players 25-33%: skip only if one hand reaches boss/2
             boss_c_s = int((ch.get("Boss") or {}).get("chips") or 0)
@@ -835,12 +845,19 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Misprint":
             mult += 6
             notes.append("Misprint random 0-23 mult, using conservative 6 (mean 11)")
+        elif n == "Baseball Card":
+            # x1.5 for each Uncommon joker owned (rarity 2); with none it is x1 (Fable 7801: ranked 89 with 0 Uncommons)
+            mult *= 1.5 ** sum(1 for x in lst(state.get("jokers")) if int(x.get("rarity") or 0) == 2 and not x.get("debuff") and x is not j)
         elif n == "Flower Pot":
             if {"S", "H", "C", "D"} <= _suit_cover(scoring, jnames):
                 mult *= 3
         elif n == "Seeing Double":
-            suits = _suit_cover(scoring, jnames)
-            if "C" in suits and len(suits) > 1:
+            # SMODS.seeing_double_check: one scoring card that is a Club (Wild counts) and ANOTHER that is a non-Club suit
+            # (Wild counts too); 7802 est 24790 vs 49580 with a Wild as the club
+            live = [c for c in scoring if not c.get("debuff")]
+            club = [k for k, c in enumerate(live) if "Wild" in _enh(c) or _suit_matches(c, "C", jnames)]
+            other = [k for k, c in enumerate(live) if "Wild" in _enh(c) or any(_suit_matches(c, s_, jnames) for s_ in ("H", "D", "S"))]
+            if any(a != b for a in club for b in other):
                 mult *= 2
         else:
             applied = False
@@ -1500,6 +1517,9 @@ def _advise_rules(d):
         PAIR_FAMILY = ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")
         # any of these clears; prefer the hand we are building (main hand, then pair family) so levels and Supernova stay consolidated
         pick = max(ok, key=lambda t: (t[0] == mh_now, t[0] in PAIR_FAMILY, t[2], -len(t[1])))
+        if pick[2] < 1.25 * need:
+            # a thin margin is est risk (7810 The Eye last hand: Two Pair 5874 vs need 5350 over a Full House 10036): take the biggest
+            pick = max(ok, key=lambda t: (t[2], -len(t[1])))
         why = "" if pick[2] == max(c[2] for c in ok) else f"; a bigger {max(ok, key=lambda t: t[2])[0]} also clears but {pick[0]} is the hand you are leveling"
         fl = fillers(pick[1], pick[0]) if len(pick[1]) < 5 else []
         print(f"ADVICE: PLAY -> b play {TYPE_WORD.get(pick[0], 'HIGH')} {' '.join(map(str, pick[1] + fl))}   (est {pick[2]} >= need {need}{why}" + (f"; fillers {fl} just draw cards)" if fl else ")"))
@@ -1738,6 +1758,57 @@ def _joker_gated_hand(d):
 
 
 def main_hand(d):
+    """_main_hand_raw with hysteresis (Fable 7801: the main hand flipped Pair/Two Pair across shops): outside the hard
+    invariants, a new main hand replaces the remembered one (data/.cli_cache/<port>_mainhand.json, set by `b`) only
+    after it was >= 20% better per hand in 2 consecutive shops."""
+    raw = _main_hand_raw(d)
+    h = d.get("_mh_hyst") or {}
+    prev = h.get("mh")
+    if not prev or raw == prev or raw == "undecided" or d.get("_mh_forced") or prev not in SYN_HANDS:
+        return raw
+    if h.get("pend") == raw and int(h.get("n") or 0) >= 2:
+        return raw
+    return prev
+
+
+def _mh_hyst_update(d):
+    """`b shopadvise`: advance the main-hand hysteresis state once per shop."""
+    path = os.path.join(CACHE_DIR, f"{PORT}_mainhand.json")
+    h = dict(d.get("_mh_hyst") or {})
+    raw = _main_hand_raw(d)
+    sig = json.dumps([d.get("ante"), d.get("round"), [x.get("id") for x in lst((d.get("shop") or {}).get("jokers"))]])
+    prev = h.get("mh")
+    if not prev or prev not in SYN_HANDS or d.get("_mh_forced") or raw == "undecided":
+        h = {"mh": raw if raw != "undecided" else prev}
+    elif raw == prev:
+        h = {"mh": prev}
+    elif typical_est(d, raw) >= 1.2 * typical_est(d, prev):
+        if h.get("pend") == raw and h.get("sig") != sig:
+            h["n"] = int(h.get("n") or 0) + 1
+        elif h.get("pend") != raw:
+            h.update(pend=raw, n=1)
+        if int(h.get("n") or 0) >= 2:
+            h = {"mh": raw}
+    else:
+        h = {"mh": prev}
+    h["sig"] = sig
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(h, f)
+    except Exception:
+        pass
+
+
+def _mh_hyst_load():
+    try:
+        with open(os.path.join(CACHE_DIR, f"{PORT}_mainhand.json"), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _main_hand_raw(d):
     hl = d.get("hand_levels") or {}
     # 1-card throwaways (Acrobat/Dusk final-hand holds, Crimson Heart re-rolls, Acorn probes) are logged as High Card plays:
     # they are not the hand you build (7803/7804 got Pluto picks from them)
@@ -1762,9 +1833,11 @@ def main_hand(d):
     # any other IS the main hand; otherwise a type leveled >= 3 above every other played type is
     pl = sorted(((int((v or {}).get("played") or 0), k) for k, v in hl.items()), reverse=True)
     if len(pl) == 1 or (pl[0][0] >= 3 and pl[0][0] >= 2 * pl[1][0]):
+        d["_mh_forced"] = True
         return pl[0][1]
     lv = sorted(((int((v or {}).get("level") or 1), k) for k, v in hl.items() if int((v or {}).get("played") or 0) >= 2), reverse=True)
     if len(lv) >= 2 and lv[0][0] >= lv[1][0] + 3:
+        d["_mh_forced"] = True
         return lv[0][1]
     if any(j.get("name") == "Card Sharp" and not j.get("debuff") for j in lst(d.get("jokers"))):
         # Card Sharp (x3 when the type was already played this round) wants the hand you can make 2-3 times a round:
@@ -2223,7 +2296,7 @@ def shop_advise_sim(d, budget_s=3.5):
                 nm = o.get("label", "").split(" $")[0].replace("buy ", "", 1)
                 item = next((c for c in sh_items if c.get("name") == nm), None)
             o["_cmd"] = f"buy {item.get('index')}" if item is not None and item.get("index") is not None else None
-        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate)
+        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate, seed=0, min_samples=48)  # fixed seed, more samples: stable baseline
     except Exception as e:
         lines.insert(adv_i, f"  (SIM unavailable: {type(e).__name__}: {e})")
         print("\n".join(lines)); return
@@ -2257,9 +2330,16 @@ def shop_advise_sim(d, budget_s=3.5):
             if mm:
                 rank[mm.group(2)] = int(mm.group(1))
         t_cmd = top["option"].get("_cmd")
+        aj = top["option"].get("add_joker") or {}
+        big_gap = key(top) - key(mine) > 0.2 and not all_zero and t_cmd and not (_stk(aj)["eternal"] and _stk(aj)["rental"])
         if t_cmd and adv_cmd and t_cmd in rank and adv_cmd in rank and abs(rank[t_cmd] - rank[adv_cmd]) <= 5 and adv.startswith("ADVICE: BUY"):
             sim.append(f"  (rule advice was: {adv[8:]})")
             adv = f"ADVICE: BUY -> b {t_cmd}   (SIM tie-break: rules scored it {rank[t_cmd]} vs {rank[adv_cmd]}; SIM {top['label']} p_next {key(top):.2f} vs {key(mine):.2f})"
+        elif big_gap:
+            # the rules and the SIM disagree by > 0.2 p_next: the SIM played the next 3 blinds, defer to it (7805: Wily
+            # rated -7 while the SIM gave +0.38)
+            sim.append(f"  (rule advice was: {adv[8:]})")
+            adv = f"ADVICE: BUY -> b {t_cmd}   (SIM: {top['label']} p_next {key(top):.2f} vs {key(mine):.2f} for the rule pick over the next 3 blinds)"
         else:
             sim.append(f"  SIM disagrees: {top['label']} {'score_ratio' if all_zero else 'p_next'} {key(top):.2f} vs {key(mine):.2f} for the ADVICE pick (rules kept; weigh it)")
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
@@ -2577,6 +2657,12 @@ def _shop_rules(d):
                 enh_n = sum(1 for k in lst((d.get("deck") or {}).get("cards")) if k.get("enhancement"))
                 if enh_n < 12:
                     score = min(score, 30)  # x3 needs 16 enhanced cards; with few the joker is x1 for many antes
+            if name == "Hologram":
+                # x1 + 0.25 per card ADDED to the deck: worthless without a feed (Standard packs, DNA, Certificate, Marble);
+                # 7802 sold Half Joker / Supernova at ante 7 for an unfed Hologram and lost the Big by 6k
+                feed = any("Standard" in str(b_.get("name")) for b_ in lst(sh.get("boosters"))) or any(j.get("name") in ("DNA", "Certificate", "Marble Joker") for j in jokers)
+                if not feed and ante >= 4:
+                    cls, score = "XMULT(growth, UNFED: x1 until cards are added; no Standard pack/DNA/Certificate/Marble in sight)", min(score, 25)
             core_gain = False
             if name not in boss_counter and not cls.startswith(("AVOID", "COUNTER")):
                 # value every joker by what it adds to your typical main hand NOW (7802: Gros Michel -46 and Seeing Double
@@ -2592,6 +2678,10 @@ def _shop_rules(d):
                 if name in CARD_TRIGGER_JOKERS and cls.startswith("XMULT") and gain_c < 0.3:
                     # card-phase xMult multiplies only the base mult (7807: Photograph{ETERNAL} 130 at ante 5 was ~+18%)
                     score = min(score, int(40 + 100 * gain_c))
+                if cls.startswith("XMULT") and not any(w in cls for w in ("growth", "decaying", "Stencil")) and gain_c < 0.05 and (d.get("deck") or {}).get("cards"):
+                    # an xMult that multiplies nothing on rounds from your deck is x1 now (Baseball Card with 0 Uncommons, a
+                    # type xMult your deck rarely makes)
+                    cls, score = f"{cls[:-1] if cls.endswith(')') else cls}, ~x1 on your deck now)" if cls.endswith(")") else f"XMULT(~x1 on your deck now)", min(score, 30)
             ed = c.get("edition")
             if ed in ("holo", "polychrome"):
                 score += 30
@@ -2635,9 +2725,16 @@ def _shop_rules(d):
             options.append((jsc, "TAROT", f"buyuse {c['index']}", f"{name} ${cost} [creates a random joker now (`buyuse` it; needs a free joker slot{'' if free > 0 else ': slots FULL, worthless now'}); at Gold it can carry stickers]", cost, False, False))
         elif name == "The Hermit":
             options.append((45 if money - cost >= 10 else 5, "TAROT", f"buy {c['index']}", f"{name} ${cost} [doubles money up to +$20: only worth it with $10+ left after buying]", cost, False, False))
+        elif name == "Temperance":
+            gain_t = min(50, sum(int(j.get("sell_cost") or 0) for j in jokers)) - cost
+            options.append((60 if gain_t >= 4 else 10, "TAROT", f"buyuse {c['index']}", f"{name} ${cost} [money: +${min(50, sum(int(j.get('sell_cost') or 0) for j in jokers))} (your jokers' sell values), net +${gain_t}]", cost, gain_t >= 4, False))
         elif name in ("Death", "Strength", "Justice") and ante >= 3:
             held_rescue = any(k.get("name") in ("Death", "Strength", "Justice") for k in lst(d.get("consumables")))
-            options.append((30 if held_rescue else 86, "TAROT", f"buy {c['index']}", f"{name} ${cost} [RESCUE tarot: hold it for a forced final hand; pack tarots must be used on the spot, only shop-bought ones can be banked]", cost, not held_rescue, False))
+            # Glass x2 resolves in the card phase, before the joker row: on a flat +mult build it barely moves the score
+            # (PLAYBOOK card-phase rule; Fable 7801: Justice 86 'rescue' on a +46 flat build)
+            flat_build = name == "Justice" and n_x_now == 0 and sum(joker_share(d, j, mh) for j in jokers) >= 0.5
+            options.append((30 if (held_rescue or flat_build) else 86, "TAROT", f"buy {c['index']}", f"{name} ${cost} [RESCUE tarot: hold it for a forced final hand; pack tarots must be used on the spot, only shop-bought ones can be banked"
+                            + ("; Glass multiplies only the base mult on your flat +mult build" if flat_build else "") + "]", cost, not (held_rescue or flat_build), False))
         else:
             options.append((30 if ante >= 3 else 12, "TAROT", f"buy {c['index']}", f"{name} ${cost} [{typ}{'; not before your main hand is leveled' if ante < 3 else ''}]", cost, False, False))
     for c in lst(sh.get("boosters")):
@@ -3337,12 +3434,18 @@ def main():
     if cmd == "hands":
         show_hands(d); return
     if cmd == "advise":
+        t0 = time.time()
+        while d.get("phase") not in ("SELECTING_HAND", "PACK_OPENING") and time.time() - t0 < 6:
+            time.sleep(0.3)  # right after `blind` / a pack pick the phase is still changing (7805)
+            d = _with_known_jokers(wait_settled())
         if d.get("phase") == "PACK_OPENING":
             pack_advise(d)
         else:
             advise(d)
         return
     if cmd == "shopadvise":
+        _mh_hyst_update(d)
+        d["_mh_hyst"] = _mh_hyst_load()
         shop_advise_sim(d); return
     if cmd == "legal":
         l = get("legal")
@@ -3427,6 +3530,7 @@ def _with_known_jokers(d):
     player saw them face-up a moment before. Face-up jokers are cached per port (data/.cli_cache/<port>_jokers.json);
     while they are face-down, est uses that multiset in the inferred order (after the first hand) or the last seen
     order, and d['_jokers_cached'] says so."""
+    d = dict(d, _mh_hyst=_mh_hyst_load())  # main-hand hysteresis memory (per port)
     js = lst(d.get("jokers"))
     if not js:
         return d

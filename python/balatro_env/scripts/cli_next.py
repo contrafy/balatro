@@ -316,7 +316,7 @@ def show(d):
             if thr_ok and bs.get("on_deck") == "Small" and tk:
                 skip_ok = True
                 NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag")
-        if skip_ok and tk not in ("tag_buffoon", "tag_top_up") and not thr_ok and ante_n >= 2:
+        if skip_ok and tk not in NOW_TAGS and not thr_ok and ante_n >= 2:
             # EMERGENCY (best hand < 0.35 x next boss/3: 84% died) - only a tag that pays a scorer NOW is worth the skip;
             # the Small's shop is the chance to buy a multiplier (7804 skipped for Ethereal at EMERGENCY 0.13)
             nxt_s = next_ante_targets(d)
@@ -412,6 +412,11 @@ def compact_ability(a):
     if not a or not isinstance(a, dict):
         return ""
     keep = {k: v for k, v in a.items() if k in ("mult", "x_mult", "extra", "t_mult", "t_chips", "h_size", "d_size", "chips") and v not in (0, None, {}, [], 1)}
+    if a.get("to_do_poker_hand"):
+        # To Do List: the live target is ability.to_do_poker_hand; extra.poker_hand is the card's static default ('High
+        # Card'), which players read as the target (7804/7807)
+        keep.pop("extra", None)
+        keep["to_do"] = a["to_do_poker_hand"]
     return json.dumps(keep, separators=(",", ":")) if keep else ""
 
 
@@ -2307,17 +2312,22 @@ def shop_advise_sim(d, budget_s=3.5):
     key = (lambda r: r.get("score_ratio") or 0) if all_zero else (lambda r: r.get("p_next") or 0)
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM (next 3 blinds, ranking only): {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"p_next {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f})")
-        + f" ${r.get('money_after')}" + (f" rent {r['rent_per_round']}/round" if r.get("rent_per_round") else "") for r in sorted(feas, key=key, reverse=True)[:6]]
+        + f" ${r.get('money_after')}" + (f" rent {r['rent_per_round']}/round" if r.get("rent_per_round") else "")
+        + (f" | ETERNAL RENTAL: -${3 * _rounds_left(d)} to the run's end, beyond the SIM's 3 blinds"
+           if _stk(r["option"].get("add_joker") or {})["eternal"] and _stk(r["option"].get("add_joker") or {})["rental"] else "")
+        for r in sorted(feas, key=key, reverse=True)[:6]]
     adv = lines[adv_i]
     m = re.search(r"b (buy|buyuse) (\d+)", adv)
     adv_cmd = f"buy {m.group(2)}" if m else None
     mine = next((r for r in feas if (r["option"].get("_cmd") == adv_cmd if adv_cmd else not r["option"].get("_cmd") and "baseline" in r["label"])), None)
     top = max(feas, key=key) if feas else None
-    if mine and adv_cmd and (mine.get("delta") or 0) <= 0 and not all_zero and re.match(r"ADVICE: (BUY|SELL then BUY)", adv) and "growth" not in adv and "COUNTER" not in adv:
+    if mine and adv_cmd and (mine.get("delta") or 0) <= 0 and not all_zero and adv.startswith("ADVICE:") and "BUY" in adv.split("(")[0] \
+            and "XMULT(growth" not in adv and "COUNTER" not in adv:
         # the SIM says the advised buy (with its sell) does not raise survival: never advise it (Main 06:xx: "sell Mystic
         # Summit for Baron" while SIM rated Baron -0.04)
         sim.append(f"  (rule advice was: {adv[8:]})")
-        better = [r for r in feas if (r.get("delta") or 0) > 0.02 and r["option"].get("_cmd")]
+        better = [r for r in feas if (r.get("delta") or 0) > 0.02 and r["option"].get("_cmd")
+                  and not (_stk(r["option"].get("add_joker") or {})["eternal"] and _stk(r["option"].get("add_joker") or {})["rental"])]
         if better:
             b_r = max(better, key=key)
             adv = f"ADVICE: BUY -> b {b_r['option']['_cmd']}   (SIM veto: the rule pick changes survival by {mine.get('delta') or 0:+.2f}; {b_r['label']} {b_r.get('delta'):+.2f})"
@@ -2332,7 +2342,8 @@ def shop_advise_sim(d, budget_s=3.5):
         t_cmd = top["option"].get("_cmd")
         aj = top["option"].get("add_joker") or {}
         big_gap = key(top) - key(mine) > 0.2 and not all_zero and t_cmd and not (_stk(aj)["eternal"] and _stk(aj)["rental"])
-        if t_cmd and adv_cmd and t_cmd in rank and adv_cmd in rank and abs(rank[t_cmd] - rank[adv_cmd]) <= 5 and adv.startswith("ADVICE: BUY"):
+        if t_cmd and adv_cmd and t_cmd in rank and adv_cmd in rank and abs(rank[t_cmd] - rank[adv_cmd]) <= 5 and adv.startswith("ADVICE: BUY") \
+                and not (_stk(aj)["eternal"] and _stk(aj)["rental"]):
             sim.append(f"  (rule advice was: {adv[8:]})")
             adv = f"ADVICE: BUY -> b {t_cmd}   (SIM tie-break: rules scored it {rank[t_cmd]} vs {rank[adv_cmd]}; SIM {top['label']} p_next {key(top):.2f} vs {key(mine):.2f})"
         elif big_gap:
@@ -2887,7 +2898,7 @@ def _shop_rules(d):
             print(f"  {label.split(' [')[0]} is an xMult you cannot afford (${money}): do not spend on packs this shop unless they clear the next blind; it is gone next shop, so only hold cash if a reroll/next shop is likely to show another")
         if cls.startswith("AVOID"):
             continue
-        if cost > money + credit:
+        if cost > 0 and cost > money + credit:  # a $0 item (Coupon/tag) is always affordable, even at negative money (7807)
             skip(label, f"costs ${cost}, you have ${money}" + (" (+$20 Credit Card debt)" if credit else ""))
             continue
         if not tight and mh != "undecided" and main_lvl < min(ante, 5) and cls in ("PACK", "VOUCHER", "TAROT") and "Celestial" not in label and "Buffoon" not in label and not strong and money - cost < 4:
@@ -2907,7 +2918,7 @@ def _shop_rules(d):
             min_left = 0
         if tight and cls == "PACK" and ("Spectral" in label or "Standard" in label) and not strong:
             min_left = max(min_left, 8)  # TIGHT lifts the floor only for score now; Spectral/Standard packs are not that (7803)
-        if money - cost < (min_left or -credit):
+        if cost > 0 and money - cost < (min_left or -credit):
             skip(label, f"would leave ${money - cost}, below the ${min_left} money floor")
             continue
         if cls in ("PLANET", "TAROT") and cons_full and not cmd.startswith("buyuse"):
