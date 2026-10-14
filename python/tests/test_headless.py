@@ -19,6 +19,19 @@ pytestmark = pytest.mark.skipif(find_exe() is None, reason="Balatro.exe not foun
 LIVE_FIXTURES = Path(__file__).parent / "fixtures" / "live"
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _quiet_faulthandler():
+    """LuaJIT on Windows x64 raises Lua errors as SEH exceptions (code 0xE24C4A02) that its own pcall catches;
+    pytest's faulthandler would print a 'Windows fatal exception' dump for each. They are not crashes."""
+    import faulthandler
+
+    was = faulthandler.is_enabled()
+    faulthandler.disable()
+    yield
+    if was:
+        faulthandler.enable()
+
+
 @pytest.fixture(scope="module")
 def env():
     from balatro_env.headless.env import HeadlessEnv

@@ -122,6 +122,8 @@ def stickers(c):
         out.append("PERISHED: scores nothing, sell it" if s["perish_tally"] == 0 else f"PERISHABLE({'?' if s['perish_tally'] is None else s['perish_tally']} rounds left)")
     if s["rental"]:
         out.append("RENTAL(-$3/round)")
+    if c.get("debuff") and not (s["perishable"] and s["perish_tally"] == 0):
+        out.insert(0, "DEBUFFED: does nothing now")
     return f"{{{','.join(out)}}}" if out else ""
 
 
@@ -186,6 +188,9 @@ def show(d):
             c = ch.get(k) or {}
             parts.append(f"{k}:{c.get('name')} {c.get('chips')} [{c.get('state')}]" + (f" tag={c.get('tag')}/{c.get('tag_key')}" if c.get("tag") else "") + (f"({c['orbital_hand']})" if c.get("orbital_hand") and c["orbital_hand"] != "[poker hand]" else ""))
         print(f"Blinds (on deck {bs.get('on_deck')}): " + " | ".join(parts))
+        if (ch.get("Boss") or {}).get("name") == "The Mouth" and any(j.get("name") == "Burglar" for j in lst(d.get("jokers"))):
+            print("WARNING: The Mouth locks the first played type for the round and Burglar removes ALL discards: you cannot rebuild a type. "
+                  "Sell Burglar before the boss (or lock High Card / your most frequent type with the first hand).")
         # payout timing verified in tag.lua: 'immediate' / 'new_blind_choice' tags pay right after the skip (before the Big
         # Blind); 'store_joker_*' / 'shop_*' tags pay in the NEXT SHOP, which comes only after the Big Blind is beaten.
         NOW_TAGS = {"tag_buffoon": "a free MEGA Buffoon pack opens right now (take 2 of 4 jokers before the Big Blind)",
@@ -383,6 +388,7 @@ def _suit_matches(c, wanted, jnames):
 def _suit_cover(scoring, jnames):
     """suits covered by a scoring hand the way Flower Pot/Seeing Double count them: each non-Wild card fills the
     first still-empty suit it matches (Smeared Joker lets a Heart fill Diamonds etc.), Wild cards fill leftovers."""
+    scoring = [c for c in scoring if not c.get("debuff")]  # card.lua is_suit: a debuffed card has no suit for jokers
     covered = set()
     plain = [c for c in scoring if "Wild" not in _enh(c)]
     wild_n = len(scoring) - len(plain)
@@ -415,7 +421,12 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
     hl = (state.get("hand_levels") or {}).get(hand_name) or {}
     chips = float(hl.get("chips") or 0)
     mult = float(hl.get("mult") or 1)
-    boss = ((state.get("blind") or {}).get("name") or "") if (state.get("blind") or {}).get("boss") else ""
+    bl_e = state.get("blind") or {}
+    boss = (bl_e.get("name") or "") if bl_e.get("boss") and not bl_e.get("disabled") else ""
+    if boss == "The Mouth" and bl_e.get("only_hand") and hand_name != bl_e["only_hand"]:
+        return 0, [f"The Mouth: only {bl_e['only_hand']} scores this round; {hand_name} scores 0"]
+    if boss == "The Eye" and hand_name in lst(bl_e.get("hands_used")):
+        return 0, [f"The Eye: {hand_name} was already played this round and scores 0"]
     if boss == "The Flint":
         chips = float(int(chips // 2)); mult = float(int(mult // 2)) or 1.0
         notes.append("The Flint: base chips and mult halved")
@@ -425,17 +436,29 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         chips -= inc[0]; mult -= inc[1]
         notes.append("The Arm: scored at one level lower (and the level is lost)")
     jokers = lst(state.get("jokers"))
-    # Blueprint copies the joker to its right, Brainstorm copies the leftmost joker: score them as that joker
+    # Blueprint copies the joker to its right, Brainstorm copies the leftmost joker: score them as that joker.
+    # A debuffed joker (Crimson Heart, perished, boss) does nothing, edition included; copying a debuffed joker gives nothing.
     resolved = []
     for i, j in enumerate(jokers):
         n0 = j.get("name")
+        if j.get("debuff"):
+            notes.append(f"{n0} is DEBUFFED: counts for nothing")
+            continue
         if n0 == "Blueprint":
             k = i + 1
             while k < len(jokers) and jokers[k].get("name") in ("Blueprint", "Brainstorm"):
                 k += 1
-            resolved.append(dict(jokers[k], edition=j.get("edition")) if k < len(jokers) else j)
+            tgt = jokers[k] if k < len(jokers) else None
+            if tgt is not None and not tgt.get("debuff"):
+                resolved.append(dict(tgt, edition=j.get("edition")))
+            elif tgt is None:
+                resolved.append(j)
         elif n0 == "Brainstorm":
-            resolved.append(dict(jokers[0], edition=j.get("edition")) if jokers and jokers[0].get("name") not in ("Blueprint", "Brainstorm") else j)
+            tgt = jokers[0] if jokers and jokers[0].get("name") not in ("Blueprint", "Brainstorm") else None
+            if tgt is not None and not tgt.get("debuff"):
+                resolved.append(dict(tgt, edition=j.get("edition")))
+            elif tgt is None:
+                resolved.append(j)
         else:
             resolved.append(j)
     jokers = resolved
@@ -916,8 +939,30 @@ def advise(d):
         else:
             print(f"ADVICE: PLAY -> b play {' '.join(map(str, fd_all[:5]))}   (last hand, every card face-down: play 5 for the best chance at a made hand)")
         return
-    boss_now = ((d.get("blind") or {}).get("name") or "") if (d.get("blind") or {}).get("boss") else ""
+    bl_now = d.get("blind") or {}
+    boss_now = (bl_now.get("name") or "") if bl_now.get("boss") and not bl_now.get("disabled") else ""
     played_now = [k for k, v in (d.get("hand_levels") or {}).items() if int(v.get("played_this_round") or 0) > 0]
+    if boss_now == "The Eye" and bl_now.get("hands_used") is not None:
+        played_now = list(lst(bl_now.get("hands_used")))  # the blind's own record of used types
+    if boss_now in ("The Mouth", "The Eye") and not any(c[0] == "High Card" for c in cands):
+        vis = [c for c in hand if c.get("rank") is not None and not c.get("debuff")]
+        if vis:
+            top = max(vis, key=lambda c: (CHIP_VAL.get(_r(c), 0), RANK_VAL.get(_r(c), 0)))
+            cands = cands + [("High Card", [top.get("index")], estimate("High Card", [top], _held(d, [top.get("index")]), d, played_n=1)[0])]
+    if boss_now == "The Mouth":
+        lock = bl_now.get("only_hand") or (played_now[0] if len(played_now) == 1 else None)
+        played_now = [lock] if lock else []
+        if not lock:
+            mh_m = main_hand(d)
+            PF = ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")
+            want = mh_m if mh_m in PF else "Pair"
+            print(f"The Mouth: your FIRST played hand locks the type for all {hands_left} hands; every other type then scores 0. "
+                  f"Lock a type you can repeat ({want}), unless one hand of another type clears the whole {need}."
+                  + (" You have 0 discards: you cannot rebuild a type, so lock the one you can make most often." if discards == 0 else ""))
+            if not any(c[2] >= need for c in cands):
+                rep = [c for c in cands if c[0] == want] or [c for c in cands if c[0] in ("Pair", "Two Pair", "Three of a Kind")]
+                if rep:
+                    cands = rep
     if boss_now == "The Eye" and played_now:
         unused = [c for c in cands if c[0] not in played_now]
         print(f"The Eye: hand types already used this round ({', '.join(played_now)}) score ZERO and are excluded.")
@@ -962,6 +1007,21 @@ def advise(d):
     best = max(cands, key=lambda t: t[2])
     fds = [c.get("index") for c in hand if c.get("rank") is None]
     boss_name = ((d.get("blind") or {}).get("name") or "") if (d.get("blind") or {}).get("boss") else ""
+    if boss_name == "Crimson Heart":
+        off = [j for j in lst(d.get("jokers")) if j.get("debuff") and not _dead_perishable(j)]
+        print("Crimson Heart: one random joker is disabled; it re-rolls after every PLAYED hand (discards do not re-roll it), "
+              "and the next pick never repeats the joker disabled now.")
+        if off and hands_left >= 2 and best[2] < need:
+            j_off = off[0]
+            d_full = dict(d, jokers=[dict(j, debuff=False) if j is j_off else j for j in lst(d.get("jokers"))])
+            est_full, _n = estimate(best[0], _cards_by_idx(d, best[1]), _held(d, best[1]), d_full, repeat=_repeat_flag(d, best[0]))
+            spare = [c for c in hand if c.get("index") not in best[1] and c.get("rank") is not None]
+            if spare and est_full >= max(need, int(1.5 * best[2])):
+                low = min(spare, key=lambda c: CHIP_VAL.get(_r(c), 0))
+                print(f"ADVICE: PLAY -> b play HIGH {low.get('index')}   (Crimson Heart disabled {j_off.get('name')}: your {best[0]} scores {best[2]} now vs ~{est_full} with it. "
+                      f"A 1-card throwaway re-rolls the disabled joker (never {j_off.get('name')} again next), then play the {best[0]}; {hands_left - 1} hand(s) left after this. "
+                      "The new pick is random and can hit another joker: re-run advise.)")
+                return
     if fds and boss_name != "The Mark":
         print(f"Face-down cards {fds} are unknown random cards ({boss_name or 'no boss'}): do not count on them; prefer discarding them and playing visible hands.")
     if len(fds) >= 4 and boss_name == "The Mark":
@@ -974,7 +1034,7 @@ def advise(d):
     face_jokers = any(j.get("name") in ("Smiley Face", "Scary Face", "Photograph", "Triboulet", "Sock and Buskin") for j in lst(d.get("jokers")))
     all_idx = [c.get("index") for c in hand]
 
-    jnames_all = [j.get("name") for j in lst(d.get("jokers"))]
+    jnames_all = [j.get("name") for j in lst(d.get("jokers")) if not j.get("debuff")]  # debuffed jokers do nothing this hand
     protect_ranks = set()
     if "Shoot the Moon" in jnames_all:
         protect_ranks.add("Q")
@@ -1044,6 +1104,24 @@ def advise(d):
         out.sort()
         chosen = []
         chosen_ranks = set()
+        if "Splash" in jnames_all and hand_name in ("Pair", "Two Pair", "Three of a Kind", "High Card"):
+            # Splash: every played card scores, so pick each filler by the est it actually adds (as `sel` would)
+            pool = list(out)
+            while pool and len(idxs) + len(chosen) < cap:
+                scored = []
+                for _o, i, su in pool:
+                    r_i = _r(_cards_by_idx(d, [i])[0])
+                    if r_i in chosen_ranks or (used_suits + [x[1] for x in chosen] + [su]).count(su) >= 5:
+                        continue
+                    trial = idxs + [x[0] for x in chosen] + [i]
+                    e_t, _n = estimate(hand_name, _cards_by_idx(d, trial), _held(d, trial), d, played_n=len(trial))
+                    scored.append((e_t, i, su, r_i))
+                if not scored:
+                    break
+                e_t, i, su, r_i = max(scored)
+                chosen.append((i, su)); chosen_ranks.add(r_i)
+                pool = [p for p in pool if p[1] != i]
+            return [i for i, _ in chosen]
         for _, i, su in out:
             if len(idxs) + len(chosen) >= cap:
                 break
@@ -1133,16 +1211,21 @@ def advise(d):
         keep = []
         why = ""
         flush_ev = 0
+        # outs from the actual remaining draw pile when the bridge sends it (deck.cards[].remaining), else a fresh-deck guess
+        deck_left = [c for c in lst((d.get("deck") or {}).get("cards")) if c.get("remaining")]
+        deck_n = len(deck_left) or int(((d.get("deck") or {}).get("draw_pile")) or 40)
+        draws = min(5, len(hand) - 4)
+
+        def p_hit(outs):
+            p_miss = 1.0
+            for k in range(draws):
+                p_miss *= max(0.0, (deck_n - outs - k) / max(1, deck_n - k))
+            return 1 - p_miss
         if len(flush_draw[1]) == 4:
             fcards = _cards_by_idx(d, flush_draw[1])
             flush_est, _n = estimate("Flush", fcards + [fcards[0]], _held(d, flush_draw[1]), d)
-            deck_n = int(((d.get("deck") or {}).get("draw_pile")) or 40)
-            draws = min(5, len(hand) - 4)
-            remaining_suit = max(0, 13 - len(flush_draw[1]) - 1)
-            p_miss = 1.0
-            for k in range(draws):
-                p_miss *= max(0.0, (deck_n - remaining_suit - k) / max(1, deck_n - k))
-            flush_ev = flush_est * (1 - p_miss)
+            f_outs = sum(1 for c in deck_left if SUIT.get(c.get("suit")) == flush_draw[0]) if deck_left else max(0, 13 - len(flush_draw[1]) - 1)
+            flush_ev = flush_est * p_hit(f_outs)
         # straight draw: 4 distinct ranks inside a 5-card window
         straight_ev, straight_keep = 0, []
         vals = {}
@@ -1159,15 +1242,17 @@ def advise(d):
             if len(have) == 4:
                 scards = _cards_by_idx(d, have)
                 st_est, _n = estimate("Straight", scards + [scards[0]], _held(d, have), d)
-                deck_n = int(((d.get("deck") or {}).get("draw_pile")) or 40)
-                draws = min(5, len(hand) - 4)
-                outs = 4 if (window[0] is None or window[-1] is None) and not (hi == 14 or hi - 4 == 1) else 4
-                outs = 8 if (window[0] is not None and window[-1] is not None) is False and hi not in (14, 5) else outs
-                p_miss = 1.0
-                for k in range(draws):
-                    p_miss *= max(0.0, (deck_n - outs - k) / max(1, deck_n - k))
-                if st_est * (1 - p_miss) > straight_ev:
-                    straight_ev, straight_keep = st_est * (1 - p_miss), have
+                four = [v for v in range(hi, hi - 5, -1) if vals.get(v) is not None]
+                # ranks that complete 5 in a row with these four (gutshot: 1 rank, open-ended: 2)
+                fill = {v for v in range(1, 15) if v not in four and any(set(range(lo, lo + 5)) == set(four) | {v} for lo in range(1, 11))}
+                fill |= {14} if 1 in fill else set()
+                fill |= {1} if 14 in fill else set()
+                if deck_left:
+                    s_outs = sum(1 for c in deck_left if RANK_VAL.get(RANK.get(str(c.get("rank")), str(c.get("rank"))), 0) in fill)
+                else:
+                    s_outs = 4 * len({min(v, 14) if v != 1 else 14 for v in fill})
+                if st_est * p_hit(s_outs) > straight_ev:
+                    straight_ev, straight_keep = st_est * p_hit(s_outs), have
                 break
         if has_sharp and played_types:
             reg = [m for m in made if m[0] in played_types]
@@ -1184,7 +1269,8 @@ def advise(d):
         chase = max([(flush_ev, "flush", list(flush_draw[1]) if len(flush_draw[1]) == 4 else []), (straight_ev, "straight", straight_keep)], key=lambda t: t[0])
         # with 2 or fewer discards (every Gold round) or on the final hand, never throw away the made floor: keep it and
         # draw to the chase around it (7805 discarded its only pair at The Head and missed the straight)
-        floor_needed = made and (discards <= 2 or hands_left == 1)
+        # ... but only when the floor matters: a made hand under half the per-hand need is no floor (7802 kept a low pair vs 450)
+        floor_needed = made and (discards <= 2 or hands_left == 1) and best_made >= 0.5 * need / max(1, hands_left)
         jokerless_ok = not jnames_all and proj >= 0.9 * need  # no joker: a missed chase strips the pair ranks that clear this blind
         if jokerless_ok and chase[2] and chase[0] > 1.25 * made_ev:
             print(f"No jokers: made pair-family hands project to {int(proj)} vs need {need}; sequencing them beats a {chase[1]} chase (EV {int(chase[0])}) that leaves nothing when it misses.")
@@ -1297,7 +1383,7 @@ def main_hand(d):
 
 
 AVOID_JOKERS = {"Madness": "destroys one of your jokers every blind", "Ceremonial Dagger": "destroys the joker to its right",
-                "Ramen": "decays with discards", "Ice Cream": "decays each hand", "Popcorn": "decays each round", "Turtle Bean": "decays",
+                "Ice Cream": "decays each hand", "Popcorn": "decays each round", "Turtle Bean": "decays",
                 "Gros Michel": "1/6 to self-destruct", "Swashbuckler": "useless as the only joker", "Joker Stencil": "x1 with full slots",
                 "Obelisk": "penalizes playing your main hand", "Troubadour": "-1 hand per round: Black Deck has only 3",
                 "Merry Andy": "-1 hand size", "Mr. Bones": "saves a lost blind once but is destroyed: not scaling"}
@@ -1313,6 +1399,9 @@ def classify_joker(name, cost, mh):
         return "XMULT(conditional, suit: rarely fires outside a Flush build)", 35
     if name in AVOID_JOKERS:
         return "AVOID(" + AVOID_JOKERS[name] + ")", 5
+    if name == "Ramen":
+        # x2 losing 0.01 per discarded card: at Gold (2 discards a round) still ~x1.5 after 5 rounds of full discards
+        return "XMULT(decaying: x2, -0.01 per card discarded; discard less while it carries you)", 85
     if name == "Burnt Joker":
         return "LEVELS(first discarded hand type levels up every round: discard your main hand type first)", 95
     if name == "Astronomer":
@@ -1443,6 +1532,9 @@ def sticker_adjust(c, cls, base_sc, score, ante, rounds_left, own_rentals, bridg
         else:
             pr = 40; may_replace = False
         pen += min(pr, 15) if life_r is not None else pr
+        if cls == "ECON":
+            pen += 45  # a money joker paying ~$3-4 a round minus $3 rent nets ~$0 and still takes a slot
+            notes.append("RENTAL money joker: its income roughly equals the rent, net ~$0")
         if own_rentals and ante <= 4:
             pen += 60; may_replace = False  # two rentals = -$6/round, more than the blinds pay: runs drained to $0 by ante 2
         elif own_rentals and ante < 7:
@@ -1508,19 +1600,20 @@ def shop_advise(d):
               + (": the ante-2 -> 3 jump is the steepest at Gold, an xMult or main-hand levels before leaving ante 2 decide it." if stake >= 6 and ante == 2 else "."))
     if stake >= 6 and ante >= 3 and n_x_now < 2 and main_lvl < 6:
         print(f"  GOLD CHECK: ante 4+ needs a second LASTING xMult or the main hand at L6+ (now {n_x_now} xMult alive next ante, main L{main_lvl}); spend on those first and keep $10 for the next one")
-    # Joker order matters only between joker-main effects: a +mult/+chips joker (or a holo/foil edition) right of a
-    # joker-main xMult loses the multiplication. Card-trigger jokers (Photograph, Triboulet, Smiley...) fire while cards
-    # score, before any joker-main effect, so their position is irrelevant; xMult jokers among themselves commute.
+    # Joker order matters only between joker-main effects that touch MULT: a +mult joker (or holo edition) right of a
+    # joker-main xMult loses the multiplication. +chips add to chips, so their position is irrelevant; card-trigger
+    # jokers (Photograph, Triboulet, Smiley...) fire while cards score; xMult jokers among themselves commute.
     def _main_x(j):
         return (j.get("name") not in CARD_TRIGGER_JOKERS and classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT")) or _joker_edition(j) == "polychrome"
 
     def _main_plus(j):
-        return (j.get("name") not in CARD_TRIGGER_JOKERS and classify_joker(j.get("name"), 0, mh)[0].startswith("PLUS")) or _joker_edition(j) in ("holo", "foil")
+        d_p = JOKER_DESC.get(j.get("name"), "").lower()
+        return (j.get("name") not in CARD_TRIGGER_JOKERS and classify_joker(j.get("name"), 0, mh)[0].startswith("PLUS") and "mult" in d_p) or _joker_edition(j) == "holo"
     first_x = next((i for i, j in enumerate(jokers) if _main_x(j)), None)
     if first_x is not None and any(_main_plus(j) for j in jokers[first_x + 1:]):
         plus_idx = [i + 1 for i, j in enumerate(jokers) if _main_plus(j)]
         desired = plus_idx + [i + 1 for i in range(len(jokers)) if i + 1 not in plus_idx]
-        print(f"  ORDER FIRST (free): b order {' '.join(map(str, desired))}   (a +mult/+chips joker sits right of an xMult and loses the multiplication); then follow the ADVICE below")
+        print(f"  ORDER FIRST (free): b order {' '.join(map(str, desired))}   (a +mult joker sits right of an xMult and loses the multiplication); then follow the ADVICE below")
     _is_scoring = _is_scoring_cls
     # planning unit: scorers alive next ante; a holographic/foil edition makes any joker a flat scorer (+10 mult / +50 chips)
     scoring_now = sum(1 for j in jokers if alive_next(j) and (_is_scoring(classify_joker(j.get("name"), 0, mh)[0]) or _joker_edition(j) in ("holo", "foil", "polychrome")))
@@ -1637,10 +1730,18 @@ def shop_advise(d):
                 options.append((66, "PLANET", f"buy {c['index']}", f"{name} ${cost} [planet for your second-most-played hand {sh2}: boss insurance]", cost, True, False))
                 continue
             feeds = any(j.get("name") in ("Constellation", "Satellite", "Astronomer") for j in jokers)
+            const = any(j.get("name") == "Constellation" and not j.get("debuff") for j in jokers)
             psc = 88 if good else 15
             if good and main_lvl >= 6 and n_x_now < 2:
                 psc = 52  # diminishing: L6+ adds ~12% per level while an xMult or Glass card adds 50-100%
-            options.append((psc + (25 if feeds else 0), "PLANET", f"buy {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation' if feeds else ''}]", cost, good or feeds, False))
+            psc += 25 if feeds else 0
+            if const and ante >= 4 and n_x_now <= 1:
+                psc = max(psc, 82)  # Constellation: every planet used is +0.1x on every hand forever; $3 beats a $5+ reroll
+            # planets are used on purchase: `buyuse` needs no consumable slot and feeds Constellation immediately
+            options.append((psc, "PLANET", f"{'buyuse' if feeds else 'buy'} {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
+        elif name == "Judgement":
+            jsc = (75 if scoring_now < 2 else 62) if free > 0 else 5
+            options.append((jsc, "TAROT", f"buyuse {c['index']}", f"{name} ${cost} [creates a random joker now (`buyuse` it; needs a free joker slot{'' if free > 0 else ': slots FULL, worthless now'}); at Gold it can carry stickers]", cost, False, False))
         elif name == "The Hermit":
             options.append((45 if money - cost >= 10 else 5, "TAROT", f"buy {c['index']}", f"{name} ${cost} [doubles money up to +$20: only worth it with $10+ left after buying]", cost, False, False))
         elif name in ("Death", "Strength", "Justice") and ante >= 3:
@@ -1772,7 +1873,7 @@ def shop_advise(d):
             min_left = max(min_left, 5)  # no multiplier yet: keep $5 so a surprise xMult, rescue tarot or reroll stays affordable
         if money - cost < min_left:
             continue
-        if cls in ("PLANET", "TAROT") and cons_full:
+        if cls in ("PLANET", "TAROT") and cons_full and not cmd.startswith("buyuse"):
             usable = [c for c in cons if c.get("index") in usable_cons()]
             if usable:
                 print(f"ADVICE: USE first -> b use {usable[0].get('index')}   (consumable slots full; use {usable[0].get('name')} then re-run shopadvise to buy {label.split(' [')[0]})")
@@ -1842,7 +1943,7 @@ def pack_advise(d):
             base = sc
             if bridge and _is_scoring_cls(cls):
                 sc = max(sc, 90)
-            BRIDGES = {"Gros Michel": 64, "Popcorn": 62, "Ice Cream": 58, "Ramen": 55}
+            BRIDGES = {"Gros Michel": 64, "Popcorn": 62, "Ice Cream": 58}
             if scoring_now == 0 and c.get("name") in BRIDGES:
                 cls, sc = "PLUS(decaying bridge: scores now, fades over ~5 rounds; sell when a real scorer arrives)", BRIDGES[c.get("name")]
             elif len(jokers) < slots and not any(_stk(c).values()) and not cls.startswith("AVOID"):
@@ -2060,8 +2161,7 @@ def pre_checks(cmd, typ, params, ints, d):
     if cmd == "pack":
         bst = next((b for b in lst(shg.get("boosters")) if b.get("index") == params["slot"]), None)
         if bst and "Buffoon" in str(bst.get("name")) and n_j >= slots_j:
-            print(f"ABORTED: {bst.get('name')} offers only jokers and your joker slots are full ({n_j}/{slots_j}); the pack could only be skipped. `sell N` a joker first if you want it.")
-            sys.exit(2)
+            print(f"Note: {bst.get('name')} offers jokers and your joker slots are full ({n_j}/{slots_j}): you can `sell N` while the pack is open to make room, or `skippack`.")
     if cmd == "sell":
         jk_s = next((j for j in lst(d.get("jokers")) if j.get("index") == params["index"]), None)
         if jk_s and _stk(jk_s)["eternal"]:
@@ -2070,11 +2170,9 @@ def pre_checks(cmd, typ, params, ints, d):
     if cmd == "buy":
         itm = next((c for c in lst(shg.get("jokers")) if c.get("index") == params["slot"]), None)
         if itm and itm.get("set") in ("Planet", "Tarot", "Spectral") and n_c >= slots_c:
-            print(f"ABORTED: consumable slots are full ({n_c}/{slots_c}); `buyuse {params['slot']}` uses {itm.get('name')} straight from the shop, or `use N`/`sellc N` a consumable first.")
-            sys.exit(2)
+            print(f"Note: consumable slots are full ({n_c}/{slots_c}); `buyuse {params['slot']}` uses {itm.get('name')} straight from the shop. /legal decides.")
         if itm and itm.get("set") == "Joker" and n_j >= slots_j and _joker_edition(itm) != "negative":
-            print(f"ABORTED: joker slots are full ({n_j}/{slots_j}); `sell N` your weakest joker first, then buy {itm.get('name')}.")
-            sys.exit(2)
+            print(f"Note: joker slots are full ({n_j}/{slots_j}); if this is refused, `sell N` your weakest joker first, then buy {itm.get('name')}.")
         if itm and itm.get("set") == "Joker" and stickers(itm):
             print(f"Note: {itm.get('name')} carries {stickers(itm)}" + (": it can never be sold" if _stk(itm)["eternal"] else "")
                   + ("; rent -$3 at every round end until you sell it ($1)" if _stk(itm)["rental"] else "") + ".")
@@ -2094,11 +2192,9 @@ def pre_checks(cmd, typ, params, ints, d):
             if hand_for:
                 print(f"{name} levels {hand_for}" + (f" (NOT your main hand {mh_p}; a level elsewhere is mostly wasted)" if mh_p not in ("undecided", hand_for) else ""))
         if name in ("Wraith", "Judgement") and n_j >= slots_j:
-            print(f"ABORTED: {name} creates a joker but your joker slots are full ({n_j}/{slots_j}); `sell N` a joker first (selling works while a pack is open), pick a different card, or `skippack`.")
-            sys.exit(2)
+            print(f"Note: {name} creates a joker but your joker slots are full ({n_j}/{slots_j}): it creates nothing unless you `sell N` a joker first (selling works while a pack is open).")
         if name in ("The Fool", "The High Priestess", "The Emperor") and n_c >= slots_c:
-            print(f"ABORTED: {name} creates a consumable but your consumable slots are full ({n_c}/{slots_c}); `use N` or `sellc N` one first, then `pick {params['index']}`.")
-            sys.exit(2)
+            print(f"Note: {name} creates consumables but your consumable slots are full ({n_c}/{slots_c}): `use N` or `sellc N` one first.")
     if cmd == "use":
         name = (next((c for c in lst(d.get("consumables")) if c.get("index") == params["index"]), None) or {}).get("name")
     if cmd in ("use", "pick") and name == "Death" and len(tg) == 2:
@@ -2150,6 +2246,9 @@ def play_type_check(rest, ints, d):
             stones = [c.get("index") for c in _cards_by_idx(d, ints) if "Stone" in _enh(c) and c.get("index") not in scoring_idx]
             scoring_idx = scoring_idx + stones  # Stone cards always score (+50 chips) even as fillers
     est, notes = estimate(expected, _cards_by_idx(d, scoring_idx), _held(d, ints), d, repeat=_repeat_flag(d, expected), played_n=len(ints))
+    if pr.get("blind_debuffed"):
+        est = 0
+        notes = [f"WARNING: the boss {(d.get('blind') or {}).get('name')} debuffs this {expected}: it scores 0 (only useful to cycle cards)"] + notes
     print(f"Playing {expected} with idx {ints} (scoring {scoring_idx}): est {est}" + (f" | notes: {'; '.join(notes)}" if notes else ""))
     _EST_CTX = (expected, scoring_idx, est, int(((d.get("blind") or {}).get("chips_scored")) or 0), d)
 

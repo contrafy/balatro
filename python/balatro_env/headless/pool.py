@@ -4,13 +4,15 @@
         first = pool.reset([{"seed": s, "deck": "b_black", "stake": 1} for s in seeds])   # [(obs, legal)]
         out = pool.step(actions)                                                           # [(obs, legal, done, info)]
 
-Every call is broadcast to all workers first and then collected, so the workers step in parallel.
-`send`/`recv` give per-worker asynchronous control for policies that do not step in lockstep.
+Every batched call is broadcast to all workers first and then collected, so the workers step in parallel.
+`send` / `ready` / `recv` give per-worker asynchronous control (refill whichever worker answers first), which
+avoids waiting on the slowest worker when step costs differ (a REORDER is 1 frame, a played hand ~100).
 """
 
 from __future__ import annotations
 
 import multiprocessing as mp
+import multiprocessing.connection
 import os
 import traceback
 from typing import Any
@@ -31,8 +33,10 @@ def _worker(conn, index: int, env_kw: dict[str, Any]) -> None:
         try:
             cmd, args, kwargs = conn.recv()
         except (EOFError, KeyboardInterrupt):
+            env.close()
             return
         if cmd == "close":
+            env.close()
             conn.send(("ok", None))
             return
         try:
@@ -79,6 +83,11 @@ class HeadlessPool:
         if status != "ok":
             raise EngineError(f"worker {i}: {value}")
         return value
+
+    def ready(self, timeout: float | None = None) -> list[int]:
+        """Indices of workers with a reply waiting (blocks up to `timeout`; None = until one is ready)."""
+        conns = mp.connection.wait(self._conns, timeout)
+        return [self._conns.index(c) for c in conns]
 
     # -- batched ----------------------------------------------------------------------------------------
 

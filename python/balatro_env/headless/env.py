@@ -103,6 +103,10 @@ class HeadlessEnv:
         """Virtual frames run so far (all runs) and steps in the current run."""
         return {"frames": self.frames, "steps": self.steps}
 
+    def close(self) -> None:
+        """Close the open trajectory file of an unfinished run (left without an `end` line, as on a crash)."""
+        self.engine.close()
+
 
 def random_legal_action(legal: dict[str, Any], rng: random.Random) -> dict[str, Any]:
     """Uniform over legal entries (START_RUN excluded), then uniform params inside the entry's domains."""

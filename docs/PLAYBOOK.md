@@ -115,6 +115,7 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
 - MAIN HAND = most played hand (recent plays break ties); before 3 plays an owned hand-gated joker decides it (Clever
   -> Two Pair). With Card Sharp it is the most played pair-family hand (Pair on ties): the type you can repeat each round.
   Obelisk resets to x1 whenever you play your most played hand; `est` models that.
+- DEBUFFED jokers (`{DEBUFFED}` in `s`) do nothing and `est` leaves them out.
 - NO SCORER ALIVE NEXT ANTE: scoring jokers come first (rerolls included), everything else is capped below them.
 - BUFFOON PACKS are discounted (most Gold pack jokers carry a sticker). Inside a pack run `advise`: it ranks the jokers
   with stickers, takes a decaying bridge (Popcorn, Ice Cream, Gros Michel) when you own no scorer, and says SKIP when
@@ -124,11 +125,23 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   at L6+, and $10 kept for the next one. With no xMult offered at ante 3-4, money goes to main-hand planets before
   rerolls (deep runs that rerolled instead stalled at ante 4-5).
 - `RIFF-RAFF` owned (and a free slot): never skip a blind, it makes 2 Common jokers when the blind is selected.
-- JOKER ORDER only matters between a +mult/+chips joker (or holo/foil edition) and a joker-main xMult; card-trigger
+- JOKER ORDER only matters between a +mult joker (or holo edition) and a joker-main xMult; +chips jokers, card-trigger
   xMults (Photograph, Triboulet...) and xMults among themselves can sit anywhere. `shopadvise` prints an `ORDER FIRST`
   note only when the order changes the score.
+- THE MOUTH: the first played hand locks the type for all 3 hands. Open with a type you can repeat (main hand / Pair),
+  never a one-off Straight/Flush/Full House unless that one hand clears the whole blind; keep a discard until the lock.
+  A locked High Card is any single card. Owning Burglar (0 discards) before The Mouth: sell it or lock High Card.
 - ACROBAT (x3 on the final hand): when the best hand clears as the final hand, `advise` spends the earlier hands on
   spare cards and keeps the best one for last. MYSTIC SUMMIT (+15 mult at 0 discards): spend discards early.
+- CRIMSON HEART (ante 8 boss, needs ~400000 at Gold) disables one joker per hand and picks a new one after every PLAYED
+  hand; discards do not re-roll it, and it never picks the same joker twice in a row. `s` marks the disabled joker
+  `{DEBUFFED}`; when it is a key xMult and hands remain, `advise` plays a 1-card throwaway first. 7810_ZY6GJXIG lost
+  158620/400000 by banking hands while Photograph was disabled.
+- DEEPEST GOLD BUILD SO FAR (7810_ZY6GJXIG, Sonnet, reached the ante 8 boss): face Pair engine. Pair L5 and Trips L7,
+  Photograph (x2 on the first face) + Hanging Chad (retriggers the first card twice) + The Duo (x2 on a Pair) +
+  Scary Face (+30 chips per face) + Half Joker (+20 at <=3 cards) + Acrobat (x3 on the final hand). It made ~31k on a
+  normal hand and ~94k on the final hand at ante 5-6, and cleared ante 7. It lacked a growing xMult for ante 8: from
+  ante 6 on, buy one (Hologram, Constellation, Lucky Cat, Glass via Justice).
 
 ## 3. Scoring facts (verified in-game)
 
@@ -243,12 +256,13 @@ keeping pairs (say so in the log when you override).
 STAKE 1: NEVER SKIP A BLIND, at any ante (every logged stake-1 skip at antes 3-4 was followed by a loss). STAKE 2+: skip
 the Small Blind for a joker/pack tag per section 5 (it pays $0 there). Otherwise:
 a skip forfeits a shop visit and income exactly when the blind curve steepens. `s` at blind select prints `ADVICE: b blind`.
-Avoid self-destructive or decaying jokers as scaling: Madness (destroys a joker every blind), Ceremonial Dagger, Ramen,
-Ice Cream, Popcorn, Gros Michel; Swashbuckler is worthless as your only joker. `shopadvise` marks these AVOID.
-After every joker buy/sell, keep xMult jokers rightmost (`shopadvise` prints an ORDER advice when they are not).
+Avoid self-destructive or decaying jokers as scaling: Madness (destroys a joker every blind), Ceremonial Dagger,
+Ice Cream, Popcorn, Gros Michel; Swashbuckler is worthless as your only joker. `shopadvise` marks these AVOID. Ramen
+(x2, -0.01 per discarded card) is an exception: a real xMult for several antes at Gold's 2 discards.
+After every joker buy/sell, keep +mult jokers left of joker-main xMults (`shopadvise` prints ORDER FIRST when needed).
 
-Always: fill all 6 joker slots by ante 4. Skip tags: take Uncommon/Rare/Negative/Foil/Holo/Polychrome tags when you have a
-free slot; Investment/Economy at ante 5+; otherwise play the blind (income matters).
+Always: fill all 6 joker slots by ante 4. Skip tags at Gold: follow section 2a (`s` prints the skip ADVICE); a tag that pays
+in the next shop never helps the Big Blind in between. Investment/Economy at ante 5+ only if the shop is not needed.
 
 ## 6. Bosses
 

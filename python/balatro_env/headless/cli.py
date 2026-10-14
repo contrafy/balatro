@@ -112,29 +112,42 @@ def cmd_bench(args: argparse.Namespace) -> int:
     with HeadlessPool(args.workers, dt=args.dt) as pool:
         boot = time.monotonic() - t_boot
         rngs = [random.Random(args.rng_seed * 1000 + i) for i in range(pool.n)]
-        cur = pool.reset([start() for _ in range(pool.n)])
         frames0 = sum(s["frames"] for s in pool.call("stats"))
-        steps = runs = 0
+        # Asynchronous: each worker is refilled as soon as it answers (no lockstep on the slowest step).
+        # Resets (START_RUN + settle to the first blind) count toward the elapsed time, not the step count.
+        pending: dict[int, str] = {}
+        for i in range(pool.n):
+            pool.send(i, "reset", **start())
+            pending[i] = "reset"
+        steps = runs = sent = 0
         t0 = time.monotonic()
-        while steps < args.steps:
-            actions = [random_legal_action(legal, rngs[i]) for i, (obs, legal) in enumerate(cur)]
-            out = pool.step(actions)
-            steps += pool.n
-            restart = [i for i, (_, _, done, _) in enumerate(out) if done]
-            cur = [(o[0], o[1]) for o in out]
-            for i in restart:
-                runs += 1
-                pool.send(i, "reset", **start())
-            for i in restart:
-                cur[i] = pool.recv(i)
+        while pending:
+            for i in pool.ready():
+                out = pool.recv(i)
+                kind = pending.pop(i)
+                if kind == "step":
+                    steps += 1
+                    obs, legal, done, _ = out
+                    if done:
+                        runs += 1
+                        if sent < args.steps:
+                            pool.send(i, "reset", **start())
+                            pending[i] = "reset"
+                        continue
+                else:
+                    obs, legal = out
+                if sent < args.steps:
+                    pool.send(i, "step", random_legal_action(legal, rngs[i]))
+                    pending[i] = "step"
+                    sent += 1
         elapsed = time.monotonic() - t0
         frames = sum(s["frames"] for s in pool.call("stats")) - frames0
     total = steps / elapsed
     print(json.dumps({
         "workers": pool.n, "steps": steps, "seconds": round(elapsed, 2), "runs_finished": runs,
         "steps_per_s": round(total, 1), "steps_per_s_per_worker": round(total / pool.n, 1),
-        "frames_per_step": round(frames / steps, 1), "boot_seconds": round(boot, 2), "dt": args.dt,
-        "cpu_count": os.cpu_count(),
+        "frames_per_step_incl_resets": round(frames / steps, 1), "frames_per_s": round(frames / elapsed),
+        "boot_seconds": round(boot, 2), "dt": args.dt, "cpu_count": os.cpu_count(),
     }, indent=1))
     return 0
 

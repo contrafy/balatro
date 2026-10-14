@@ -184,3 +184,72 @@ def test_all_face_down_hand_discards_them(monkeypatch):
     assert _advice(_out(cli.advise, d)).startswith("ADVICE: DISCARD -> b disc 1 2 3 4 5")
     d["discards_remaining"] = 0
     assert _advice(_out(cli.advise, d)).startswith("ADVICE: PLAY -> b play 1 ")
+
+
+def test_debuffed_joker_adds_nothing_and_is_shown():
+    cards = [_card("King", "Spades", 1), _card("King", "Hearts", 2)]
+    hl = {"Pair": {"chips": 10, "mult": 2, "level": 1}}
+    base, _ = cli.estimate("Pair", cards, [], {"jokers": [], "hand_levels": hl})
+    cav = joker("Cavendish", 1, ability={"x_mult": 3}, debuff=True, edition="polychrome")
+    est, notes = cli.estimate("Pair", cards, [], {"jokers": [cav, joker("Blueprint", 2)], "hand_levels": hl})
+    assert est == base and any("DEBUFFED" in n for n in notes)
+    assert "DEBUFFED" in cli.stickers(cav)
+
+
+def test_crimson_heart_rerolls_disabled_xmult_with_throwaway():
+    hand = [_card("King", "Spades", 1), _card("King", "Hearts", 2), _card("2", "Clubs", 3), _card("7", "Diamonds", 4)]
+    d = {"phase": "SELECTING_HAND", "stake": 8, "ante": 8, "money": 5, "hands_remaining": 3, "discards_remaining": 0,
+         "hand": hand, "hand_levels": {"Pair": {"chips": 10, "mult": 2, "level": 1}},
+         "jokers": [joker("Joker", 1), joker("Cavendish", 2, ability={"x_mult": 3}, debuff=True)],
+         "blind": {"name": "Crimson Heart", "boss": True, "chips_needed": 150, "chips_scored": 0}}
+    adv = _advice(_out(cli.advise, d))
+    assert adv.startswith("ADVICE: PLAY -> b play HIGH 3") and "re-rolls" in adv
+
+
+def test_mouth_and_eye_debuffed_types_score_zero():
+    cards = [_card("King", "Spades", 1), _card("King", "Hearts", 2)]
+    hl = {"Pair": {"chips": 10, "mult": 2, "level": 1}}
+    mouth = {"hand_levels": hl, "jokers": [], "blind": {"name": "The Mouth", "boss": True, "only_hand": "Two Pair"}}
+    assert cli.estimate("Pair", cards, [], mouth)[0] == 0
+    assert cli.estimate("Pair", cards, [], dict(mouth, blind=dict(mouth["blind"], disabled=True)))[0] > 0
+    eye = {"hand_levels": hl, "jokers": [], "blind": {"name": "The Eye", "boss": True, "hands_used": ["Pair"]}}
+    assert cli.estimate("Pair", cards, [], eye)[0] == 0
+
+
+def test_mouth_lock_from_blind_state_steers_advise():
+    hand = [_card("King", "Spades", 1), _card("King", "Hearts", 2), _card("3", "Clubs", 3), _card("7", "Diamonds", 4)]
+    d = {"phase": "SELECTING_HAND", "stake": 8, "ante": 3, "money": 5, "hands_remaining": 2, "discards_remaining": 1,
+         "hand": hand, "jokers": [], "hand_levels": {"Pair": {"chips": 10, "mult": 2, "level": 1, "played_this_round": 0}},
+         "blind": {"name": "The Mouth", "boss": True, "only_hand": "Two Pair", "chips_needed": 6400, "chips_scored": 100}}
+    out = _out(cli.advise, d)
+    assert "only Two Pair may be played" in out and _advice(out).startswith("ADVICE: DISCARD")
+
+
+def test_ramen_and_judgement_valued():
+    assert cli.classify_joker("Ramen", 0, "Pair")[0].startswith("XMULT")
+    d = shop(jokers=[joker("Joker", 1)], shop_jokers=[{"index": 1, "name": "Judgement", "set": "Tarot", "cost": 3}], money=8, ante=1)
+    assert "buyuse 1" in _advice(_out(cli.shop_advise, d))
+
+
+def test_mouth_locked_high_card_is_playable():
+    hand = [_card("King", "Spades", 1), _card("Queen", "Hearts", 2), _card("7", "Hearts", 3), _card("4", "Clubs", 4), _card("3", "Clubs", 5)]
+    d = {"phase": "SELECTING_HAND", "stake": 8, "ante": 3, "money": 5, "hands_remaining": 2, "discards_remaining": 0,
+         "hand": hand, "jokers": [], "hand_levels": {"High Card": {"chips": 5, "mult": 1, "level": 1}},
+         "blind": {"name": "The Mouth", "boss": True, "only_hand": "High Card", "chips_needed": 6400, "chips_scored": 100}}
+    adv = _advice(_out(cli.advise, d))
+    assert "NO VALID PLAY" not in adv and "b play HIGH 1" in adv
+
+
+def test_order_ignores_chips_jokers():
+    d = shop(jokers=[joker("Cavendish", 1), joker("Sly Joker", 2)], shop_jokers=[{"index": 1, "name": "Joker", "set": "Joker", "cost": 2}])
+    assert "ORDER" not in _out(cli.shop_advise, d)
+
+
+def test_rental_money_joker_penalised():
+    d = shop(jokers=[joker("Joker", 1), joker("Jolly Joker", 2)], shop_jokers=[{"index": 1, "name": "Egg", "set": "Joker", "cost": 1, "rental": True}], money=8)
+    assert "net ~$0" in _out(cli.shop_advise, d)
+
+
+def test_debuffed_club_does_not_count_for_suits():
+    club = dict(_card("King", "Clubs", 1), debuff=True)
+    assert "C" not in cli._suit_cover([club, _card("King", "Hearts", 2)], [])

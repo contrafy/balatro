@@ -18,8 +18,9 @@ from typing import Any
 
 from balatro_env.headless.source import BRIDGE_DIR, LUA_DIR, extract_source
 
-# Fixed virtual frame time handed to love.update (LOVE caps its smoothed dt at 0.1 s).
-DEFAULT_DT = 1 / 60
+# Fixed virtual frame time handed to love.update. 0.1 s is LOVE's own cap on the smoothed dt (a live game
+# at 10 fps sees exactly this); larger steps make UI easing overshoot and never settle.
+DEFAULT_DT = 0.1
 
 # lupa runtime module: luajit20 matches the game's bundled LuaJIT 2.0.5.
 LUA_FLAVORS = ("luajit20", "luajit21")
@@ -76,8 +77,7 @@ class Engine:
 
     def __init__(self, exe: str | None = None, data_dir: str | os.PathLike | None = None,
                  port: int = HEADLESS_PORT, dt: float = DEFAULT_DT, git_sha: str | None = None,
-                 quiet: bool = True, boot_frames: int = 2000, lua: str = DEFAULT_LUA,
-                 event_passes: int = 1):
+                 quiet: bool = True, boot_frames: int = 2000, lua: str = DEFAULT_LUA):
         import importlib
 
         if lua not in LUA_FLAVORS:
@@ -103,7 +103,6 @@ class Engine:
             b"bridge_dir": _b(BRIDGE_DIR),
             b"dt": float(dt),
             b"quiet": bool(quiet),
-            b"event_passes": int(event_passes),
             b"env": self.lua.table_from(env),
             b"save_files": self.lua.table_from({b"settings.jkr": SETTINGS_LUA.encode()}),
         })
@@ -153,6 +152,14 @@ class Engine:
 
     def frames(self, n: int) -> int:
         return int(self.H.frames(n))
+
+    def close(self) -> None:
+        """Close trajectory files of a run that never ended (they stay open in the Lua state otherwise:
+        lupa's Lua<->Python reference cycle keeps the runtime alive past the last Python reference)."""
+        if self.H is not None:
+            self.H.close()
+            self.H = None
+            self.lua = None
 
 
 def _s(v: Any) -> Any:

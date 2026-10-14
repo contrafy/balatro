@@ -4,7 +4,6 @@ obs/legal with the recording, using the same normalization and diff code as the 
 
 from __future__ import annotations
 
-import gc
 import shutil
 import tempfile
 import time
@@ -12,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from balatro_env.data.replay import END_PHASE, ReplayResult, _compare_files, _Sides
-from balatro_env.data.trajectory import Trajectory, find_trajectories, read_trajectory, run_key
+from balatro_env.data.trajectory import Trajectory, find_trajectories, read_trajectory
 from balatro_env.headless.engine import Engine, EngineError
 
 SETTLE_FRAMES = 60_000
@@ -41,24 +40,27 @@ class Replayer:
             res.ok = False
             res.divergence_kind = res.divergence_kind or "bridge"
             res.message = str(exc)
-        self._discard(res.replay_path)
+        self._discard()
         res.replay_path = None  # temporary recording, deleted
         res.seconds = time.monotonic() - t0
         return res
 
-    def _discard(self, replay_path: str | None) -> None:
-        if not replay_path or self.tmp is None:
+    def _discard(self) -> None:
+        """Delete finished temporary recordings. A run without an end line keeps its file open until the
+        next START_RUN closes it as abandoned (Windows refuses to delete it before); a later call or
+        close() removes it."""
+        if self.tmp is None:
             return
-        p = Path(replay_path)
-        for cand in (p.with_name(run_key(p) + ".jsonl.gz"), p.with_name(run_key(p) + ".jsonl")):
+        for f in self.tmp.rglob("*.jsonl*"):
             try:
-                cand.unlink()
+                f.unlink()
             except OSError:
-                pass  # still open (run without an end line): removed with the temp dir on close()
+                pass
 
     def close(self) -> None:
-        self.engine = None
-        gc.collect()  # closes the Lua state and with it any open trajectory file
+        if self.engine is not None:
+            self.engine.close()
+            self.engine = None
         if self.tmp is not None:
             shutil.rmtree(self.tmp, ignore_errors=True)
 

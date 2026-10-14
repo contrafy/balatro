@@ -1,0 +1,4 @@
+# Run 1QAUCRHI (port 7801, claude-fable-5-1) - Black Deck Gold Stake - IN PROGRESS
+
+Ante 1 (300/450/Pillar 600): Small: 2 discards -> Broadway straight 324 (one hand). Shop $6: Buffoon -> Splash (perishable, over Ride the Bus eternal+rental; advisor said skip), Banner rental $1 (+30 chips/discard kept). Big: Two Pair JJ44+8 232, Pair 7+T96 218 = 450/450 exact, no discards used. Boss Pillar: Pair J(1 debuffed)+T96 210, Pair 5 + JH + 2 debuffed fillers 180, Pair A(1 debuffed)+T98 216 = 606/600. Never discarded (Banner +60 each hand). $0 after rent.
+Ante 2 (1000/1500/Mouth 2000): shop $5 nothing (Crafty perishable only). Skipped Small (Handy +$6 -> $11) AND Big (Buffoon tag -> Mega Buffoon: Mystic Summit{ETERNAL,RENTAL} + Joker{ETERNAL} over Crazy/Superposition; advisor wanted Joker+Crazy). Sold Banner. Mouth 2000: 2 discards burned first (Mystic +15 -> x21), Pair A+JT8 1260, Pair K+QJ9 1239 = 2499 (FH 888AA was est 1978, 22 short). $9 after rent.
