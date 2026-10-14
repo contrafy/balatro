@@ -73,29 +73,28 @@ _Updated 13:00._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 13:13:05 by `balatro-data status` (edits inside this block are overwritten). Player runs: 362 (345 finished, 17 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 13:22:29 by `balatro-data status` (edits inside this block are overwritten). Player runs: 372 (356 finished, 16 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (17)
+### Live runs (16)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | LIH39HVG | 8 | BLIND_SELECT | 1 | 0 | 4 | Small Blind (300) | SELECT_BLIND | Ante 1 Small 300: Rare tag pays only after the Big, jokerless; play for the shop visit per playbook | 7s |
-| 7803 | port-7803 | claude-opus-5-5 | GVMUBXKL | 8 | SHOP | 4 | 10 | 12 | Big Blind (13500) | SHOP_BUY_BOOSTER {"slot":2} | Buffoon hunting first xMult (0 owned), SIM +0.16; can sell perishing Jolly for a pick; left | 12s |
-| 7804 | port-7804 | claude-opus-5-5 | IGPWWNXB | 8 | BLIND_SELECT | 6 | 11 | -4 | Small Blind (60000) | SELECT_BLIND | Small 60000 is the lowest blind left; Acrobat final with glass QD + steel 2C reached 59.5k at the T… | 36s |
-| 7805 | port-7805 | claude-opus-5-5 | 65YFNPGW | 8 | ROUND_EVAL | 2 | 3 | 3 | The Window (2000) | CASH_OUT | cash out ante 1 boss | 25s |
-| 7806 | port-7806 | claude-opus-5-5 | UGQG5ZYN | 8 | BLIND_SELECT | 4 | 6 | 5 | Big Blind (13500) | SELECT_BLIND | Big 13500 with Juggle +3 hand size | 3s |
-| 7807 | port-7807 | claude-sonnet-5-5 | XGDKMP9F | 8 | SELECTING_HAND | 5 | 11 | 1 | Small Blind 2268/25000 | PLAY_HAND {"card_indices":[1,2,6,7]} | Pair AA (glass AH + lucky AC) x3 repeat est ~9.8k; then 88 (+Empress) ~10k; need 22.7k total so rel… | 25s |
-| 7808 | port-7808 | claude-sonnet-5-5 | 2F196DBH | 8 | ROUND_EVAL | 2 | 4 | 5 | Small Blind (1000) | CASH_OUT | cash out Small | 19s |
-| 7809 | port-7809 | claude-sonnet-5-5 | PHIIHH8E | 8 | SELECTING_HAND | 5 | 11 | 2 | Big Blind 0/37500 | DISCARD {"card_indices":[1,2,3,4,5]} | Big 37500 needs a hearts flush on Acrobat last hand (Lusty +3/heart, Crafty +80): keep 6H, dig for … | 0s |
-| 7810 | port-7810 | claude-sonnet-5-5 | YY2DXIBD | 8 | BLIND_SELECT | 3 | 6 | 1 | Big Blind (4800) | SELECT_BLIND | Big 4800: need $ and two ~3300 pair hands | 11s |
-| 7811 | port-7811 | claude-sonnet-5-5 | NZDVLMA4 | 8 | SELECTING_HAND | 4 | 9 | 2 | Small Blind 7242/9000 | USE_CONSUMABLE {"index":1} | Fool recreates last used tarot (Death) for another Queen copy | 1s |
-| 7812 | port-7812 | (unknown) | ME9AMTUQ | 8 | BLIND_SELECT | 4 | 7 | 10 | Big Blind (13500) | SELECT_BLIND | Play Big 13500 | 2s |
-| 7813 | port-7813 | claude-sonnet-5-5 | JWY71UL4 | 8 | PACK_OPENING | 6 | 9 | 2 | Small Blind (60000) | SELECT_PACK_CARD {"index":1} | Temperance +2 (sum of joker sell values): only left and rent is -/round | 4s |
-| 7814 | port-7814 | claude-haiku-5-5 | QJLH1E4K | 8 | SELECTING_HAND | 3 | 8 | 2 | Big Blind 0/4800 | DISCARD {"card_indices":[1,2,3,8]} | Keep Two Pair 99 44 est 644: breaking leads by only 0.07 (<0.10 rule). Discard AH QS JS 2C, draw 4.… | 1s |
-| 7815 | port-7815 | claude-sonnet-5-5 | 4HCI6MJA | 8 | SELECTING_HAND | 3 | 7 | 13 | The Tooth 0/6400 | USE_CONSUMABLE {"index":1,"targets":[7,8]} | Hanged Man destroys 3H and 2S (dead low cards) for 2 fresh draws toward trips/FH on a 6400 Tooth ro… | 10s |
-| 7816 | port-7816 | claude-sonnet-5-5 | XW9HA5LQ | 8 | ROUND_EVAL | 5 | 12 | 20 | The House (50000) | CASH_OUT | cash out The House | 14s |
-| 7817 | port-7817 | claude-opus-5-5 | WC7ZJRHM | 8 | SHOP | 3 | 5 | 11 | Small Blind (3200) | SHOP_END | shop empty of scorers; 1 kept for next shop xMult (reroll would leave , rule: no poor rerolls) | 5s |
-| 7818 | port-7818 | claude-haiku-5-5 | IG8RC872 | 8 | SHOP | 3 | 6 | 8 | Small Blind (3200) | SHOP_BUY {"slot":1} | No scorer alive; Misprint +0..23 mult perishable (no rental) , -> ; advisor and only scorer on offer | 8s |
+| 7801 | port-7801 | claude-fable-5-1 | LIH39HVG | 8 | SHOP | 2 | 4 | 16 | Big Blind (1500) | SHOP_BUY_BOOSTER {"slot":1} | Second free Jumbo Celestial (Coupon): look for Uranus/Mercury/Venus, costs /bin/bash | 21s |
+| 7802 | port-7802 | claude-opus-5-5 | PFMSHPC7 | 8 | SELECTING_HAND | 3 | 6 | 13 | Small Blind 0/3200 | PLAY_HAND {"card_indices":[7,8]} | Pair 44 est 7332 >= 3200 one-shot (Even Steven + Walkie + Chad retrigger), + unused hands | 19s |
+| 7804 | port-7804 | claude-opus-5-5 | AHWUSK5M | 8 | BLIND_SELECT | 3 | 5 | 4 | Big Blind (4800) | SELECT_BLIND | Big 4800 | 8s |
+| 7805 | port-7805 | claude-opus-5-5 | 65YFNPGW | 8 | SELECTING_HAND | 3 | 8 | 4 | Big Blind 0/4800 | DISCARD {"card_indices":[1,5,6,7,8]} | best now Pair KK 675 << 4800; solver 0.88 keeps KS KD TC, digs 5 for Queens (Moon +13 held) and fac… | 2s |
+| 7806 | port-7806 | claude-opus-5-5 | UGQG5ZYN | 8 | SHOP | 5 | 9 | 4 | Big Blind (37500) | REORDER {"area":"jokers","order":[1,2,3,6,4,5]} | holo Glass Joker (+10 mult) left of the xMults Seeing Double and Hologram | 24s |
+| 7807 | port-7807 | claude-sonnet-5-5 | BC8S6R97 | 8 | SHOP | 3 | 6 | 12 | Small Blind (3200) | SHOP_BUY {"slot":2} | EMERGENCY 0.24: Fibonacci +8 mult per A/2/3/5/8 stacks with Scholar aces, SIM +0.31 value; 2 -> | 1s |
+| 7808 | port-7808 | claude-sonnet-5-5 | 2F196DBH | 8 | SELECTING_HAND | 3 | 8 | 3 | The Arm 1592/6400 | PLAY_HAND {"card_indices":[3,4,1,2,5]} | Final hand, need 4808 unreachable; best available Pair TT with AC club first | 4s |
+| 7809 | port-7809 | (unknown) | UEC3HDUI | 8 | SHOP | 2 | 5 | 5 | Big Blind (1500) | SHOP_END | keep ; Saturn is straight planet, not main hand | 2s |
+| 7810 | port-7810 | (unknown) | AQJ81BLL | 8 | SELECTING_HAND | 1 | 2 | 0 | Big Blind 0/450 | PLAY_HAND {"card_indices":[1,3,4,6,8]} | made Flush clubs est 296 of 450; solver p>=0.99 keeping 2 discards for later hands | 11s |
+| 7812 | port-7812 | (unknown) | ME9AMTUQ | 8 | PACK_OPENING | 6 | 13 | 2 | Small Blind (60000) | SELECT_PACK_CARD {"index":3} | Uranus: Two Pair L3 (+20 chips, +1 mult); Two Pair x9 repeats are the highest-chip repeatable hand | 2s |
+| 7813 | port-7813 | claude-sonnet-5-5 | U9HZ6YB5 | 8 | SHOP | 2 | 4 | 13 | Big Blind (1500) | SHOP_REROLL | Score check 0.40 with 0 xMult: shop has no scorer worth it; 3 -> keeps floor, look for xMult/Buffoon | 20s |
+| 7814 | port-7814 | claude-haiku-5-5 | UGZ2813E | 8 | BLIND_SELECT | 2 | 3 | 2 | Small Blind (1000) | SELECT_BLIND | Ante 2 Small 1000: no skip (Standard tag does not pay a joker now); play with Red Card + Mystic Sum… | 12s |
+| 7815 | port-7815 | claude-sonnet-5-5 | 4HCI6MJA | 8 | SHOP | 5 | 8 | 9 | Small Blind (25000) | SHOP_BUY_BOOSTER {"slot":1} | Arcana : Hermit/Death/Strength/Justice chance; -> ; round est 36k vs Small 25k | 22s |
+| 7816 | port-7816 | claude-sonnet-5-5 | N22YQIEH | 8 | BLIND_SELECT | 1 | 2 | 7 | The Pillar (600) | SELECT_BLIND | The Pillar boss 600; Summit hands est 1000+ | 1s |
+| 7817 | port-7817 | claude-opus-5-5 | 3UW372XP | 8 | BLIND_SELECT | 1 | 1 | 1 | Big Blind (450) | SELECT_BLIND | play Big 450; Riff-raff makes 2 commons now | 3s |
+| 7818 | port-7818 | claude-haiku-5-5 | VHC4HWPP | 8 | SELECTING_HAND | 2 | 5 | 3 | The Psychic 655/2000 | PLAY_HAND {"card_indices":[1,4,5,6,7]} | Flush spades AS 8S 6S 5S 4S est 924 (L2 flush); need 1345 with 2 hands, solver p 0.48, best availab… | 8s |
 
 ### Results by model x stake x deck
 
@@ -103,10 +102,10 @@ _Generated 2026-10-14 13:13:05 by `balatro-data status` (edits inside this block
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 30 | 0 | 30 | 0 | 0 | 4.1 | 7 |
-| claude-haiku-5-5 | 8 | Black | 5 | 0 | 5 | 0 | 0 | 3.2 | 5 |
+| claude-haiku-5-5 | 8 | Black | 7 | 0 | 7 | 0 | 0 | 3.14 | 5 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 210 | 2 | 208 | 0 | 0 | 4.0 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 94 | 1 | 93 | 0 | 0 | 3.64 | 8 |
+| claude-opus-5-5 | 8 | Black | 213 | 2 | 211 | 0 | 0 | 4.02 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 100 | 1 | 99 | 0 | 0 | 3.71 | 8 |
 
 ### Deepest runs
 
@@ -125,36 +124,36 @@ _Generated 2026-10-14 13:13:05 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 362 files in manifest; schema_ok 362, schema invalid 0; replay_ok 341, replay failed 0, awaiting replay 3, open/unended 18; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 247 / failed 0; gui (live) ok 124 / failed 0; cross-checked by both 30, disagreeing 0.
-- All files (incl. fuzz + replays): 560; schema_ok 558; replay_ok 347 (headless 247, gui 130); replay failed 0; awaiting replay 192; quarantined 2.
+- Player runs: 369 files in manifest; schema_ok 369, schema invalid 0; replay_ok 347, replay failed 0, awaiting replay 3, open/unended 19; quarantined 0; not yet in manifest 3.
+- Player-run replay verdicts by host: headless ok 253 / failed 0; gui (live) ok 125 / failed 0; cross-checked by both 31, disagreeing 0.
+- All files (incl. fuzz + replays): 567; schema_ok 565; replay_ok 353 (headless 253, gui 131); replay failed 0; awaiting replay 192; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 2617 |
+| port-7805 | 2 | 2 | 2652 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 2252 |
-| port-7803 | 1 | 1 | 2684 |
-| port-7804 | 1 | 1 | 2318 |
-| port-7807 | 1 | 1 | 2835 |
+| port-7802 | 1 | 1 | 2292 |
+| port-7803 | 1 | 1 | 2712 |
+| port-7804 | 1 | 1 | 2354 |
+| port-7807 | 1 | 1 | 2877 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1606 |
-| port-7806 | 0 | 0 | 2721 |
-| port-7808 | 0 | 0 | 592 |
-| port-7809 | 0 | 0 | 2667 |
-| port-7810 | 0 | 0 | 3014 |
-| port-7811 | 0 | 0 | 321 |
-| port-7812 | 0 | 0 | 381 |
-| port-7813 | 0 | 0 | 324 |
-| port-7814 | 0 | 0 | 332 |
-| port-7815 | 0 | 0 | 397 |
-| port-7816 | 0 | 0 | 331 |
-| port-7817 | 0 | 0 | 316 |
-| port-7818 | 0 | 0 | 328 |
+| port-7801 | 0 | 0 | 1633 |
+| port-7806 | 0 | 0 | 2748 |
+| port-7808 | 0 | 0 | 629 |
+| port-7809 | 0 | 0 | 2706 |
+| port-7810 | 0 | 0 | 3052 |
+| port-7811 | 0 | 0 | 351 |
+| port-7812 | 0 | 0 | 419 |
+| port-7813 | 0 | 0 | 361 |
+| port-7814 | 0 | 0 | 363 |
+| port-7815 | 0 | 0 | 423 |
+| port-7816 | 0 | 0 | 371 |
+| port-7817 | 0 | 0 | 347 |
+| port-7818 | 0 | 0 | 368 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

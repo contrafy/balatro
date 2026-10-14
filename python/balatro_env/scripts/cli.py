@@ -1390,6 +1390,14 @@ def advise(d):
     Crimson Heart, Verdant Leaf, face-down cards) are kept as they are."""
     import contextlib
     import io
+    # a face-down card that the rank-sorted hand bounds to ONE rank is known (7805 18T9WBYD: "1 in A..A" next to a visible
+    # AD, and advise played blind face-downs over the made Pair AA)
+    fd_b0 = _fd_bounds(lst(d.get("hand"))) if any(c.get("rank") is None for c in lst(d.get("hand"))) else {}
+    full_rank = {14: "Ace", 13: "King", 12: "Queen", 11: "Jack"}
+    if any(lo == hi for lo, hi in fd_b0.values()):
+        d = dict(d, hand=[dict(c, rank=full_rank.get(fd_b0[c.get("index")][0], str(fd_b0[c.get("index")][0])), facing="front")
+                          if c.get("rank") is None and c.get("index") in fd_b0 and fd_b0[c.get("index")][0] == fd_b0[c.get("index")][1] else c
+                          for c in lst(d.get("hand"))])
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         _advise_rules(d)
@@ -1399,18 +1407,25 @@ def advise(d):
     m = re.match(r"ADVICE: (PLAY|DISCARD) -> b (play|disc)((?: [A-Z]+)?)((?: \d+)+)", adv)
     bname = (d.get("blind") or {}).get("name") or ""
     reorder = adv.startswith("ADVICE: REORDER")  # keep the solver's lines beside a Chad/Photograph reorder (Main 11:0x)
-    special = ((not m and not reorder) or bname in ("Crimson Heart", "Verdant Leaf") or any(c.get("rank") is None for c in lst(d.get("hand")))
-               or "(probe:" in adv)
+    # face-down cards no longer skip the solver: its rollouts hide them (DrawSolver 13:0x) and flag low_confidence
+    special = ((not m and not reorder) or bname in ("Crimson Heart", "Verdant Leaf") or "(probe:" in adv)
     plan, mine = [], None
     if d.get("phase") == "SELECTING_HAND" and not special:
         try:
             rs = _round_solver()
-            plan = rs.best_round_plan(d, estimate)
+            # 4.5 s: the 2 s default left n=64 on 6-joker builds near decision boundaries (7806 HA3Z5VN7, DrawSolver)
+            plan = rs.best_round_plan(d, estimate, time_budget_s=4.5)
             if plan and m:
                 mine = rs.evaluate_action(d, m.group(1), [int(x) for x in m.group(4).split()], estimate)
         except Exception as e:  # the rule advice stands on its own
             lines.insert(adv_i, f"  (solver unavailable: {type(e).__name__}: {e})")
             plan = []
+    elif d.get("phase") == "SELECTING_HAND" and adv_i is not None:
+        # say why there are no solver lines (7807 XGDKMP9F)
+        why_s = (f"{bname} is handled by its own rule" if bname in ("Crimson Heart", "Verdant Leaf") else
+                 "the Amber Acorn probe decides first" if "(probe:" in adv else f"the advice is not a play/discard ({adv[8:40].strip()}...)")
+        lines.insert(adv_i, f"  (solver skipped: {why_s})")
+        adv_i += 1
     if plan:
         # solver.py ranks: full-sample options first (under-sampled leaders are topped up), p_model ties within 0.015
         # ordered by value = $ at cash-out + 0.5 x growth-joker triggers. p_clear is CALIBRATED (isotonic map on 2812
@@ -3120,9 +3135,10 @@ def _shop_rules(d):
     ch_now = (d.get("blind_select") or {}).get("choices") or {}
     bl_left = sum(1 for k in ("Small", "Big", "Boss") if ((ch_now.get(k) or {}).get("state") or "Upcoming") not in ("Defeated", "Skipped"))
     rounds_left = _rounds_left(d)
-    # a perished joker still counts for Abstract Joker (+3 mult) and Swashbuckler: keep it while a slot is free (Main 07:xx)
+    # a perished joker still counts for Abstract Joker (+3 mult) and Swashbuckler: keep it; when a buy needs the slot the
+    # weakest-sell logic takes it first (Main 07:xx; 7805 18T9WBYD 2nd report)
     dead = [j for j in jokers if _dead_perishable(j)
-            and not (free > 0 and any(x.get("name") in ("Abstract Joker", "Swashbuckler") and not x.get("debuff") for x in jokers))]
+            and not any(x.get("name") in ("Abstract Joker", "Swashbuckler") and not x.get("debuff") for x in jokers)]
     if dead:
         j = dead[0]
         print(f"  SELL FIRST: b sell {j.get('index')}   ({j.get('name')} has perished: debuffed for the rest of the run, it scores nothing; selling returns ${j.get('sell_cost')} and frees the slot)")
@@ -3670,6 +3686,8 @@ def _shop_rules(d):
             sc = 5  # Burglar sets discards to 0: +1 discard is worth nothing (7809 D5KV79HL)
         if name in ("Seed Money", "Money Tree", "Clearance Sale", "Liquidation") and (emergency or (ante >= 5 and sc_ratio < 1.0)):
             sc = 5  # money compounding cannot pay back when the next boss already looks lost (7803 CS7C79XX)
+        if (emergency or (rentals and money - cost - rent_due < 4)) and name not in ("Director's Cut", "Retcon"):
+            sc = min(sc, 10)  # EMERGENCY or rent-broke: a voucher scores nothing now (7801 H9WSYGXJ: Telescope twice)
         strong_v = False
         thr_plan = any(j.get("name") == "Throwback" and not j.get("debuff") for j in jokers) and 4 <= ante <= 6
         if (threat or thr_plan) and name in ("Director's Cut", "Retcon"):

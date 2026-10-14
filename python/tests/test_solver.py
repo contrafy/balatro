@@ -245,6 +245,20 @@ def test_face_down_draws_cannot_be_seen_by_the_policy():
         assert fish["low_confidence"] and fish["p_model"] < plain["p_model"]
 
 
+def test_tied_options_prefer_getting_rid_of_debuffed_cards():
+    # 7810 YY2DXIBD (The Head): debuffed hearts score nothing; among tied lines discard them
+    st = state(["KS", "9C", "8H", "7H", "7C", "6C", "4H", "2S"], need=2000, hands=3, discards=2, blind="The Head",
+               boss=True)
+    for c in st["hand"]:
+        c["debuff"] = c["suit"] == "Hearts"
+    res = plan(st, samples=100)
+    assert all(r["debuffed_left"] == sum(1 for c in st["hand"] if c["debuff"] and c["index"] not in r["cards"])
+               for r in res)
+    top_p = max(r["p_model"] for r in res if r["n"] >= res[0]["n"])
+    tied = [r for r in res if r["p_model"] >= top_p - solver.TIE_P and r["n"] >= res[0]["n"]]
+    assert res[0]["debuffed_left"] == min(r["debuffed_left"] for r in tied) or res[0]["certain"]
+
+
 def test_acrobat_x3_only_on_final_hand_and_forced_dig_is_reported_raw():
     # 7804 I9HDGAQA: 2 hands, 0 discards, 4 clubs kept by a dig; the 5th club is a plain hypergeometric draw
     st = state(["AC", "7C", "6C", "2C", "TS", "8D", "6H", "5H"], need=2000, hands=2, discards=0,

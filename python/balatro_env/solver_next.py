@@ -1303,7 +1303,11 @@ class RoundSolver:
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
                         "discards_used": du / n, "n": n, "low_n": n < min(MIN_N, samples), "note": c["note"],
-                        "hand": c.get("hand"), "certain": self._certain(c)})
+                        "hand": c.get("hand"), "certain": self._certain(c),
+                        # debuffed cards (suit bosses, Plant, Pillar) left in hand after this action: they score
+                        # nothing, so among tied options the one that gets rid of them is preferred (7810 YY2DXIBD)
+                        "debuffed_left": sum(1 for p, x in enumerate(self.slots)
+                                             if x is not None and x.debuff and p not in c["pos"])})
             res[-1]["first_card"], res[-1]["order"] = self._first_for(c)
         # slices where p is less trustworthy: few samples, final-hand jokers (Acrobat/Dusk slice is mis-calibrated on
         # recorded data), face-down cards (their identity is sampled)
@@ -1324,8 +1328,8 @@ class RoundSolver:
 
         def rank(r):
             tied = r["p_model"] >= top_p - TIE_P
-            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_model"], tied and r["certain"], r["p_survive"],
-                    r["value"], -r["discards_used"], r["exp_score"])
+            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_model"], tied and r["certain"],
+                    -r["debuffed_left"] if tied else 0, r["p_survive"], r["value"], -r["discards_used"], r["exp_score"])
 
         res.sort(key=rank, reverse=True)
         return res

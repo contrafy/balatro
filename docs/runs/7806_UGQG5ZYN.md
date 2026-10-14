@@ -1,3 +1,7 @@
 # Run UGQG5ZYN (port 7806, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
 
 Ante 1 (Holo/Skip/The Club 600, $4): Small: disc 4 -> Flush spades 280 + Pair AA 64. Shop $5: no joker, Buffoon $4 -> Raised Fist{PERISH} (SIM 0.86 vs Chad 0.08).
+Ante 1 cont: Big 450: Pair AA + low fillers (Raised Fist on held 8) 576 one-shot. Shop $7: Blue Joker{RENTAL} $1 (+104 chips; the one rental). Club 600: Pair 88 + fillers 2508 one-shot.
+Ante 2 (Charm/Investment/The Water 2000, $10): EMERGENCY 0.22 -> Jumbo Buffoon $6 -> Popcorn{PERISH}. Skipped Small (Charm: Mega Arcana -> Death 5S->AC, Devil gold KD). Big 1500: Trips 777 4865 one-shot. Shop $10: nothing. Water: High QD + fillers 3811 one-shot.
+Ante 3 (Top-up/Investment/The Flint 6400, $15): EMERGENCY 0.07 -> reroll, Scholar{PERISH} $4. Skipped Small (Top-up: Egg + Golden Ticket) AND Big (Investment; keeps Raised Fist 1 round for the boss). Flint: Pair 22 3201 + Pair AA 5945. Raised Fist perished. $38 after Investment.
+Ante 4 (Juggle/Rare/The Arm 18000, $38): sold Fist, reroll -> Seeing Double $6, reroll -> foil Hologram{E} $9 (sold Golden Ticket), 2 Standard packs (glass KD, purple KD; Holo x1.5), Death $3. Skipped Small (Juggle +3 hand size). Big 13500: Flush clubs 5736 + 2P TT22 5100 + FH 99955 7020. Shop $6: sold Egg $8 -> Mega Standard (wild gold-seal 9D, QC; Holo x2.0). Arm: Straight A-T 11472, disc, Straight T-6 6080, High AC = cleared 18000. Popcorn gone.

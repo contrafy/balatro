@@ -1407,18 +1407,25 @@ def advise(d):
     m = re.match(r"ADVICE: (PLAY|DISCARD) -> b (play|disc)((?: [A-Z]+)?)((?: \d+)+)", adv)
     bname = (d.get("blind") or {}).get("name") or ""
     reorder = adv.startswith("ADVICE: REORDER")  # keep the solver's lines beside a Chad/Photograph reorder (Main 11:0x)
-    special = ((not m and not reorder) or bname in ("Crimson Heart", "Verdant Leaf") or any(c.get("rank") is None for c in lst(d.get("hand")))
-               or "(probe:" in adv)
+    # face-down cards no longer skip the solver: its rollouts hide them (DrawSolver 13:0x) and flag low_confidence
+    special = ((not m and not reorder) or bname in ("Crimson Heart", "Verdant Leaf") or "(probe:" in adv)
     plan, mine = [], None
     if d.get("phase") == "SELECTING_HAND" and not special:
         try:
             rs = _round_solver()
-            plan = rs.best_round_plan(d, estimate)
+            # 4.5 s: the 2 s default left n=64 on 6-joker builds near decision boundaries (7806 HA3Z5VN7, DrawSolver)
+            plan = rs.best_round_plan(d, estimate, time_budget_s=4.5)
             if plan and m:
                 mine = rs.evaluate_action(d, m.group(1), [int(x) for x in m.group(4).split()], estimate)
         except Exception as e:  # the rule advice stands on its own
             lines.insert(adv_i, f"  (solver unavailable: {type(e).__name__}: {e})")
             plan = []
+    elif d.get("phase") == "SELECTING_HAND" and adv_i is not None:
+        # say why there are no solver lines (7807 XGDKMP9F)
+        why_s = (f"{bname} is handled by its own rule" if bname in ("Crimson Heart", "Verdant Leaf") else
+                 "the Amber Acorn probe decides first" if "(probe:" in adv else f"the advice is not a play/discard ({adv[8:40].strip()}...)")
+        lines.insert(adv_i, f"  (solver skipped: {why_s})")
+        adv_i += 1
     if plan:
         # solver.py ranks: full-sample options first (under-sampled leaders are topped up), p_model ties within 0.015
         # ordered by value = $ at cash-out + 0.5 x growth-joker triggers. p_clear is CALIBRATED (isotonic map on 2812
@@ -1468,6 +1475,10 @@ def advise(d):
         # breaking a made pair-family hand needs a full sample (n >= 300) at every ante (7806 HA3Z5VN7: n=64 at The Tooth)
         better_p = mine and conf_ok and gap > (0.10 if breaks else 0.05) and not (breaks and int(top.get("n") or 0) < 300)
         better_c = mine and conf_ok and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
+        cert = next((r for r in plan if r.get("certain") and r["action"] == "PLAY"), None)
+        if mine and cert is not None and m and m.group(1) == "DISCARD" and not (better_p or better_c) and cert["p_clear"] >= mine["p_clear"] - 0.01:
+            # tied lines: a CERTAIN clear (no draws needed) beats a rule discard that breaks the made hand (7803 GVMUBXKL)
+            top, better_c = cert, True
         if mine and not (better_p or better_c):
             why_k = (f"the solver's best is low-confidence (n={top.get('n')}; it switches only on +0.20 with n >= 300; lead {gap:+.2f})" if gap > 0.05 and not conf_ok else
                      f"breaking your made {made_pf[0]} needs +0.10 (the solver leads by {gap:+.2f})" if breaks and 0.05 < gap <= 0.10 else
@@ -2099,6 +2110,9 @@ def _advise_rules(d):
         if fav_r:
             # ranks your jokers reward go last (7805 T9QEI78Z discarded AS with Scholar + Seltzer)
             rest_d = sorted(rest_d, key=lambda i: _r((_cards_by_idx(d, [i]) or [{}])[0]) in fav_r if (_cards_by_idx(d, [i]) or [{}])[0].get("rank") else False)
+        if "Raised Fist" in jnames_all:
+            # Raised Fist scores the lowest HELD card: discard the low cards, keep the high ones held (7803 GVMUBXKL)
+            rest_d = sorted(rest_d, key=lambda i: RANK_VAL.get(_r((_cards_by_idx(d, [i]) or [{}])[0]), 99) if (_cards_by_idx(d, [i]) or [{}])[0].get("rank") else 0)
         if boss_name != "The Mark":
             # The House/Fish/Wheel face-downs are unknown random cards: they go first (7805 kept a face-down and threw visible ones)
             fd_bd = _fd_bounds(hand)
@@ -2251,7 +2265,8 @@ def _main_hand_raw(d):
             return max(alt, key=lambda t: typical_est(d, t))
         d["_mh_forced"] = True
         return pl[0][1]
-    lv = sorted(((int((v or {}).get("level") or 1), k) for k, v in hl.items() if int((v or {}).get("played") or 0) >= 2), reverse=True)
+    # levels from tags / Black Hole / Orbital count without plays (7817 WC7ZJRHM: an Orbital Tag made Trips L4)
+    lv = sorted(((int((v or {}).get("level") or 1), k) for k, v in hl.items() if int((v or {}).get("played") or 0) >= 2 or int((v or {}).get("level") or 1) >= 4), reverse=True)
     if len(lv) >= 2 and lv[0][0] >= lv[1][0] + 3:
         d["_mh_forced"] = True
         return lv[0][1]
@@ -3255,10 +3270,10 @@ def _shop_rules(d):
               + (". Pair builds with 0 xMult top out ~10k/hand at ante 5 (16.7k needed)." if (surv or 0) < 10000 else f". Your deck already reaches ~{surv}/hand; the xMult is for antes 6-8."))
     eng = sum(1 for j in jokers if not j.get("debuff") and j.get("name") in (("Droll Joker", "Crafty Joker", "The Tribe", "Smeared Joker", "Four Fingers", "Flower Pot")
                                                                           + tuple(SUIT_JOKERS) if mh == "Flush" else
-                                                                          ("Crazy Joker", "Devious Joker", "The Order", "Shortcut", "Four Fingers", "Runner")))
+                                                                          ("Crazy Joker", "Devious Joker", "The Order", "Shortcut", "Four Fingers", "Runner", "Superposition")))
     # an owned Flush/Straight engine (2+ of its jokers) is the build, not a mistake (7808 4L773NBI: told to shift right
     # after Gluttonous + Droll + Crafty cleared The Plant)
-    if mh in ("Flush", "Straight") and stake >= 6 and eng < 2:
+    if mh in ("Flush", "Straight") and stake >= 6 and eng < 1:  # one engine joker already anchors it (7816 XW9HA5LQ: Crazy)
         print(f"  BUILD: your main hand is {mh}; at Gold 0 of 6 Flush/Straight-main runs reached ante 4 (17 of 28 pair-family runs did). "
               "Shift to Pair/Two Pair/Trips: their jokers and planets are ranked above Flush/Straight ones.")
     # Joker order matters only between joker-main effects that touch MULT: a +mult joker (or holo edition) right of a
