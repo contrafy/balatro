@@ -992,3 +992,20 @@ def test_death_model_left_of_target_prints_move_then_pick():
          "hand": hand, "pack": {"kind": "Arcana", "choices_remaining": 1, "cards": [{"name": "Death", "set": "Tarot"}]}}
     adv = _advice(_out(cli.pack_advise, d))
     assert adv.startswith("ADVICE: MOVE then PICK -> b move hand 8 1  then  b pick 1 1 2"), adv
+
+
+def test_final_advice_never_buys_second_rental_before_ante_5(monkeypatch):
+    # 7804 IBXYJAUA: the FINAL ADVICE line bought a 2nd rental (Supernova) next to a rented Obelisk at ante 3 (SIM noise
+    # regime, so the rule line decided)
+    d = shop(jokers=[joker("Obelisk", 1, rental=True)], shop_jokers=[{"index": 1, "name": "Supernova", "set": "Joker", "cost": 1, "rental": True}], money=6, ante=3)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2, "played": 3}}
+
+    class FakeSim:
+        def options_from_state(self, st, **kw):
+            return [{"label": "baseline (buy nothing)"}, {"label": "buy Supernova $1", "add_joker": st["shop"]["jokers"][0], "cost": 1}]
+
+        def value_options(self, st, opts, **kw):
+            return [{"label": o["label"], "option": o, "feasible": True, "p_next": 0.10 + 0.01 * k, "delta": 0.01 * k, "money_after": 6 - k}
+                    for k, o in enumerate(opts)]
+    monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
+    assert not _advice(_out(cli.shop_advise_sim, d)).startswith("ADVICE: BUY")
