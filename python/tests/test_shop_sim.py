@@ -186,7 +186,7 @@ def test_every_rental_pays_rent_each_round_and_dead_shops_are_flagged():
     assert two["rent_per_round"] == 6 and two["rent_horizon"] == 18 and base["rent_horizon"] == 9
     assert two["money_path"][0] < 0 and any("shop is dead" in n for n in two["notes"])
     assert two["money_path"][-1] <= base["money_path"][-1] - 6  # $1 cost + $9 rent, partly offset by more unused hands
-    assert two["delta_adj"] <= two["delta"] - 0.09 + 1e-9
+    assert two["p_adj"] == pytest.approx(two["p_next"] * max(0.1, 1 - 0.18 - 0.05 * two["dead_shops"]))
 
 
 def test_obelisk_growth_carries_across_simulated_rounds():
@@ -224,3 +224,30 @@ def test_weakest_sell_is_judged_with_the_new_joker_in_place():
     w = shop_sim._resolve_weakest(shop_sim._solver(), estimate, st, shop_sim.upcoming_blinds(st, 2, BLIND_BASE), 3, 0,
                                   add=joker("Pareidolia"))
     assert w == 2  # every card is a face with Pareidolia: keep Scary Face (+30 chips per card), sell the Joker
+
+
+def test_hologram_and_campfire_feeding():
+    # 7810 QBEEJKG4: added cards feed Hologram (+x0.25 each); selling cards feeds Campfire (+x0.25, reset after boss)
+    holo = shop_state(jokers=[joker("Hologram", ability={"x_mult": 1.5}), joker("Certificate")])
+    st, err, notes = shop_sim.apply_option(holo, {"add_cards": [{"rank": "King", "suit": "Spades"}] * 2, "cost": 0})
+    assert err is None and st["jokers"][0]["ability"]["x_mult"] == pytest.approx(2.0)
+    rs2 = shop_sim._round_state(st, holo, {"name": "Big Blind", "boss": False, "chips": 450}, 2, set())
+    assert rs2["jokers"][0]["ability"]["x_mult"] == pytest.approx(2.5)  # Certificate adds a card per round
+    camp = shop_state(jokers=[joker("Campfire", ability={"x_mult": 1.0})],
+                      shop_jokers=[{"name": "Pluto", "set": "Planet", "cost": 1, "sell_cost": 1}], money=5)
+    flips = [o for o in shop_sim.options_from_state(camp) if o.get("flip") is not None]
+    assert [o["label"] for o in flips] == ["flip Pluto $1 (Campfire)"]
+    st2, err, notes = shop_sim.apply_option(camp, flips[0])
+    assert err is None and st2["money"] == 5 and st2["jokers"][0]["ability"]["x_mult"] == pytest.approx(1.25)
+    after_boss = shop_sim._round_state(st2, camp, {"name": "Small Blind", "boss": False, "chips": 300}, 1, set(),
+                                       boss_passed=True)
+    assert after_boss["jokers"][0]["ability"]["x_mult"] == 1.0
+
+
+def test_mr_bones_ranks_above_nothing_when_the_next_blind_is_lost():
+    # 7805 16N52CRZ: Bones was -0.14 at P 0.00 (rent penalties pushed p below 0); the save counts as survival
+    st = shop_state(jokers=[joker("Joker", ability={"mult": 4}, rental=True)], ante=3, small="Defeated", boss="The Wall")
+    res = by_label(run(st, [{"label": "base"}, {"label": "bones", "add_joker": joker("Mr. Bones"), "cost": 1}],
+                       blinds=2, budget_s=4, min_samples=32))
+    assert res["bones"]["p_blinds"][0] > res["base"]["p_blinds"][0] and res["base"]["p_adj"] >= 0
+    assert res["bones"]["delta_value"] >= 0

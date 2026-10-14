@@ -907,7 +907,10 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Reserved Parking" or n == "Business Card":
             pass
         elif n == "Blackboard":
-            if all(SUIT.get(c.get("suit")) in {"S", "C"} for c in held):
+            reds = [c for c in held if SUIT.get(c.get("suit")) not in {"S", "C"} and "Wild" not in _enh(c)]
+            # a planned round (SCORE CHECK deals) plays the red cards away as fillers: x3 when they fit beside the hand
+            # (7805 16N52CRZ: SCORE CHECK omitted Blackboard while it made 16k one-shots)
+            if not reds or (state.get("_plan_fillers") and len(reds) <= max(0, 5 - int(played_n or len(scoring)))):
                 mult *= 3
         elif n == "Bull":
             chips += 2 * max(0, int(state.get("money") or 0))
@@ -2325,7 +2328,7 @@ def deck_round_est(d, jokers=None, samples=30, seed=11):
     if len(cards) < hs:
         return None
     h = _hands_pr(d, jokers)
-    base = dict(d, phase="SELECTING_HAND", blind={}, jokers=lst(d.get("jokers")) if jokers is None else jokers)
+    base = dict(d, phase="SELECTING_HAND", blind={}, jokers=lst(d.get("jokers")) if jokers is None else jokers, _plan_fillers=True)
     st_ord = dict(base, hands_remaining=h, discards_remaining=int(d.get("discards_per_round") or 3))
     st_fin = dict(base, hands_remaining=1, discards_remaining=0)
     # Mystic Summit plan: burn the discards first, then every hand carries +15 (7807 sold Summit for a perishable Ice Cream)
@@ -2376,7 +2379,7 @@ def deck_best_est(d, samples=40, pct=0.75, seed=7):
         return None
     rng = random.Random(seed)
     base = dict(d, phase="SELECTING_HAND", blind={}, hands_remaining=1, discards_remaining=0,
-                hands_per_round=d.get("hands_per_round") or 3)
+                hands_per_round=d.get("hands_per_round") or 3, _plan_fillers=True)
     keep_disc = dict(base, discards_remaining=int(d.get("discards_per_round") or 3))  # Banner/Delayed Gratification
     vals = []
     for _ in range(samples):
@@ -2685,7 +2688,7 @@ def shop_advise_sim(d, budget_s=6.0):
             sell_ix = best["option"].get("sell")
             sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
             new = (f"ADVICE: SELL then BUY -> b sell {sell_ix}  then  b {new_cmd}" if sell_ix else f"ADVICE: BUY -> b {new_cmd}") + \
-                f"   (SIM: {best['label']} {'score ratio' if all_zero else 'p_next'} {key(best):.2f} vs {key(base):.2f} buying nothing" + \
+                f"   (SIM: {best['label']} {'score ratio' if all_zero else 'value'} {key(best):.2f} vs {key(base):.2f} buying nothing" + \
                 (f"; rule score {rank.get(new_cmd)}" if new_cmd in rank else "") + ")"
             if new.split("   ")[0] != adv.split("   ")[0]:
                 sim.append(f"  (rule advice was: {adv[8:]})")
@@ -2763,7 +2766,9 @@ def pack_advise_sim(d, budget_s=3.5):
         return ((big or not (st["eternal"] and st["rental"] and ante_s < 7)) and (big or not (st["rental"] and not st["perishable"] and own_rent and ante_s < 6))
                 and not _eternal_bar(d, aj))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
-        f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f}, rent-adjusted {key(r):.2f} ({r.get('delta_adj', r.get('delta')) or 0:+.2f} vs skipping)")
+        f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
+                                    f"P(clear next 3 blinds) {r.get('p_next') or 0:.2f}" + (f", vs {r['terminal']} {r.get('p_term') or 0:.2f}" if r.get("terminal") else "")
+                                    + f"; value {key(r):.2f} ({r.get('delta_value', r.get('delta_adj', r.get('delta'))) or 0:+.2f} vs skipping)")
         + ("" if allowed(r) or not r["option"].get("_cmd") else
            f"  [BARRED: {_eternal_bar(d, r['option'].get('add_joker') or {}) or 'eternal rental before ante 7 / 2nd permanent rental before ante 6'}]")
         for r in sorted(feas, key=key, reverse=True)[:6]]

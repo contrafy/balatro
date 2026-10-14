@@ -9195,3 +9195,51 @@
 7805	a6	The Pillar	Flush	AC TC 9C 7C 5C	Mad Joker,Photograph,Abstract Joker,Runner,Jolly Joker,Blackboard(negative),Ramen	est=10741	actual=10741	OK
 7802	a3	The Manacle	Three of a Kind	AS AH AC	Joker,Half Joker,Ice Cream,Smiley Face	est=3591	actual=3591	OK
 7803	a5	-	Two Pair	7C 7D 5S 5D	Blue Joker,Joker,Square Joker,Supernova,Space Joker,Clever Joker	est=11890	actual=12900	OK
+7805	a6	The Pillar	Flush	AS KS 8S 7S 4S	Mad Joker,Photograph,Abstract Joker,Runner,Jolly Joker,Blackboard(negative),Ramen	est=4045	actual=4045	OK
+7807	a1	The Head	Flush	AD 9D 8D 5D 4D	Greedy Joker	est=1827	actual=1827	OK
+7801	a1	The Manacle	Pair	TC TD	Joker,Green Joker	est=210	actual=210	OK
+7810	a1	-	Flush	AS QS TS 9S 6S		est=324	actual=324	OK
+7801	a1	The Manacle	Two Pair	AC AD QS QD	Joker,Green Joker	est=496	actual=496	OK
+7803	a5	-	Two Pair	KS KC TS TC	Blue Joker,Joker,Square Joker,Supernova,Space Joker,Clever Joker	est=14508	actual=15616	OK
+7806	a2	The Psychic	Straight	7C 6C 5D 4H 3C	Wily Joker,Lusty Joker,Gluttonous Joker,Sly Joker	est=880	actual=880	OK
+7807	a2	-	High Card	AH	Greedy Joker	est=16	actual=16	OK
+7803	a5	-	Two Pair	8S 8C 5S 5H	Blue Joker,Joker,Square Joker,Supernova,Space Joker,Clever Joker	est=15510	actual=16660	OK
+7806	a2	The Psychic	Two Pair	AH AC JS JC	Wily Joker,Lusty Joker,Gluttonous Joker,Sly Joker	est=1232	actual=1232	OK
+7807	a2	-	Pair	6S 6C	Greedy Joker	est=44	actual=44	OK
+7803	a5	-	Two Pair	9S 9D 2H 2C	Blue Joker,Joker,Square Joker,Supernova,Space Joker,Clever Joker	est=16870	actual=16870	OK
+7807	a2	-	Flush	KD TD 8D 5D 2D	Greedy Joker	est=1785	actual=1785	OK
+7810	a1	-	Straight	AD KC QD JH TD	Ice Cream	est=724	actual=724	OK
+7809	a4	-	Straight	AS KH QD JC TS	Mad Joker,Hanging Chad,Supernova,Smiley Face,Wrathful Joker,Odd Todd	est=6272	actual=6272	OK
+7809	a4	-	Two Pair	9H 9D 2H 2D	Mad Joker,Hanging Chad,Supernova,Smiley Face,Wrathful Joker,Odd Todd	est=4896	actual=4896	OK
+7805	a1	-	Full House	QS QD 6H 6C 6D		est=312	actual=312	OK
+7801	a2	-	Pair	AH AD	Joker,Green Joker,Faceless Joker(foil)	est=738	actual=738	OK
+7810	a1	The Psychic	Two Pair	3S 3D 2S 2D	Ice Cream,Supernova	est=375	actual=375	OK
+7810	a1	The Psychic	Pair	4S 4D	Ice Cream,Supernova	est=324	actual=324	OK
+7801	a2	-	Pair	KH KC	Joker,Green Joker,Faceless Joker(foil)	est=800	actual=800	OK
+7804	a3	The Mouth	Flush	AH KH 8H 7H 2H	Even Steven,Crafty Joker,Greedy Joker,Campfire,Smeared Joker	est=7229	actual=7229	OK
+7802	a4	-	Pair	KS KD	Joker,Half Joker,Ice Cream,Smiley Face,8 Ball,Gros Michel	est=5720	actual=5720	OK
+7805	a1	-	Pair	AC AD	Jolly Joker	est=320	actual=320	OK
+7802	a4	-	Three of a Kind	TH TC TD	Joker,Half Joker,Ice Cream,Smiley Face,8 Ball,Gros Michel	est=5040	actual=5040	OK
+7805	a1	-	Two Pair	JH JD 9C 9D	Jolly Joker	est=580	actual=580	OK
+7802	a4	-	Pair	9H 9D	Joker,Half Joker,Ice Cream,Smiley Face,8 Ball,Gros Michel	est=4116	actual=4116	OK
+7810	a2	-	Flush	KD QD JD 7D 3D	Ice Cream,Supernova	est=960	actual=960	OK
+7807	a2	The Goad	High Card	AD	Greedy Joker,Lusty Joker	est=64	actual=64	OK
+7810	a2	-	Two Pair	AS AH 9H 9D	Ice Cream,Supernova	est=560	actual=560	OK
+7801	a2	The Goad	Two Pair	9S(DEBUFF) 9C 2S(DEBUFF) 2D	Joker,Green Joker,Faceless Joker(foil),Banner(holo)	est=2961	actual=2961	OK
+7807	a2	The Goad	High Card	QC	Greedy Joker,Lusty Joker	est=15	actual=15	OK
+7806	a3	The Pillar	Two Pair	JS JC 4H 4C	Wily Joker,Lusty Joker,Gluttonous Joker,Sly Joker	est=1794	actual=1794	OK
+7805	a1	The Club	Two Pair	4C(DEBUFF) 4D 2H 2D	Jolly Joker,Crazy Joker	est=280	actual=280	OK
+7807	a2	The Goad	Flush	AH KH TH 7H 2H	Greedy Joker,Lusty Joker	est=1890	actual=1890	OK
+7810	a2	The Club	Flush	KC(DEBUFF) QC(DEBUFF) 8C(DEBUFF) 7C(DEBUFF) 4C(DEBUFF)	Ice Cream,Supernova,Ramen(polychrome)	est=2310	actual=2310	OK
+7802	a4	The Water	Pair	3S 3H	Joker,Ice Cream,Smiley Face,8 Ball,Gros Michel,The Duo(foil)	est=5764	actual=5764	OK
+7805	a1	The Club	Straight	JC(DEBUFF) TH 9S 8C(DEBUFF) 7H	Jolly Joker,Crazy Joker	est=896	actual=896	OK
+7803	a5	The Serpent	Two Pair	KS KH 8S 8C	Blue Joker,Square Joker,Supernova,Space Joker,Clever Joker,Mystic Summit	est=24440	actual=24440	OK
+7806	a3	The Pillar	Two Pair	AS AC KH KC	Wily Joker,Lusty Joker,Gluttonous Joker,Sly Joker	est=1976	actual=1976	OK
+7803	a5	The Serpent	Two Pair	JS JD 4S 4C	Blue Joker,Square Joker,Supernova,Space Joker,Clever Joker,Mystic Summit	est=24480	actual=24480	OK
+7809	a4	The Wall	Two Pair	AS AH QH QC	Mad Joker,Hanging Chad,Supernova,Smiley Face,Wrathful Joker,Odd Todd	est=10032	actual=10032	OK
+7803	a5	The Serpent	Two Pair	TS TC 3H 3D	Blue Joker,Square Joker,Supernova,Space Joker,Clever Joker,Mystic Summit	est=24794	actual=24794	OK
+7809	a4	The Wall	Full House	KS KC 3H 3C 3D	Mad Joker,Hanging Chad,Supernova,Smiley Face,Wrathful Joker,Odd Todd	est=9729	actual=9729	OK
+7802	a4	The Water	Pair	5S 5D	Joker,Ice Cream,Smiley Face,8 Ball,Gros Michel,The Duo(foil)	est=5720	actual=5720	OK
+7809	a4	The Wall	Two Pair	9H 9C 5H 5C	Mad Joker,Hanging Chad,Supernova,Smiley Face,Wrathful Joker,Odd Todd	est=7072	actual=7072	OK
+7806	a3	The Pillar	Full House	TS TC TD 6H 6D	Wily Joker,Lusty Joker,Gluttonous Joker,Sly Joker	est=2320	actual=2320	OK
+7805	a2	-	Straight	JC TH 9D 8C 7D	Jolly Joker,Crazy Joker,Walkie Talkie	est=1680	actual=1680	OK

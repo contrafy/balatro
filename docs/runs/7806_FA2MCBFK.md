@@ -1,2 +1,5 @@
 # Run FA2MCBFK (port 7806, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (D6/D6/The Hook 600, $4): Small jokerless: disc to clubs, Flush 296 + High 11. Shop $5: Buffoon (SIM 0.37 > Clever{E} 0.27) -> Wily{ETERNAL} (only scorer; Juggler rental perish). Big: disc 5 keep KK, disc 4 keep KK99 -> FH 999KK 748. Shop $7: Lusty $5 (SIM 0.64 vs Photograph 0.35). Hook: disc to hearts, heart Flush 1387 one-shot.
+Ante 2 (Boss/Foil/The Psychic 2000, $9): EMERGENCY 0.16: Gluttonous{RENTAL} $1. Played Small (override skip: Boss Tag would reroll the benign Psychic): FH 999KK 2431. Shop $8: left (ratio 0.28, a level cannot fix it). Big 1500: dig High 60 keeping 4 hearts -> heart Flush 1482. Shop $11: reroll -> Sly{PERISH} $3. Psychic: disc x2 to clubs, Straight 3-7 880 (kept AA), 2P AAJJ 1232 = 2112.
+Ante 3 (Meteor/Investment/The Pillar 6400, $6): EMERGENCY 0.15: Celestial -> Uranus (2P L2). $2 = rent-broke: skipped Small (Meteor: Uranus 2P L3 + Venus Trips L2) and Big (Investment +$25 after boss; Pillar faces a clean deck).

@@ -51,21 +51,21 @@ _Updated 07:50._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 10:27:21 by `balatro-data status` (edits inside this block are overwritten). Player runs: 252 (243 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 10:33:28 by `balatro-data status` (edits inside this block are overwritten). Player runs: 254 (245 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
 
 ### Live runs (9)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | QEY21ZAA | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | Small cleared 548/300, cash out | 24s |
-| 7802 | port-7802 | claude-opus-5-5 | KLV4P2RZ | 8 | PACK_OPENING | 3 | 6 | 12 | Small Blind (3200) | SELECT_PACK_CARD {"index":2} | No Mercury; Pluto levels High Card, a 1-card hand that fires Half Joker and is always makeable (Hig… | 9s |
-| 7803 | port-7803 | claude-opus-5-5 | CS7C79XX | 8 | ROUND_EVAL | 5 | 11 | 19 | The Club (50000) | CASH_OUT | boss won | 15s |
-| 7804 | port-7804 | claude-opus-5-5 | AJGH6ECT | 8 | SELECTING_HAND | 2 | 5 | 8 | The Wheel 0/2000 | DISCARD {"card_indices":[6,8,7]} | need 2000: keep QD (held for Shoot the Moon) + JT97 straight draw; 8 gives J-7 straight ~2400 with … | 9s |
-| 7805 | port-7805 | claude-opus-5-5 | 16N52CRZ | 8 | SELECTING_HAND | 5 | 11 | 8 | The Hook 10126/50000 | PLAY_HAND {"card_indices":[1,4,5,7,8]} | 50000 out of reach (39874 left); Two Pair 7722 + red filler KD holding clubs est 6634 secures the M… | 4s |
-| 7806 | port-7806 | claude-opus-5-5 | FA2MCBFK | 8 | SELECTING_HAND | 2 | 4 | 8 | Small Blind 0/1000 | DISCARD {"card_indices":[1,4,7,8]} | Pair K 150 vs 1000; keep KK + 9C 8C (Gluttonous clubs) for trips/2P/club flush; dump 4 spades | 8s |
-| 7807 | port-7807 | claude-opus-5-5 | 7SDPD63B | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | small cleared 564/300 | 24s |
-| 7809 | port-7809 | claude-opus-5-5 | HCUCE445 | 8 | BLIND_SELECT | 3 | 6 | 13 | The Club (6400) | SELECT_BLIND | boss The Club 6400 | 14s |
-| 7810 | port-7810 | claude-sonnet-5-5 | QBEEJKG4 | 8 | BLIND_SELECT | 5 | 10 | 2 | Small Blind (25000) | SKIP_BLIND | Handy Tag pays per hand played this run (~5) immediately and avoids rent; Small 25000 needs 2.5 han… | 1s |
+| 7801 | port-7801 | claude-fable-5-1 | QEY21ZAA | 8 | ROUND_EVAL | 2 | 4 | 2 | Big Blind (1500) | CASH_OUT | Big cleared 1538/1500 | 19s |
+| 7802 | port-7802 | claude-opus-5-5 | KLV4P2RZ | 8 | SELECTING_HAND | 4 | 9 | 21 | Big Blind 0/13500 | PLAY_HAND {"card_indices":[1,2,8]} | Pair KK est 5720 + filler 6C; TT and 99 follow (~4.4k each) = ~14.5k vs 13500 | 10s |
+| 7803 | port-7803 | claude-opus-5-5 | CS7C79XX | 8 | PACK_OPENING | 5 | 13 | 17 | Big Blind (37500) | SELECT_PACK_CARD {"index":3} | Mystic Summit +15 mult at 0 discards (+147% round est): mult ~33 is the bottleneck vs ~520 chips | 12s |
+| 7804 | port-7804 | claude-opus-5-5 | AJGH6ECT | 8 | ROUND_EVAL | 4 | 6 | 6 | The Mouth (18000) | CASH_OUT | Mouth cleared with red flush one-shot | 6s |
+| 7805 | port-7805 | claude-opus-5-5 | RTJZMPXF | 8 | SELECTING_HAND | 1 | 2 | 3 | Big Blind 0/450 | PLAY_HAND {"card_indices":[1,2,8,7,6]} | Pair AA w/ Jolly est 320 of 450, fillers 3C5C6C to dig; 2 hands left for 130 | 6s |
+| 7806 | port-7806 | claude-opus-5-5 | FA2MCBFK | 8 | PACK_OPENING | 3 | 6 | 2 | Big Blind (4800) | SELECT_PACK_CARD {"index":1} | Uranus: Two Pair main -> L3, best SIM ratio 0.61 | 10s |
+| 7807 | port-7807 | claude-opus-5-5 | 7SDPD63B | 8 | SELECTING_HAND | 2 | 5 | 16 | The Goad 0/2000 | DISCARD {"card_indices":[4,5,6,7,8]} | Goad 2000: dump 3 debuffed spades + clubs, keep AA + KH (Lusty) per solver 0.83 vs 0.71; dig for re… | 11s |
+| 7809 | port-7809 | claude-opus-5-5 | HCUCE445 | 8 | SHOP | 4 | 8 | 13 | Small Blind (9000) | SHOP_REROLL | EMERGENCY 0.26 + The Wall 36000: likely last shop before boss (plan: skip Big for Juggle +3 hand si… | 3s |
+| 7810 | port-7810 | claude-sonnet-5-5 | UIL7HPIQ | 8 | SHOP | 2 | 3 | 3 | Small Blind (1000) | SHOP_END | only : Half Joker and packs unaffordable; keep Ice Cream chips source | 6s |
 
 ### Results by model x stake x deck
 
@@ -74,8 +74,8 @@ _Generated 2026-10-14 10:27:21 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 26 | 0 | 26 | 0 | 0 | 4.0 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 163 | 1 | 162 | 0 | 0 | 3.96 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 48 | 0 | 47 | 0 | 1 | 3.5 | 8 |
+| claude-opus-5-5 | 8 | Black | 164 | 1 | 163 | 0 | 0 | 3.98 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 49 | 0 | 48 | 0 | 1 | 3.53 | 8 |
 
 ### Deepest runs
 
@@ -94,28 +94,28 @@ _Generated 2026-10-14 10:27:21 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 251 files in manifest; schema_ok 251, schema invalid 0; replay_ok 238, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 1.
-- Player-run replay verdicts by host: headless ok 144 / failed 0; gui (live) ok 114 / failed 0; cross-checked by both 20, disagreeing 0.
-- All files (incl. fuzz + replays): 438; schema_ok 436; replay_ok 244 (headless 144, gui 120); replay failed 0; awaiting replay 181; quarantined 2.
+- Player runs: 253 files in manifest; schema_ok 253, schema invalid 0; replay_ok 240, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 1.
+- Player-run replay verdicts by host: headless ok 146 / failed 0; gui (live) ok 115 / failed 0; cross-checked by both 21, disagreeing 0.
+- All files (incl. fuzz + replays): 441; schema_ok 439; replay_ok 246 (headless 146, gui 121); replay failed 0; awaiting replay 182; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 2076 |
+| port-7805 | 2 | 2 | 2099 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1714 |
-| port-7803 | 1 | 1 | 2136 |
-| port-7804 | 1 | 1 | 1767 |
-| port-7807 | 1 | 1 | 2258 |
+| port-7802 | 1 | 1 | 1744 |
+| port-7803 | 1 | 1 | 2158 |
+| port-7804 | 1 | 1 | 1787 |
+| port-7807 | 1 | 1 | 2287 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1277 |
-| port-7806 | 0 | 0 | 2207 |
+| port-7801 | 0 | 0 | 1297 |
+| port-7806 | 0 | 0 | 2231 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 2058 |
-| port-7810 | 0 | 0 | 2423 |
+| port-7809 | 0 | 0 | 2076 |
+| port-7810 | 0 | 0 | 2446 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
@@ -154,4 +154,5 @@ _Generated 2026-10-14 10:27:21 by `balatro-data status` (edits inside this block
 - 05:19 GoldAdvisor cli.py 84764033: last-action guard (data/.cli_cache/<port>_last_action.json: every command waits up to 5 s until the previous action's effect is visible); Joker Stencil modeled in est (x(empty+Stencils), only with an empty slot; card.lua) so slot-fillers show AVOID(-N%); ORDER FIRST verified by est over whole orders (Blueprint/Brainstorm copy targets); perished joker sold FIRST without hiding the ranking; SIM section in `b shopadvise` (shop_sim deltas, tie-break within 5 points, "SIM disagrees"); Throwback skip rule; Standard packs feed Hologram; Crimson Heart throwaway whenever the disabled joker is worth 1.5x; Acrobat final-hand est via est (Dusk); High Card throwaways excluded from main hand with Acrobat/Dusk; held-value cards never throwaways; solver low_n never drives ADVICE. Tests 82.
 - 09:14-09:20 GoldAdvisor cli.py 695b8716 -> dec92399 -> 70db0a0b: slot-command name guard (`buy Clever` / `buy 1 --expect Clever`, target always echoed); shop SIM ranked by rent-adjusted p_adj (delta_adj, dead later shops shown); BUY yields to SIM when its best is nothing; permanent beats perishable/rental on SIM ties; Credit Card debt spendable for survival rerolls, 0-scorer reroll keeps $5; growth xMults never "flat rentals"; face-down cards discarded first; Throwback skip needs 1.6x on handicap bosses; perishable-carrier and broke skips; early planets discouraged with 0-1 scorers; Stencil/Wraith penalties; Madness/Dagger now SIM-modelled.
 - 09:39 GoldAdvisor cli.py 70db0a0b -> d088f3c4: sell waits until the sold card leaves its area (it lingers while dissolving after money changes; 7805 stale-after-sell), `buy` re-polls /legal 4 s, slot-full rejections retried; test sell->buy race (fails on old, passes); Blueprint/Brainstorm copy target + ORDER FIRST; Obelisk tie warning; Raised Fist filler-aware est; The Arm prefers an L1/non-main clearing hand; Fool = its copy; cash-tag+rent skip; rental sells need share < 0.2; Riff-raff/Burglar/grown Obelisk kept; Burglar +3 hands in SCORE CHECK; Swashbuckler from ability.mult; eternal Troubadour/2nd eternal utility barred; SIM SATURATED -> rules decide. Tests 99.
+- 10:15-10:36 GoldAdvisor cli.py d088f3c4 -> fac63418 -> b87ce459: shop/pack SIM ranked by DrawSolver's terminal value (delta_value); pack picks follow the SIM (tie 0.01), a free sticker-free joker is never skipped, sticker bars yield to +0.15 rent-adjusted; rental SELL FIRST simulated; 2nd permanent rental needs both xMult or a bundled sell; pair-family main-hand dominance (score-weighted); face-down EV line + rank intervals (House/Fish/Wheel); The Hook held discount; Blackboard x3 in SCORE CHECK; Misprint range fixed; Fool/Wheel/Hermit/Immolate/Wasteful values; Mr. Bones kept below SCORE CHECK 1.5; broke skip at ante 3-4; D6 note. Tests 99.
 

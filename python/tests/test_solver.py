@@ -150,6 +150,18 @@ def test_misprint_is_sampled_per_hand():
     assert 0.55 < top["p_model"] < 0.8
 
 
+def test_blackboard_plays_red_cards_away_as_fillers():
+    # 7805 16N52CRZ (The Hook): Blackboard x3 needs every held card black; play the reds as fillers
+    st = state(["KS", "KC", "9S", "7C", "5S", "4H", "3D", "2C"], need=200, hands=3, discards=0, jokers=["Blackboard"])
+    rs = solver.RoundSolver(st, estimate)
+    s, play, t = rs.best_play(rs.slots, 3, 0, rs.ctx0)
+    labels = {c.label() for c in play}
+    assert t == "Pair" and {"KS", "KC", "4H", "3D"} <= labels
+    held = [c for c in rs.slots if c not in play]
+    assert all(rs._black(c) for c in held)
+    assert s > 2 * rs.score(rs.slots[:2], rs.slots[2:], 3, 0, rs.ctx0)[0]  # x3 vs the pair with reds held
+
+
 def test_bloodstone_is_a_card_phase_x1_5_per_heart():
     # 7804 Z9WILFCR: x1.5 multiplied the whole score, inflating a dig from ~3% to 0.29; it applies to the mult in each
     # Heart's card phase, before the jokers' +mult
