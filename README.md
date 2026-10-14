@@ -133,6 +133,12 @@ Earlier macOS swarm runs (not recorded under the data contract; used as strategy
 | Black Deck, Red Stake (2) | **Beaten** — run `7777_YYA2GKBR`: Two Pair L12, Space Joker, Photograph + foil Cavendish x3, 108480/100000 vs Cerulean Bell |
 | Black Deck, Green Stake (3) | In progress — deepest so far ante 6 Big Blind (`7778_HFZL5GR2`); the faster blind scaling punishes slow starts, so most fixes target ante 1-3 economy |
 
+Windows swarm runs (recorded and replay-verified under the data contract; live stats in [docs/SWARM_STATUS.md](docs/SWARM_STATUS.md)):
+
+| Milestone | Status |
+|-----------|--------|
+| Black Deck, Gold Stake (8) | **Beaten** (1 of 191 runs): run `7807_9IIGB2FF` (Opus). Clever + Stuntman + Abstract + Even Steven, with foil Obelisk x3.6 and Throwback x3.75; skipped every Small and Big blind from ante 5; 402199/400000 vs Crimson Heart |
+
 ## Scripts
 
 ```bash
