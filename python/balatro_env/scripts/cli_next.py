@@ -1009,9 +1009,16 @@ def advise(d):
         if mine:
             sol.append(f"  SOLVER on the rule pick ({m.group(2)}{m.group(4)}): {_sl(mine)}")
         top = plan[0]
-        better_p = mine and top["p_clear"] > mine["p_clear"] + 0.03
-        # same clear chance (within the solver's tie band) but $1+ more at cash-out or more growth: take the solver line
-        better_v = mine and top["p_clear"] >= mine["p_clear"] - 0.015 and top.get("value", 0) >= mine.get("value", 0) + 1.0
+        # ADVISORY (orchestrator, 02:35): live play showed overconfident p_clear (7809 298/300, 7804 Pillar at 0.95) until a
+        # calibration table exists. The ADVICE follows the solver only when its pick is a PLAY that clears the blind now.
+        b_ = d.get("blind") or {}
+        need_now = int(b_.get("chips_needed") or 0) - int(b_.get("chips_scored") or 0)
+        m_est = re.search(r"est (\d+)", top.get("note") or "")
+        clears_now = top["action"] == "PLAY" and m_est is not None and need_now > 0 and int(m_est.group(1)) >= need_now
+        better_p = mine and clears_now and top["p_clear"] > mine["p_clear"] + 0.03
+        better_v = mine and clears_now and top["p_clear"] >= mine["p_clear"] - 0.015 and top.get("value", 0) >= mine.get("value", 0) + 1.0
+        if not clears_now:
+            sol.append("  (solver lines are advisory: the ADVICE follows them only for a PLAY that clears the blind now)")
         if better_p or better_v:
             idxs = " ".join(map(str, top["cards"]))
             if top["action"] == "PLAY":
@@ -2132,13 +2139,10 @@ def shop_advise(d):
                 x_tb = 1 + 0.25 * skips_r
                 cls, score = (f"XMULT(growth: Throwback x{x_tb:g} now, +0.25 per blind skipped)", min(90, 35 + 20 * skips_r)) if skips_r >= 1 else (cls, score)
             elif cls.startswith("PLUS") and not cls.startswith("PLUS(bridge"):
-                # value state-dependent flat jokers by what they add NOW (7803: Erosion rated 85 "NEEDED NOW" at +0 mult with
-                # a full 52-card deck): no current contribution -> not a scorer
-                if name in ("Erosion", "Bull", "Bootstraps", "Swashbuckler", "Abstract Joker", "Red Card", "Fortune Teller",
-                            "Green Joker", "Flash Card", "Spare Trousers", "Runner", "Square Joker", "Blue Joker", "Stone Joker"):
-                    base_e = typical_est(d, mh) or 1
-                    if typical_est(d, mh, lst(d.get("jokers")) + [c]) / base_e - 1 < 0.03:
-                        cls, score = "PLUS(adds ~0 now: grows only with its condition)", min(score, 25)
+                # every flat joker is valued by what it adds NOW on deals from your deck (7803: Erosion 85 "NEEDED NOW" at
+                # +0 with a full deck; 7801 Bootstraps at $0-6; Ride the Bus 95 at ante 1; Supernova 98 at ante 1)
+                if marginal_gain(d, mh, c) < 0.03:
+                    cls, score = "PLUS(adds ~0 now: grows only with its condition)", min(score, 25)
             if c.get("edition") in ("foil", "holo", "polychrome") and scoring_now < 2 and not cls.startswith("AVOID"):
                 score = max(score, 72)  # the edition scores on every hand even when the joker itself does not
             if name == "Joker Stencil":
@@ -2537,7 +2541,9 @@ def pack_advise(d):
     if planets:
         hl_p = d.get("hand_levels") or {}
         most = max(hl_p, key=lambda k: int((hl_p[k] or {}).get("played") or 0), default=None) if hl_p else None
-        want = [PLANET_FOR.get(mh), PLANET_FOR.get(most or ""), PLANET_FOR.get(second_hand(d) or "")]
+        PAIR_FAM = ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")
+        # undecided main hand: one lucky Straight/Flush is not a plan, only pair-family levels count (7801: Jupiter at ante 1)
+        want = [PLANET_FOR.get(mh)] + [PLANET_FOR.get(h or "") for h in (most, second_hand(d)) if mh != "undecided" or h in PAIR_FAM]
         gate_x = next((TYPE_X_JOKERS[j.get("name")][0] for j in jokers if j.get("name") in TYPE_X_JOKERS and not j.get("debuff")
                        and (mh in ("undecided", "Flush", "Straight") or hand_contains(mh, TYPE_X_JOKERS[j.get("name")][0]))), None)
         want = [PLANET_FOR.get(gate_x or "")] + want  # an owned type xMult (The Trio...) decides which level pays most

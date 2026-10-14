@@ -121,9 +121,8 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   pack, reroll or leaving; a sticker's cost is small next to losing the run. Packs are already paid for: take a
   stickered scorer into a free slot.
 - PACE / SOLVER (`advise`): best hand now + later hands at 85% (printed) below the remaining need -> discard toward a
-  bigger hand first; once on pace, bank and keep the discard. `advise` then checks that pick with the round solver
-  (`SOLVER` lines: P(clear) by simulation over your remaining deck) and follows the solver when it clears >3 points
-  more often; it ignores money and later rounds, so the rule pick stands otherwise.
+  bigger hand first; once on pace, bank and keep the discard. `SOLVER` lines (P(clear) by simulation over your remaining
+  deck, n samples, $ left) are ADVISORY until calibrated: the ADVICE follows them only for a PLAY that clears now.
 - MONEY FLOOR (GOLD_ANALYSIS.md): from ante 2 keep $8 after anything except an xMult, the main-hand planet or a Buffoon
   pack (while owning <2 reliable/growth xMults); 8 of 20 missed xMults were unaffordable, deep runs bought them with
   $11-22. Reroll only with $20+ left after it (rent due at round end kept), at most 2 per shop, never over an affordable

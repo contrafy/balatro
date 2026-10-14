@@ -1009,9 +1009,16 @@ def advise(d):
         if mine:
             sol.append(f"  SOLVER on the rule pick ({m.group(2)}{m.group(4)}): {_sl(mine)}")
         top = plan[0]
-        better_p = mine and top["p_clear"] > mine["p_clear"] + 0.03
-        # same clear chance (within the solver's tie band) but $1+ more at cash-out or more growth: take the solver line
-        better_v = mine and top["p_clear"] >= mine["p_clear"] - 0.015 and top.get("value", 0) >= mine.get("value", 0) + 1.0
+        # ADVISORY (orchestrator, 02:35): live play showed overconfident p_clear (7809 298/300, 7804 Pillar at 0.95) until a
+        # calibration table exists. The ADVICE follows the solver only when its pick is a PLAY that clears the blind now.
+        b_ = d.get("blind") or {}
+        need_now = int(b_.get("chips_needed") or 0) - int(b_.get("chips_scored") or 0)
+        m_est = re.search(r"est (\d+)", top.get("note") or "")
+        clears_now = top["action"] == "PLAY" and m_est is not None and need_now > 0 and int(m_est.group(1)) >= need_now
+        better_p = mine and clears_now and top["p_clear"] > mine["p_clear"] + 0.03
+        better_v = mine and clears_now and top["p_clear"] >= mine["p_clear"] - 0.015 and top.get("value", 0) >= mine.get("value", 0) + 1.0
+        if not clears_now:
+            sol.append("  (solver lines are advisory: the ADVICE follows them only for a PLAY that clears the blind now)")
         if better_p or better_v:
             idxs = " ".join(map(str, top["cards"]))
             if top["action"] == "PLAY":
@@ -1188,9 +1195,14 @@ def _advise_rules(d):
             if "Splash" not in jnames_all:
                 return []
             cap = 3
+        if "Square Joker" in jnames_all and len(idxs) == 4 and not psychic:
+            return []  # Square Joker grows only on exactly 4 played cards (7807: a 5th filler cost the growth)
         if pillar_ahead:
             return []
-        used_ranks = {_r(c) for c in _cards_by_idx(d, idxs)} | protect_ranks
+        # ranks held 2+ times outside the play are a pair for a later hand: never spend one as a filler (7801 x3)
+        held_rank_n = Counter(_r(c) for c in hand if c.get("rank") is not None and c.get("index") not in idxs)
+        held_pairs = {r for r, n in held_rank_n.items() if n >= 2} if hands_left > 1 else set()
+        used_ranks = {_r(c) for c in _cards_by_idx(d, idxs)} | protect_ranks | held_pairs
         used_suits = [SUIT.get(c.get("suit")) for c in _cards_by_idx(d, idxs)]
         suit_counts = {}
         for c in hand:
@@ -2015,14 +2027,17 @@ def shop_advise(d):
             return
     non_rental_scorers = [j for j in jokers if not _stk(j)["rental"] and alive_next(j) and _is_scoring(classify_joker(j.get("name"), 0, mh)[0])]
     if len(non_rental_scorers) >= 2 and ante <= 6:
-        flat_r = [j for j in rentals if not _stk(j)["eternal"] and not _rg_x(classify_joker(j.get("name"), 0, mh)[0]) and joker_share(d, j, mh) < 0.3]
+        flat_r = [j for j in rentals if not _stk(j)["eternal"] and not _rg_x(classify_joker(j.get("name"), 0, mh)[0]) and joker_share(d, j, mh) < 0.3 and j.get("name") != "Mr. Bones"]
         if flat_r:
             j = min(flat_r, key=keep_value)
             print(f"ADVICE: SELL -> b sell {j.get('index')}   ({j.get('name')}{stickers(j)} is a flat RENTAL and {len(non_rental_scorers)} non-rental scorers carry your hands: "
                   f"its rent (-$3/round, ~${3 * rounds_left} to the end) buys more as an xMult later. 41 Gold rentals cost $393, mostly flat jokers kept until the run died. Re-run shopadvise.)")
             return
     if len(rentals) >= 2 and ante <= 6:
-        sell_r = sorted([j for j in rentals if not _stk(j)["eternal"]], key=keep_value)
+        # never the rental that carries the score (7801: Clever +80 chips on every Two Pair; 7807: Acrobat, the only xMult)
+        # or the run-saver: sell the one whose rent buys the least
+        sell_r = sorted([j for j in rentals if not _stk(j)["eternal"] and j.get("name") != "Mr. Bones" and joker_share(d, j, mh) < 0.25
+                         and not (_rg_x(classify_joker(j.get("name"), 0, mh)[0]) and n_rg <= 1)], key=keep_value)
         if sell_r and keep_value(sell_r[0]) < 85 and not (scoring_now <= 1 and alive_next(sell_r[0]) and _is_scoring(classify_joker(sell_r[0].get("name"), 0, mh)[0])):
             j = sell_r[0]
             print(f"ADVICE: SELL -> b sell {j.get('index')}   ({len(rentals)} rentals cost ${3 * len(rentals)} every round, more than the blinds pay; {j.get('name')}{stickers(j)} is the weakest. Selling returns $1 and stops its charge. Re-run shopadvise after selling.)")
@@ -2155,6 +2170,9 @@ def shop_advise(d):
                 if gain_c >= 0.2:
                     score = max(score, int(55 + min(40, 50 * gain_c)))
                     core_gain = gain_c >= 0.3
+                if name in CARD_TRIGGER_JOKERS and cls.startswith("XMULT") and gain_c < 0.3:
+                    # card-phase xMult multiplies only the base mult (7807: Photograph{ETERNAL} 130 at ante 5 was ~+18%)
+                    score = min(score, int(40 + 100 * gain_c))
             ed = c.get("edition")
             if ed in ("holo", "polychrome"):
                 score += 30
@@ -2408,7 +2426,7 @@ def shop_advise(d):
     # INVARIANT: in an EMERGENCY, or with <2 scorers at ante <= 3, never LEAVE while an affordable scorer is on offer
     if emergency or (ante <= 3 and scoring_now < 2):
         sc_o = [o for o in options if o[2].startswith("buy") and o[4] <= money and refused not in o[3] and not o[1].startswith("AVOID")
-                and (_is_scoring(o[1]) or o[1].startswith("PLUS(bridge") or o[1] == "PLUS(one suit)") and "growth" not in o[1]
+                and (_is_scoring(o[1]) or o[1].startswith("PLUS(bridge") or o[1] == "PLUS(one suit)" or (emergency and "Mr. Bones" in o[3])) and "growth" not in o[1]
                 and "ETERNAL on a" not in o[3] and ("RENTAL:" not in o[3] or "NEEDED NOW" in o[3])]
         if sc_o:
             o = max(sc_o, key=lambda t: t[0])
