@@ -340,13 +340,17 @@ class _OptionSim:
             st = self.stats[k]
             st[0] += 1
             st[2] += min(1.0, tot / max(1.0, rs.need0))
-            if ok:
-                st[3] += hl
-            elif any(b not in removed for b in self.bones) and tot >= 0.25 * rs.need0:
-                ok = True
-                removed.add(next(b for b in self.bones if b not in removed))
+            bones_left = [b for b in self.bones if b not in removed]
+            if ok and tot < rs.need0:  # the round solver counted a Mr. Bones save
+                if bones_left:
+                    removed.add(bones_left[0])
                 self.bones_used += 1
-            st[1] += ok
+            elif ok:
+                st[3] += hl
+            elif bones_left and tot >= 0.25 * rs.need0:
+                ok = True
+                removed.add(bones_left[0])
+                self.bones_used += 1
             all_ok = all_ok and ok
         self.joint += all_ok
         self.n += 1

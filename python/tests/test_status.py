@@ -8,8 +8,15 @@ from pathlib import Path
 
 import pytest
 
-from balatro_env.data.dataops import compress_trajectories, replay_candidates, superseded_files
-from balatro_env.data.manifest import write_manifest
+from balatro_env.data.dataops import (
+    compress_trajectories,
+    gui_candidates,
+    gui_spot_check,
+    headless_candidates,
+    split_by_hash,
+    superseded_files,
+)
+from balatro_env.data.manifest import ReplayVerdict, load_manifest, record_replays, write_manifest
 from balatro_env.data.status import (
     BEGIN,
     END,
@@ -213,11 +220,63 @@ def test_dataops_superseded_compress_and_candidates(swarm):
     assert (root / DAY / "EEEE5555_7804_500.jsonl.gz").exists()
     assert (root / DAY / "DDDD4444_7801_2000.jsonl").exists()  # live file untouched
 
-    from balatro_env.data.manifest import load_manifest
-
     rows = list(load_manifest(root).values())
-    todo, other = replay_candidates(rows, "h1")
-    assert [r["run_key"] for r in todo] == ["BBBB2222_7802_1000"]  # not replayed yet, not fuzz/test/replay
-    assert replay_candidates(rows, "other-hash") == ([], 1)
-    assert [r["run_key"] for r in replay_candidates(rows, "h1", include_fuzz=True)[0]] == \
+    # AAAA1111 has a legacy (gui) verdict; fuzz/test/replay rows never; CCCC3333 is schema-invalid.
+    assert [r["run_key"] for r in headless_candidates(rows)] == ["BBBB2222_7802_1000"]
+    assert [r["run_key"] for r in headless_candidates(rows, include_fuzz=True)] == \
         ["BBBB2222_7802_1000", "FUZZ0001_7805_1000"]
+    assert split_by_hash(headless_candidates(rows), "other-hash") == ([], 1)
+    # Without headless workers every unverified run is a live candidate; with them only the sample/divergences.
+    assert [r["run_key"] for r in gui_candidates(rows, headless=False)] == ["BBBB2222_7802_1000"]
+    assert gui_candidates(rows, every=0) == []
+    assert [r["run_key"] for r in gui_candidates(rows, every=1)] == ["BBBB2222_7802_1000"]
+    for r in rows:
+        if r["run_key"] == "BBBB2222_7802_1000":
+            r["headless_replay_ok"] = False
+    assert [r["run_key"] for r in gui_candidates(rows, every=0)] == ["BBBB2222_7802_1000"]
+
+
+def test_gui_spot_check_sample_is_stable_and_about_one_in_n():
+    keys = [f"S{i:07d}_7801_{i}" for i in range(2000)]
+    picked = [k for k in keys if gui_spot_check(k, 10)]
+    assert 150 < len(picked) < 250 and picked == [k for k in keys if gui_spot_check(k, 10)]
+    assert not any(gui_spot_check(k, 0) for k in keys)
+
+
+def test_per_host_replay_verdicts(swarm):
+    root, runs = swarm
+    from balatro_env.data.manifest import build_manifest
+
+    build_manifest(root)
+    path = root / DAY / "BBBB2222_7802_1000.jsonl.gz"
+    key = "BBBB2222_7802_1000"
+
+    record_replays(root, [ReplayVerdict(path, "headless", True, None, 1, 10, "hX")])
+    row = load_manifest(root)[key]
+    assert (row["replay_ok"], row["replay_host"], row["replay_bridge_hash"]) == (True, "headless", "hX")
+    assert row["headless_replay_ok"] is True and row.get("gui_replay_ok") is None
+
+    # A live spot-check that disagrees: the live game is the reference, the disagreement is spelled out.
+    record_replays(root, [ReplayVerdict(path, "gui", False, "obs divergence step 0", 1, 20, "hX", "r.jsonl")])
+    row = load_manifest(root)[key]
+    assert (row["replay_ok"], row["replay_host"], row["headless_replay_ok"]) == (False, "gui", True)
+    assert row["replay_detail"].startswith("gui: obs divergence step 0; headless/gui disagree")
+    assert row["quarantined_reason"].startswith("replay: gui: obs divergence")
+    assert row["replayed_at_ms"] == 20 and row["replay_path"] == "r.jsonl"
+    build_manifest(root)  # verdicts survive a rebuild
+    assert load_manifest(root)[key]["gui_replay_ok"] is False
+
+    record_replays(root, [ReplayVerdict(path, "gui", True, None, 1, 30, "hX")])
+    row = load_manifest(root)[key]
+    assert row["replay_ok"] is True and row["replay_detail"] is None and row["quarantined_reason"] is None
+
+    # Legacy row (replay_ok without replay_host) + a headless verdict: the old verdict becomes the gui one.
+    a = root / DAY / "AAAA1111_7801_1000.jsonl.gz"
+    record_replays(root, [ReplayVerdict(a, "headless", True, None, 2, 40, "hX")])
+    row = load_manifest(root)["AAAA1111_7801_1000"]
+    assert (row["gui_replay_ok"], row["headless_replay_ok"], row["replay_host"]) == (True, True, "gui")
+
+    st = _status(root, runs)
+    v = st["validity"]
+    assert (v["gui_ok"], v["headless_ok"], v["cross_checked"], v["disagree"]) == (2, 2, 2, 0)
+    assert "headless ok 2 / failed 0; gui (live) ok 2 / failed 0" in render_markdown(st)

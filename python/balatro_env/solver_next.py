@@ -33,6 +33,8 @@ GROWTH_JOKERS = {"Square Joker", "Runner", "Spare Trousers", "Ride the Bus", "Gr
                  "Wee Joker"}
 TIE_P = 0.015  # p_clear differences below this are Monte-Carlo noise: rank those options by secondary value
 GROWTH_W = 0.5  # secondary value of one growth-joker trigger, in $ (an unused hand pays $1)
+# Platt scaling of the model p to the realized clear rate of recorded Gold decisions (solver_calib, 2645 decisions)
+CALIBRATION = (0.7943, 0.9024)
 PILLAR_W = 0.25  # $-equivalent cost per card played when The Pillar is this ante's boss (played cards get debuffed)
 LEVEL_UP = {"High Card": (10, 1), "Pair": (15, 1), "Two Pair": (20, 1), "Three of a Kind": (20, 2),
             "Straight": (30, 3), "Flush": (15, 2), "Full House": (25, 2), "Four of a Kind": (30, 3),
@@ -149,6 +151,9 @@ class RoundSolver:
         self.lim = int(state.get("highlight_limit") or 5)
         self.hand_size = int(state.get("hand_size") or 8)
         self.need0 = float((b.get("chips_needed") or 0) - (b.get("chips_scored") or 0))
+        # Mr. Bones: a lost round still counts as survived when at least 25% of the blind was scored
+        self.bones_at = 0.25 * float(b.get("chips_needed") or 0) - float(b.get("chips_scored") or 0) \
+            if "Mr. Bones" in jn else None
         self.h0 = int(state.get("hands_remaining") or 0)
         self.d0 = int(state.get("discards_remaining") or 0)
         self.psychic = self.boss == "The Psychic"
@@ -774,22 +779,43 @@ class RoundSolver:
             if hold and hold[0] >= need:
                 return PLAY, [hold[1]]
         pile = _Pile(pile_cards, self.suit_keys)
-        best_k, best_u = None, -1.0
+        scored = []
         for K in self._keep_sets(cards, bp):
             u, _l = self.keep_value([cards[i] for i in K], pile, need, h, d, ctx, self._n_draw(len(K), pile.P))
-            if u > best_u:
-                best_k, best_u = K, u
-        if d > 0 and best_k is not None:
-            return DISCARD, [c for i, c in enumerate(cards) if i not in best_k]
-        keep = best_k or frozenset()
-        if best_k is not None and bs * h < need and best_u > bs and not self.pillar_ahead:
-            dig = [c for i, c in enumerate(cards) if i not in keep]
-            return PLAY, (self._pad(dig, cards, 5) if self.psychic else dig)
+            scored.append((u, K))
+        scored.sort(key=lambda t: -t[0])
+        keep = scored[0][1] if scored else frozenset()
+        if d > 0 and scored:
+            return DISCARD, [c for i, c in enumerate(cards) if i not in keep]
         if self.psychic:
+            if scored and bs * h < need and scored[0][0] > bs:
+                return PLAY, self._pad([c for i, c in enumerate(cards) if i not in keep][:5], cards, 5)
             return PLAY, self._pad(bp, cards, 5, avoid={id(cards[i]) for i in keep})
-        if self.pillar_ahead:  # every played card is debuffed at The Pillar: no fillers
+        if self.pillar_ahead:  # every played card is debuffed at The Pillar: no fillers, no junk digs
             return PLAY, bp
-        return PLAY, self._fillers(bp, cards, keep, h, d, ctx, bs)
+        # no discard left, 2+ hands: choose the play maximizing score now + draw value of the cards that stay
+        # (best hand + fillers, or the best hand among the cards outside each top keep set + junk fillers)
+        plays = [self._fillers(bp, cards, keep, h, d, ctx, bs)]
+        for _u, K in scored[:6]:
+            rest = [c for i, c in enumerate(cards) if i not in K]
+            if not rest:
+                continue
+            _s, p, _t = self.best_play(rest, h, d, ctx)
+            if not p:
+                continue
+            pids = {id(c) for c in p}
+            plays.append(p + sorted((c for c in rest if id(c) not in pids), key=lambda c: c.val)[:self.lim - len(p)])
+        best, best_tot = plays[0], -1.0
+        for p in plays:
+            ids = {id(c) for c in p}
+            held = [c for c in cards if id(c) not in ids]
+            s, _t = self.score(p, held, h, d, ctx)
+            if s >= need:
+                return PLAY, p
+            u2, _l = self.keep_value(held, pile, need - s, h - 1, d, ctx, self._n_draw(len(held), pile.P))
+            if s + u2 > best_tot:
+                best, best_tot = p, s + u2
+        return PLAY, best
 
     def _growth(self, sel, t):
         """Growth-joker progress of one played hand: +1 per trigger of Square Joker (4 cards), Runner (Straight),
@@ -849,7 +875,7 @@ class RoundSolver:
                 if need <= 0:
                     return True, total, h, self.d0 - d, growth, n_played
                 if h <= 0:
-                    return False, total, 0, self.d0 - d, growth, n_played
+                    return self.bones_at is not None and total >= self.bones_at, total, 0, self.d0 - d, growth, n_played
                 if self.hook and rest:
                     for _ in range(min(2, len(rest))):
                         rest.pop(rng.randrange(len(rest)))
@@ -862,7 +888,7 @@ class RoundSolver:
             pos += n
             cards = rest
             if not cards:
-                return False, total, h, self.d0 - d, growth, n_played
+                return self.bones_at is not None and total >= self.bones_at, total, h, self.d0 - d, growth, n_played
             kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes))
 
     # ---- sampling ---------------------------------------------------------------------------------------------
@@ -1025,20 +1051,31 @@ class RoundSolver:
             n, cl, tot, hl, du, g, npl = stats[i]
             if not n:
                 continue
-            res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]], "p_clear": cl / n,
+            res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]],
+                        "p_clear": calibrate(cl / n), "p_model": cl / n,
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
                         "discards_used": du / n, "n": n, "note": c["note"], "hand": c.get("hand")})
         top_n = max((r["n"] for r in res), default=0)
         full_n = min(top_n, 120)
-        top_p = max((r["p_clear"] for r in res if r["n"] >= full_n), default=0.0)
+        top_p = max((r["p_model"] for r in res if r["n"] >= full_n), default=0.0)
 
         def rank(r):
-            tied = r["p_clear"] >= top_p - TIE_P
-            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_clear"], r["value"], -r["discards_used"], r["exp_score"])
+            tied = r["p_model"] >= top_p - TIE_P
+            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_model"], r["value"], -r["discards_used"], r["exp_score"])
 
         res.sort(key=rank, reverse=True)
         return res
+
+
+def calibrate(p):
+    """Map the model's p (P(clear) when the rest of the round follows the solver's greedy policy) to the observed
+    clear rate of Gold players taking that action: Platt scaling sigmoid(a + b*logit(p)), p clipped to
+    [0.005, 0.995]. Players' later play beats the greedy policy in hard spots (consumables, chip-and-dig lines), so
+    the raw p is too low in the 0.1-0.9 range. Refit with `python -m balatro_env.analysis.solver_calib`."""
+    q = min(0.995, max(0.005, p))
+    a, b = CALIBRATION
+    return 1.0 / (1.0 + math.exp(-(a + b * math.log(q / (1.0 - q)))))
 
 
 def default_estimate():

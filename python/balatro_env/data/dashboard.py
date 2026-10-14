@@ -22,6 +22,7 @@ from balatro_env.data.status import (
     ANTE_BUCKETS,
     LIVE_WINDOW_S,
     RUNS_DIR,
+    VALIDITY_KEYS,
     PostMortemIndex,
     RunInfo,
     RunScanner,
@@ -153,7 +154,7 @@ def render_html(st: dict[str, Any], refresh_s: int) -> str:
                '<div class="muted">None yet.</div>')
 
     out.append("<h2>Data validity (manifest)</h2>")
-    keys = ["files", "schema_ok", "schema_bad", "replay_ok", "replay_failed", "awaiting_replay", "open"]
+    keys = list(VALIDITY_KEYS)
     v, va = st["validity"], st["validity_all"]
     out.append(_table(["scope"] + keys + ["quarantined", "not in manifest"],
                       [["player runs"] + [_e(v[k]) for k in keys] + [_e(len(v["quarantined"])),

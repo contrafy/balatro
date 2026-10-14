@@ -45,12 +45,31 @@ def preview(idxs):
     return requests.post(f"{BASE}/preview", json={"card_indices": idxs}, timeout=5).json()
 
 
+def _digest(d):
+    """What a decision depends on: phase, money, ids of hand/jokers/consumables/shop/pack cards, blind progress."""
+    ids = lambda xs: [x.get("id", x.get("index")) for x in lst(xs)]
+    sh = d.get("shop") or {}
+    return json.dumps([d.get("phase"), d.get("money"), ids(d.get("hand")), ids(d.get("jokers")), ids(d.get("consumables")),
+                       ids(sh.get("jokers")), ids(sh.get("boosters")), ids(sh.get("vouchers")), ids((d.get("pack") or {}).get("cards")),
+                       (d.get("blind") or {}).get("chips_scored"), d.get("hands_remaining"), d.get("discards_remaining")], default=str)
+
+
 def wait_settled(timeout=30.0):
-    """Poll /state until the bridge reports a settled decision point; returns the last state seen."""
+    """Poll /state until the bridge reports a settled decision point AND two reads 150 ms apart agree on the decision
+    content (7803: a read right after an action sometimes showed the PRE-action state with settled=true, i.e. before the
+    action's events were queued); returns the last state seen."""
     t0 = time.time()
     d = get("state")
-    while not d.get("settled") and time.time() - t0 < timeout:
-        time.sleep(0.25)
+    prev = None
+    while time.time() - t0 < timeout:
+        if d.get("settled"):
+            dg = _digest(d)
+            if dg == prev:
+                return d
+            prev = dg
+        else:
+            prev = None
+        time.sleep(0.15)
         d = get("state")
     if not d.get("settled"):
         print(f"(state not settled after {timeout:.0f}s: phase {d.get('phase')}; run `s` again shortly)")
@@ -604,19 +623,24 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         cand = [c for c in held_all if c.get("rank") is not None and "Stone" not in _enh(c)]
         if cand:
             fist_low = min(reversed(cand), key=lambda c: RANK_VAL.get(_r(c), 0))
+    bl_e = state.get("blind") or {}
+    mark = bl_e.get("name") == "The Mark" and not bl_e.get("disabled")
     for c in sorted(held_all, key=lambda c: c.get("index") or 0):
         if c.get("debuff"):
             continue
         if "Steel" in _enh(c):
             mult *= 1.5
+        # The Mark deals every face card face-down: an unknown held card there is a J/Q/K, each about 1/3 likely
+        # (7805: Shoot the Moon est ignored face-down Queens)
+        fd_face = mark and c.get("rank") is None and c.get("facing") == "back"
         for n0 in jn_h:
-            if n0 == "Shoot the Moon" and _r(c) == "Q":
-                mult += 13
+            if n0 == "Shoot the Moon" and (_r(c) == "Q" if not fd_face else True):
+                mult += 13 if not fd_face else 13 / 3
             elif n0 == "Raised Fist" and c is fist_low:
                 lo = RANK_VAL.get(_r(c), 0)
                 mult += 2 * (11 if lo == 14 else min(lo, 10))
-            elif n0 == "Baron" and _r(c) == "K":
-                mult *= 1.5
+            elif n0 == "Baron" and (_r(c) == "K" if not fd_face else True):
+                mult *= 1.5 if not fd_face else 1 + 0.5 / 3
     for j in jokers:
         n = j.get("name")
         ab = j.get("ability") or {}
@@ -1457,6 +1481,11 @@ def _advise_rules(d):
         if valuable and len(keep) + len(valuable) < len(hand):
             keep = keep + valuable
             why += f"; keeping enhanced/sealed cards {valuable}"
+        # held-card jokers: Shoot the Moon Queens / Baron Kings score while HELD (7805 discarded a held Queen twice)
+        held_val = [c.get("index") for c in hand if not c.get("debuff") and c.get("index") not in keep and c.get("rank") is not None and _r(c) in protect_ranks]
+        if held_val and len(keep) + len(held_val) < len(hand):
+            keep = keep + held_val
+            why += f"; keeping {', '.join(sorted({_r(c) for c in hand if c.get('index') in held_val}))} held for your held-card joker"
         # a debuffed card still counts for the hand TYPE (and for flushes): keep it when it is part of what we keep
         # (7803: The Head, the discard list broke the pair it claimed to keep); discard the other debuffed cards first
         debuffed_idx = [c.get("index") for c in hand if c.get("debuff") and c.get("index") not in keep]
@@ -2027,7 +2056,8 @@ def shop_advise(d):
             return
     non_rental_scorers = [j for j in jokers if not _stk(j)["rental"] and alive_next(j) and _is_scoring(classify_joker(j.get("name"), 0, mh)[0])]
     if len(non_rental_scorers) >= 2 and ante <= 6:
-        flat_r = [j for j in rentals if not _stk(j)["eternal"] and not _rg_x(classify_joker(j.get("name"), 0, mh)[0]) and joker_share(d, j, mh) < 0.3 and j.get("name") != "Mr. Bones"]
+        flat_r = [j for j in rentals if not _stk(j)["eternal"] and not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") and j.get("name") not in TYPE_X_JOKERS
+                  and joker_share(d, j, mh) < 0.3 and j.get("name") != "Mr. Bones"]  # 7805: The Trio was called a "flat rental"
         if flat_r:
             j = min(flat_r, key=keep_value)
             print(f"ADVICE: SELL -> b sell {j.get('index')}   ({j.get('name')}{stickers(j)} is a flat RENTAL and {len(non_rental_scorers)} non-rental scorers carry your hands: "
@@ -2139,13 +2169,10 @@ def shop_advise(d):
                 x_tb = 1 + 0.25 * skips_r
                 cls, score = (f"XMULT(growth: Throwback x{x_tb:g} now, +0.25 per blind skipped)", min(90, 35 + 20 * skips_r)) if skips_r >= 1 else (cls, score)
             elif cls.startswith("PLUS") and not cls.startswith("PLUS(bridge"):
-                # value state-dependent flat jokers by what they add NOW (7803: Erosion rated 85 "NEEDED NOW" at +0 mult with
-                # a full 52-card deck): no current contribution -> not a scorer
-                if name in ("Erosion", "Bull", "Bootstraps", "Swashbuckler", "Abstract Joker", "Red Card", "Fortune Teller",
-                            "Green Joker", "Flash Card", "Spare Trousers", "Runner", "Square Joker", "Blue Joker", "Stone Joker"):
-                    base_e = typical_est(d, mh) or 1
-                    if typical_est(d, mh, lst(d.get("jokers")) + [c]) / base_e - 1 < 0.03:
-                        cls, score = "PLUS(adds ~0 now: grows only with its condition)", min(score, 25)
+                # every flat joker is valued by what it adds NOW on deals from your deck (7803: Erosion 85 "NEEDED NOW" at
+                # +0 with a full deck; 7801 Bootstraps at $0-6; Ride the Bus 95 at ante 1; Supernova 98 at ante 1)
+                if marginal_gain(d, mh, c) < 0.03:
+                    cls, score = "PLUS(adds ~0 now: grows only with its condition)", min(score, 25)
             if c.get("edition") in ("foil", "holo", "polychrome") and scoring_now < 2 and not cls.startswith("AVOID"):
                 score = max(score, 72)  # the edition scores on every hand even when the joker itself does not
             if name == "Joker Stencil":
@@ -2544,7 +2571,9 @@ def pack_advise(d):
     if planets:
         hl_p = d.get("hand_levels") or {}
         most = max(hl_p, key=lambda k: int((hl_p[k] or {}).get("played") or 0), default=None) if hl_p else None
-        want = [PLANET_FOR.get(mh), PLANET_FOR.get(most or ""), PLANET_FOR.get(second_hand(d) or "")]
+        PAIR_FAM = ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")
+        # undecided main hand: one lucky Straight/Flush is not a plan, only pair-family levels count (7801: Jupiter at ante 1)
+        want = [PLANET_FOR.get(mh)] + [PLANET_FOR.get(h or "") for h in (most, second_hand(d)) if mh != "undecided" or h in PAIR_FAM]
         gate_x = next((TYPE_X_JOKERS[j.get("name")][0] for j in jokers if j.get("name") in TYPE_X_JOKERS and not j.get("debuff")
                        and (mh in ("undecided", "Flush", "Straight") or hand_contains(mh, TYPE_X_JOKERS[j.get("name")][0]))), None)
         want = [PLANET_FOR.get(gate_x or "")] + want  # an owned type xMult (The Trio...) decides which level pays most

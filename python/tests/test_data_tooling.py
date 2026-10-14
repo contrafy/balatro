@@ -149,7 +149,7 @@ class TestManifest:
         build_manifest(root)
         traj = root / "trajectories" / "2026-10-13" / "K7QW3ZPA_7779_1760000000000.jsonl.gz"
         update_replay_result(root, traj, False, "obs divergence step 2", None, 1, 4)
-        assert load_manifest(root)[run_key(traj)]["quarantined_reason"] == "replay: obs divergence step 2"
+        assert load_manifest(root)[run_key(traj)]["quarantined_reason"] == "replay: gui: obs divergence step 2"
         update_replay_result(root, traj, True, None, "x.jsonl", 2, 4)
         build_manifest(root)
         row = load_manifest(root)[run_key(traj)]

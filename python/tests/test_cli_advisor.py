@@ -596,3 +596,25 @@ def test_two_rentals_never_sell_the_only_xmult():
     d = shop(jokers=[joker("Acrobat", 1, rental=True), joker("Popcorn", 2, rental=True), joker("Jolly Joker", 3), joker("Joker", 4)], ante=5, money=12)
     a = _advice(_out(cli.shop_advise, d))
     assert "b sell 1" not in a
+
+
+def test_type_xmult_rental_is_not_flat():
+    # 7805: The Trio{RENTAL} called a "flat rental" and sold
+    d = shop(jokers=[joker("The Trio", 1, rental=True), joker("Jolly Joker", 2), joker("Joker", 3)], ante=3, money=12)
+    assert "b sell 1" not in _advice(_out(cli.shop_advise, d))
+
+
+def test_shoot_the_moon_queen_kept_on_discard():
+    d = _hand_state([("Queen", "Spades"), ("9", "Hearts"), ("7", "Clubs"), ("5", "Diamonds"), ("4", "Spades"), ("3", "Hearts"), ("2", "Clubs"), ("8", "Diamonds")],
+                    jokers=[joker("Shoot the Moon", 1)], need=2000, hands=3, discards=3)
+    a = _advice(_out(cli._advise_rules, d))
+    if "b disc" in a:
+        assert "1" not in a.split("b disc ")[1].split("   ")[0].split()
+
+
+def test_mark_face_down_held_cards_count_for_shoot_the_moon():
+    d = _hand_state([("King", "Spades"), ("King", "Hearts")], jokers=[joker("Shoot the Moon", 1)], need=2000)
+    d["hand"] += [{"index": 3, "facing": "back"}, {"index": 4, "facing": "back"}]
+    base = cli.estimate("Pair", d["hand"][:2], d["hand"][2:], dict(d, blind={"name": "Small Blind"}))[0]
+    mark = cli.estimate("Pair", d["hand"][:2], d["hand"][2:], dict(d, blind={"name": "The Mark", "boss": True}))[0]
+    assert mark > base

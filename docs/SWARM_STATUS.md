@@ -2,36 +2,44 @@
 
 ## Morning summary
 
-_Orchestrator: summarize the night here._
+_Interim, 02:45 (updated as the night goes on)._
+
+- 103 Gold Stake runs finished on Black Deck, 0 wins.
+- Antes reached: 1: 15, 2: 15, 3: 26, 4: 19, 5: 21, 6: 4, 7: 2, 8: 1.
+- Deepest run: Sonnet `ZY6GJXIG` lost the ante-8 boss Crimson Heart with a face-Pair engine. Next were Fable
+  `MKHAVQ6W` (ante 7, The Eye) and Opus `YJGGELMB` (ante 7, The Manacle).
+- Mean ante: Opus 3.5 (60 runs), Fable 3.6 (12), Sonnet 3.1 (31). The tiers are close; Fable is ~3x slower per run.
+- Data: 270 trajectories recorded, 87 replay-verified so far; the backlog is being moved to headless replay.
+- Why runs die: under-scaled by ante 3-5, broke from Gold rent and $0 Small Blinds, and reliable xMults are rare.
+  See `docs/GOLD_ANALYSIS.md`.
 
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 02:30:41 by `balatro-data status` (edits inside this block are overwritten). Player runs: 113 (104 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 02:49:55 by `balatro-data status` (edits inside this block are overwritten). Player runs: 120 (112 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (9)
+### Live runs (8)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | RM2XKW5G | 8 | SHOP | 3 | 5 | 7 | Small Blind (3200) | SHOP_END | left; Venus (trips) and Arcana do not lift the flush; keep money for the next shop (Jupiter/scorers… | 53s |
-| 7802 | port-7802 | claude-fable-5-1 | 3IDYS1SA | 8 | SHOP | 6 | 12 | 44 | Small Blind (60000) | SELL_CONSUMABLE {"index":1} | Sell Jupiter: +, Campfire x1.5 | 2s |
-| 7803 | port-7803 | claude-opus-5-5 | 9J8GXWMG | 8 | SELECTING_HAND | 2 | 4 | 6 | Big Blind 0/1500 | PLAY_HAND {"card_indices":[5,6,7,3]} | Trips 4 est 1728 >= 1500 (Walkie x3 + spade); 2 hands backup | 8s |
-| 7804 | port-7804 | claude-opus-5-5 | U4HS5KQK | 8 | SHOP | 2 | 3 | 1 | Small Blind (1000) | SHOP_END | left, nothing affordable | 8s |
-| 7805 | port-7805 | claude-opus-5-5 | 5G8855KD | 8 | BLIND_SELECT | 4 | 9 | 1 | The Flint (18000) | SELECT_BLIND | The Flint 18000 boss | 9s |
-| 7806 | port-7806 | claude-opus-5-5 | NBBEN6W1 | 8 | ROUND_EVAL | 5 | 11 | -5 | Small Blind (25000) | CASH_OUT | Small cleared 25000+, cash out | 2s |
-| 7807 | port-7807 | claude-opus-5-5 | B6KZC39M | 8 | BLIND_SELECT | 3 | 6 | 10 | Small Blind (3200) | SKIP_BLIND | Charm tag = free Mega Arcana now; best hand ~6000 >= boss/2 1600; saves a Popcorn tick for the Big … | 4s |
-| 7809 | port-7809 | claude-opus-5-5 | Z6ZJWRC4 | 8 | SELECTING_HAND | 1 | 3 | 8 | The Window 0/600 | DISCARD {"card_indices":[8]} | burn last discard on debuffed 9D; activates Summit so Two Pair QT = 60x17 ~1020 vs 600 | 4s |
-| 7810 | port-7810 | claude-sonnet-5-5 | GF13YRTQ | 8 | SELECTING_HAND | 3 | 7 | 4 | The Goad 0/6400 | DISCARD {"card_indices":[2,3,5,6,8]} | Goad 6400 needs ~2100/hand; best Pair est ~1250. Keep AC 7C 4C for club flush (Gluttonous +3/club, … | 14s |
+| 7802 | port-7802 | claude-fable-5-1 | 4J47S7PD | 8 | SHOP | 2 | 3 | 4 | Small Blind (1000) | SHOP_END | left; Juggler/Standard pack add no score; leave | 2s |
+| 7803 | port-7803 | claude-opus-5-5 | 8IWKQM3R | 8 | SHOP | 4 | 9 | 26 | Small Blind (9000) | SHOP_BUY_BOOSTER {"slot":2} | EMERGENCY 0.22: Jumbo Arcana (5 tarots): Justice on a face = Glass retriggered 3x by Chad (x8 on hi… | 1s |
+| 7804 | port-7804 | claude-opus-5-5 | CEBZIMZI | 8 | SHOP | 2 | 4 | 7 | Big Blind (1500) | SELL_JOKER {"index":2} | sell free Delayed Gratification for before rent; -/round outweighs its /discard | 5s |
+| 7805 | port-7805 | claude-opus-5-5 | E57ZB14D | 8 | SELECTING_HAND | 3 | 8 | 4 | The Mark 3800/6400 | PLAY_HAND {"card_indices":[6,7,8,5,1]} | Pair 99 est 3680 vs 2600 remaining: clears The Mark | 3s |
+| 7806 | port-7806 | claude-opus-5-5 | 22DQ1IV4 | 8 | SHOP | 2 | 4 | 3 | Big Blind (1500) | SHOP_BUY_BOOSTER {"slot":1} | Free (Coupon) Jumbo Arcana: chance at Justice/Empress on pair ranks or Hermit $ | 15s |
+| 7807 | port-7807 | claude-opus-5-5 | B6KZC39M | 8 | SHOP | 7 | 17 | 8 | Small Blind (110000) | SHOP_BUY_BOOSTER {"slot":1} | ante 7, floor off: Arcana -> for Chariot (Steel held x1.5) / Justice (Glass) / Death on my cards | 4s |
+| 7809 | port-7809 | claude-opus-5-5 | Z6ZJWRC4 | 8 | SELECTING_HAND | 6 | 14 | 10 | Small Blind 59528/60000 | PLAY_HAND {"card_indices":[6,7]} | need 472, Pair 6 ~27k clears | 8s |
+| 7810 | port-7810 | claude-sonnet-5-5 | 53UERUM3 | 8 | BLIND_SELECT | 5 | 11 | 5 | The House (50000) | SELECT_BLIND | The House 50000 boss, first hand face down; plan Queens held + club flush like Big | 5s |
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 12 | 0 | 12 | 0 | 0 | 3.58 | 7 |
+| claude-fable-5-1 | 8 | Black | 14 | 0 | 14 | 0 | 0 | 3.86 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 55 | 0 | 55 | 0 | 0 | 3.53 | 7 |
-| claude-sonnet-5-5 | 8 | Black | 31 | 0 | 30 | 0 | 1 | 3.0 | 8 |
+| claude-opus-5-5 | 8 | Black | 60 | 0 | 60 | 0 | 0 | 3.53 | 7 |
+| claude-sonnet-5-5 | 8 | Black | 32 | 0 | 31 | 0 | 1 | 3.0 | 8 |
 
 ### Deepest runs
 
@@ -40,18 +48,18 @@ _Generated 2026-10-14 02:30:41 by `balatro-data status` (edits inside this block
 | 1 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
 | 2 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
 | 3 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
-| 4 | 26ARMPG1 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 48586/90000 | [7807_26ARMPG1.md](runs/7807_26ARMPG1.md) |
-| 5 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
-| 6 | 76GDJXLS | claude-opus-5-5 | 8 | Black | loss | 6 | The Mouth 80352/120000 | [7809_76GDJXLS.md](runs/7809_76GDJXLS.md) |
-| 7 | PZ67LB31 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 28434/90000 | [7803_PZ67LB31.md](runs/7803_PZ67LB31.md) |
-| 8 | M5SRCH3B | claude-sonnet-5-5 | 8 | Black | loss | 5 | The Mark 29380/50000 | [7810_M5SRCH3B.md](runs/7810_M5SRCH3B.md) |
-| 9 | AJAKNU2C | claude-fable-5-1 | 8 | Black | loss | 5 | The Eye 14823/50000 | [7801_AJAKNU2C.md](runs/7801_AJAKNU2C.md) |
-| 10 | 3WSFNWWA | claude-opus-5-5 | 8 | Black | loss | 5 | Big Blind 23529/37500 | [7807_3WSFNWWA.md](runs/7807_3WSFNWWA.md) |
+| 4 | 3IDYS1SA | claude-fable-5-1 | 8 | Black | loss | 6 | Big Blind 87529/90000 | [7802_3IDYS1SA.md](runs/7802_3IDYS1SA.md) |
+| 5 | 26ARMPG1 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 48586/90000 | [7807_26ARMPG1.md](runs/7807_26ARMPG1.md) |
+| 6 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
+| 7 | 76GDJXLS | claude-opus-5-5 | 8 | Black | loss | 6 | The Mouth 80352/120000 | [7809_76GDJXLS.md](runs/7809_76GDJXLS.md) |
+| 8 | PZ67LB31 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 28434/90000 | [7803_PZ67LB31.md](runs/7803_PZ67LB31.md) |
+| 9 | M5SRCH3B | claude-sonnet-5-5 | 8 | Black | loss | 5 | The Mark 29380/50000 | [7810_M5SRCH3B.md](runs/7810_M5SRCH3B.md) |
+| 10 | AJAKNU2C | claude-fable-5-1 | 8 | Black | loss | 5 | The Eye 14823/50000 | [7801_AJAKNU2C.md](runs/7801_AJAKNU2C.md) |
 
 ### Data validity
 
-- Player runs: 98 files in manifest; schema_ok 98, schema invalid 0; replay_ok 76, replay failed 0, awaiting replay 11, open/unended 11; quarantined 0; not yet in manifest 15.
-- All files (incl. fuzz + replays): 237; schema_ok 235; replay_ok 82; replay failed 0; awaiting replay 141; quarantined 2.
+- Player runs: 120 files in manifest; schema_ok 120, schema invalid 0; replay_ok 85, replay failed 0, awaiting replay 24, open/unended 11; quarantined 0; not yet in manifest 0.
+- All files (incl. fuzz + replays): 274; schema_ok 272; replay_ok 91; replay failed 0; awaiting replay 169; quarantined 2.
 
 ### Rejects per agent
 
@@ -59,18 +67,18 @@ _Generated 2026-10-14 02:30:41 by `balatro-data status` (edits inside this block
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
 | port-7778 | 1 | 1 | 0 |
-| port-7805 | 1 | 1 | 760 |
+| port-7805 | 1 | 1 | 839 |
+| port-7807 | 1 | 1 | 1038 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 446 |
-| port-7802 | 0 | 0 | 532 |
-| port-7803 | 0 | 0 | 844 |
-| port-7804 | 0 | 0 | 502 |
-| port-7806 | 0 | 0 | 920 |
-| port-7807 | 0 | 0 | 935 |
+| port-7801 | 0 | 0 | 489 |
+| port-7802 | 0 | 0 | 582 |
+| port-7803 | 0 | 0 | 923 |
+| port-7804 | 0 | 0 | 570 |
+| port-7806 | 0 | 0 | 988 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 754 |
-| port-7810 | 0 | 0 | 983 |
+| port-7809 | 0 | 0 | 857 |
+| port-7810 | 0 | 0 | 1079 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
@@ -102,4 +110,5 @@ _Generated 2026-10-14 02:30:41 by `balatro-data status` (edits inside this block
 - 01:55 GoldAdvisor cli.py 022bc814: `advise` checks its rule pick against DrawSolver (balatro_env/solver.py, Monte-Carlo p_clear over the public remaining deck): prints SOLVER top 3 + the rule pick's p_clear, and switches the ADVICE to the solver's best first action when it clears >3 points more often (old advice shown); special cases (non play/discard advice, Crimson Heart, Verdant Leaf, face-down cards) untouched. 60 recorded Gold hands: 10 overrides, 0 errors, median 1.8 s, max 5.1 s.
 - 02:20 GoldAdvisor cli.py 4fc5eba8: BOSS PREP facts checked in blind.lua (Eye/Needle kill Card Sharp incl. Blueprint/Brainstorm copies; Mouth does not; Water kills Banner only, Summit always on); TIGHT: next blind's projected round < 1.2x need -> money floor off (recorded: 13-40% lost vs <=6%; 7805 lost a boss by 132 holding $12); SCORE CHECK from 40 deals of the real deck (AUC 0.77 vs 0.74 synthetic; bands printed); joker values (shop + pack) = marginal round est on deals from your deck (Walkie/Scholar/Shoot the Moon visible; pack ties never by slot order; bridges must score now: Erosion 0); joker shares count Summit/Acrobat (final hand); main hand anchored by owned hand-gated jokers (Half Joker -> Pair, 7809); solver lines show n/$/growth, ADVICE also follows a same-p solver line worth $1+ more; Psychic plays always padded to 5; Credit Card -$20 for must-buys; eternal rental on a +30% joker priced like a core; Immolate 60 when poor; Riff-raff classified; no pre-emptive "sell for an xMult not in the shop"; skip reason "no free slot" only when true. Tests 71.
 - 02:29 GoldAdvisor cli.py 6f832f0a: solver ADVISORY ONLY (orchestrator): ADVICE follows it only for a PLAY that clears the blind now; fillers never spend a held pair, Square Joker plays exactly 4; rental sells never take a carrier (share >= 25%), the only r/g xMult or Mr. Bones; card-trigger xMults capped by their real gain (Photograph 130 case); Mr. Bones bought in EMERGENCY. Tests 74.
+- 02:42 GoldAdvisor cli.py fd6e518e: wait_settled needs two identical settled reads 150 ms apart (pre-action state after an action; bridge analysis in local://bridge_patch_settle.md); type xMults never sold as "flat rentals" (7805 Trio); discards keep held Shoot the Moon Queens / Baron Kings; The Mark face-down held cards count as expected faces in est; every flat shop joker valued by its real deck gain (ante-1 Bootstraps/Ride the Bus/Supernova "adds ~0 now"); Celestial picks pair-family planets while the main hand is undecided. Tests 77.
 

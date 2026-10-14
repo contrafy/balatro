@@ -19,7 +19,7 @@ from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any
 
-from balatro_env.data.manifest import load_manifest, manifest_path, replace_file
+from balatro_env.data.manifest import load_manifest, manifest_path, migrate_legacy, replace_file
 from balatro_env.data.trajectory import data_dir, dataset_files, run_key
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -416,7 +416,13 @@ def _row_is_player(row: dict[str, Any], run: RunInfo | None) -> bool:
                 or agent == "replay" or row.get("replay_of"))
 
 
+VALIDITY_KEYS = ("files", "schema_ok", "schema_bad", "replay_ok", "replay_failed", "awaiting_replay", "open",
+                 "gui_ok", "gui_failed", "headless_ok", "headless_failed", "cross_checked", "disagree")
+
+
 def _validity(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Manifest counts. replay_ok/replay_failed = combined verdict; gui_*/headless_* = per-host verdicts;
+    cross_checked = runs verified by both hosts, disagree = of those, verdicts that differ."""
     c = Counter()
     quarantined: list[tuple[str, str]] = []
     for row in rows:
@@ -432,12 +438,20 @@ def _validity(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 c["awaiting_replay"] += 1
             else:
                 c["open"] += 1
+            host = dict(row)
+            migrate_legacy(host)
+            gui, hl = host.get("gui_replay_ok"), host.get("headless_replay_ok")
+            for name, v in (("gui", gui), ("headless", hl)):
+                if v is not None:
+                    c[f"{name}_{'ok' if v else 'failed'}"] += 1
+            if gui is not None and hl is not None:
+                c["cross_checked"] += 1
+                c["disagree"] += gui != hl
         else:
             c["schema_bad"] += 1
         if row.get("quarantined_reason"):
             quarantined.append((row["run_key"], str(row["quarantined_reason"])))
-    out = {k: c[k] for k in ("files", "schema_ok", "schema_bad", "replay_ok", "replay_failed",
-                             "awaiting_replay", "open")}
+    out: dict[str, Any] = {k: c[k] for k in VALIDITY_KEYS}
     out["quarantined"] = sorted(quarantined)
     return out
 
@@ -630,9 +644,12 @@ def render_markdown(st: dict[str, Any], runs_link: str = "runs") -> str:
             f"{v['schema_bad']}; replay_ok {v['replay_ok']}, replay failed {v['replay_failed']}, awaiting replay "
             f"{v['awaiting_replay']}, open/unended {v['open']}; quarantined {len(v['quarantined'])}; "
             f"not yet in manifest {v['not_in_manifest']}.",
+            f"- Player-run replay verdicts by host: headless ok {v['headless_ok']} / failed {v['headless_failed']}; "
+            f"gui (live) ok {v['gui_ok']} / failed {v['gui_failed']}; cross-checked by both {v['cross_checked']}, "
+            f"disagreeing {v['disagree']}.",
             f"- All files (incl. fuzz + replays): {va['files']}; schema_ok {va['schema_ok']}; replay_ok "
-            f"{va['replay_ok']}; replay failed {va['replay_failed']}; awaiting replay {va['awaiting_replay']}; "
-            f"quarantined {len(va['quarantined'])}."]
+            f"{va['replay_ok']} (headless {va['headless_ok']}, gui {va['gui_ok']}); replay failed "
+            f"{va['replay_failed']}; awaiting replay {va['awaiting_replay']}; quarantined {len(va['quarantined'])}."]
     if v["quarantined"]:
         out += ["", "Quarantined player runs:", ""]
         out += [f"- `{k}`: {_md(reason, 200)}" for k, reason in v["quarantined"]]

@@ -1,28 +1,33 @@
 """`balatro-data dataops`: the unattended data pipeline loop, and `compress_trajectories` (`balatro-data compress`).
 
-Each iteration: compress closed `.jsonl` files -> manifest (validates new/changed files) -> replay every closed,
-schema_ok player run without a verdict, one at a time, on the replay port (instance launched / relaunched there by
-PID when its bridge is down; no other port is ever touched) -> regenerate the SWARM_STATUS.md block. Logs to
-`<data>/dataops.log`.
+Each iteration: compress closed `.jsonl` files -> manifest (validates new/changed files) -> replay verification of
+every closed, schema_ok player run without a verdict: headlessly on `headless_workers` processes
+(`balatro_env.headless`), and live (gui) on the replay port for a ~1-in-`gui_every` spot-check sample plus every
+headless divergence, one live replay at a time (instance launched / relaunched there by PID when its bridge is
+down; no other port is ever touched) -> regenerate the SWARM_STATUS.md block. Logs to `<data>/dataops.log`.
 """
 
 from __future__ import annotations
 
 import gzip
 import logging
+import multiprocessing as mp
 import os
+import queue
 import re
 import shutil
 import subprocess
 import sys
 import time
+import zlib
+from collections import deque
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import requests
 
-from balatro_env.data.manifest import build_manifest, update_replay_result
+from balatro_env.data.manifest import ReplayVerdict, build_manifest, record_replays
 from balatro_env.data.status import (
     LIVE_WINDOW_S,
     REPO_ROOT,
@@ -100,26 +105,151 @@ def compress_trajectories(root: str | os.PathLike | None = None, include_unfinis
     return done
 
 
-def replay_candidates(rows: list[dict[str, Any]], bridge_hash: str | None = None,
-                      include_fuzz: bool = False) -> tuple[list[dict[str, Any]], int]:
-    """Closed (.gz), schema_ok rows without a replay verdict, oldest first; skips replays of replays, `test-*`
-    agents, fuzz seeds (unless `include_fuzz`). Rows recorded under another bridge_hash than the replay instance's
-    are skipped (a verdict across bridge versions means nothing); returns (candidates, skipped_for_hash)."""
-    out, other_hash = [], 0
-    for row in rows:
-        agent = str(row.get("agent") or "")
-        if not (row.get("schema_ok") and row.get("replay_ok") is None and str(row.get("path", "")).endswith(".gz")):
+def replayable(row: dict[str, Any], include_fuzz: bool = False) -> bool:
+    """Closed (.gz), schema_ok player run: not a replay, not a `test-*` agent, not a fuzz seed (unless asked)."""
+    agent = str(row.get("agent") or "")
+    if not (row.get("schema_ok") and str(row.get("path", "")).endswith(".gz")):
+        return False
+    if row.get("replay_of") or agent == "replay" or agent.startswith("test-"):
+        return False
+    return include_fuzz or not str(row.get("seed") or "").upper().startswith("FUZZ")
+
+
+def gui_spot_check(run_key: str, every: int) -> bool:
+    """Stable ~1-in-`every` sample of runs that also get a live (gui) replay; 0 = none."""
+    return every > 0 and zlib.crc32(run_key.encode("utf-8")) % every == 0
+
+
+def _oldest_first(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(rows, key=lambda r: (_port_and_ms(Path(r["path"]))[1], r["run_key"]))
+
+
+def headless_candidates(rows: list[dict[str, Any]], include_fuzz: bool = False) -> list[dict[str, Any]]:
+    """Replayable rows without any verdict yet (a pre-per-host `replay_ok` counts as a gui verdict)."""
+    return _oldest_first([r for r in rows if replayable(r, include_fuzz) and r.get("replay_ok") is None
+                          and r.get("headless_replay_ok") is None and r.get("gui_replay_ok") is None])
+
+
+def gui_candidates(rows: list[dict[str, Any]], include_fuzz: bool = False, every: int = 10,
+                   headless: bool = True) -> list[dict[str, Any]]:
+    """Rows for a live replay. Without headless: every unverified row. With headless: the spot-check sample and
+    every run the headless engine found divergent (the live game decides whether the data or the engine is off)."""
+    out = []
+    for r in rows:
+        if not replayable(r, include_fuzz) or r.get("gui_replay_ok") is not None:
             continue
-        if row.get("replay_of") or agent == "replay" or agent.startswith("test-"):
+        if r.get("replay_ok") is not None and not r.get("replay_host"):  # legacy gui verdict
             continue
-        if not include_fuzz and str(row.get("seed") or "").upper().startswith("FUZZ"):
-            continue
-        if bridge_hash and row.get("bridge_hash") != bridge_hash:
-            other_hash += 1
-            continue
-        out.append(row)
-    out.sort(key=lambda r: (_port_and_ms(Path(r["path"]))[1], r["run_key"]))
-    return out, other_hash
+        if (r.get("replay_ok") is None if not headless
+                else gui_spot_check(r["run_key"], every) or r.get("headless_replay_ok") is False):
+            out.append(r)
+    return _oldest_first(out)
+
+
+def split_by_hash(rows: list[dict[str, Any]], bridge_hash: str | None) -> tuple[list[dict[str, Any]], int]:
+    """Rows recorded under the replaying bridge's hash (a verdict across bridge versions means nothing), and the
+    number skipped."""
+    match = [r for r in rows if not bridge_hash or r.get("bridge_hash") == bridge_hash]
+    return match, len(rows) - len(match)
+
+
+def _headless_worker(wid: int, tasks, results) -> None:
+    """Worker process: one headless Replayer (engine + temp recording dir), replays paths from `tasks`."""
+    from balatro_env.headless.replay import Replayer
+
+    def boot() -> tuple[Any, str | None]:
+        rep = Replayer(check_file=True)
+        return rep, rep.engine.health().get("bridge_hash")
+
+    try:
+        rep, bridge_hash = boot()
+    except BaseException as exc:
+        results.put(("boot_error", wid, f"{type(exc).__name__}: {exc}"))
+        return
+    results.put(("boot", wid, bridge_hash))
+    try:
+        while (path := tasks.get()) is not None:
+            try:
+                res = rep.replay(path, log=lambda *a: None)
+                item = {"path": path, "ok": res.ok, "detail": res.detail(), "steps_total": res.steps_total,
+                        "steps_matched": res.steps_matched, "seconds": res.seconds,
+                        "bridge_hash": bridge_hash, "report": res.report().splitlines()[0]}
+            except Exception as exc:  # not a verdict: engine/tool failure; reboot the engine for the next file
+                item = {"path": path, "ok": None, "error": f"{type(exc).__name__}: {exc}"}
+                rep.close()
+                rep, bridge_hash = boot()
+            results.put(("result", wid, item))
+    finally:
+        rep.close()
+
+
+class HeadlessVerifier:
+    """N worker processes replaying trajectories in the headless engine; results arrive on a queue."""
+
+    def __init__(self, n: int) -> None:
+        ctx = mp.get_context("spawn")
+        self.tasks, self.results = ctx.Queue(), ctx.Queue()
+        self.procs = [ctx.Process(target=_headless_worker, args=(i, self.tasks, self.results), daemon=True)
+                      for i in range(n)]
+        for p in self.procs:
+            p.start()
+        self.pending = 0
+        self.closed = False
+
+    def boot(self, timeout_s: float = 300.0) -> tuple[str | None, list[str]]:
+        """Wait for every worker's boot report: (bridge_hash of the engines or None, boot errors)."""
+        hashes, errors, seen = set(), [], 0
+        deadline = time.monotonic() + timeout_s
+        while seen < len(self.procs) and time.monotonic() < deadline:
+            try:
+                msg = self.results.get(timeout=1)
+            except queue.Empty:
+                if not any(p.is_alive() for p in self.procs):
+                    break
+                continue
+            seen += 1
+            if msg[0] == "boot":
+                hashes.add(msg[2])
+            else:
+                errors.append(msg[2])
+        if seen < len(self.procs):
+            errors.append(f"{len(self.procs) - seen} worker(s) did not boot within {timeout_s:.0f}s")
+        return (hashes.pop() if len(hashes) == 1 else None), errors
+
+    def submit(self, paths: list[Path]) -> None:
+        for p in paths:
+            self.tasks.put(str(p))
+        self.pending += len(paths)
+        for _ in self.procs:  # one stop sentinel per worker: they exit once the queue is drained
+            self.tasks.put(None)
+
+    def active(self) -> bool:
+        return self.pending > 0 and any(p.is_alive() for p in self.procs)
+
+    def poll(self, timeout_s: float = 0.0) -> list[dict[str, Any]]:
+        out = []
+        try:
+            msg = self.results.get(timeout=timeout_s) if timeout_s > 0 else self.results.get_nowait()
+            while True:
+                if msg[0] == "result":
+                    self.pending -= 1
+                    out.append(msg[2])
+                msg = self.results.get_nowait()
+        except queue.Empty:
+            pass
+        return out
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        for p in self.procs:
+            p.join(timeout=30 if self.pending <= 0 else 1)
+            if p.is_alive():
+                p.kill()
+                p.join(timeout=5)
+        self.tasks.cancel_join_thread()
+        self.results.cancel_join_thread()
 
 
 class ReplayInstance:
@@ -214,7 +344,7 @@ def setup_logging(root: Path) -> logging.Logger:
 class DataOps:
     def __init__(self, root: str | os.PathLike | None, replay_port: int, status_out: str | os.PathLike = STATUS_PATH,
                  runs_dir: str | os.PathLike = RUNS_DIR, include_fuzz: bool = False, max_replays: int | None = None,
-                 live_window_s: float = LIVE_WINDOW_S) -> None:
+                 live_window_s: float = LIVE_WINDOW_S, headless_workers: int = 3, gui_every: int = 10) -> None:
         self.root = data_dir(root)
         self.log = setup_logging(self.root)
         self.replay_port = replay_port
@@ -223,11 +353,15 @@ class DataOps:
         self.include_fuzz = include_fuzz
         self.max_replays = max_replays
         self.live_window_s = live_window_s
+        self.headless_workers = headless_workers
+        self.gui_every = gui_every
         self.instance = ReplayInstance(replay_port, self.log.info)
         self.scanner = RunScanner(self.root)
         self.pm_index = PostMortemIndex(self.runs_dir)
         self.bridge_attempts: dict[str, int] = {}
         self.known_invalid: set[str] = set()
+        self._gui_hash: str | None = None
+        self._gui_up: bool | None = None  # per iteration: None = not checked yet
 
     def status(self) -> None:
         path, _, st = update_status_file(self.root, self.status_out, self.runs_dir, self.scanner, self.pm_index,
@@ -251,60 +385,146 @@ class DataOps:
         return {"compressed": compressed, "rows": len(rows), "invalid": len(bad), "replayed": replayed}
 
     def replay_pending(self, rows: list[dict[str, Any]]) -> int:
-        from balatro_env.data.replay import replay
-
-        pre, _ = replay_candidates(rows, None, self.include_fuzz)
-        if not pre:
+        """Headless verification of every unverified run on `headless_workers` processes, concurrently with live
+        (gui) replays on the replay port, one at a time: the ~1-in-`gui_every` spot-check sample plus every run the
+        headless engine found divergent. Without headless workers every unverified run is replayed live."""
+        headless = self.headless_workers > 0
+        hl_rows = headless_candidates(rows, self.include_fuzz) if headless else []
+        gui_rows = gui_candidates(rows, self.include_fuzz, self.gui_every, headless)
+        if not hl_rows and not gui_rows:
             self.log.info("replay: nothing pending")
             return 0
+        self._gui_up = None
+        verifier = self._start_headless(hl_rows) if hl_rows else None
+        gui_q = deque(self._gui_filter(gui_rows, "spot-check" if headless else "pending")) if gui_rows else deque()
+        queued = {r["run_key"] for r in gui_q}
+        done = 0
+        last_status = time.monotonic()
         try:
-            health = self.instance.ensure()
-        except Exception as exc:  # launcher/instance problems must not kill the loop
-            self.log.error(f"replay instance unavailable: {exc}")
-            return 0
-        bridge_hash = health.get("bridge_hash")
-        todo, other = replay_candidates(rows, bridge_hash, self.include_fuzz)
+            while True:
+                if verifier is not None:
+                    done += self._record_headless(verifier.poll(), gui_q, queued)
+                if gui_q:
+                    done += self._gui_replay(gui_q.popleft())
+                elif verifier is not None and verifier.active():
+                    done += self._record_headless(verifier.poll(2.0), gui_q, queued)
+                else:
+                    break
+                if time.monotonic() - last_status > 120:
+                    self.status()
+                    last_status = time.monotonic()
+        finally:
+            if verifier is not None:
+                if verifier.pending > 0:
+                    self.log.warning(f"headless: {verifier.pending} runs got no result (worker died); "
+                                     "they stay pending")
+                verifier.close()
+        return done
+
+    def _start_headless(self, rows: list[dict[str, Any]]) -> HeadlessVerifier | None:
+        n = min(self.headless_workers, len(rows))
+        t0 = time.monotonic()
+        verifier = HeadlessVerifier(n)
+        bridge_hash, errors = verifier.boot()
+        for e in errors:
+            self.log.error(f"headless: worker boot failed: {e}")
+        if bridge_hash is None:
+            self.log.error("headless: no usable engine (boot failed or inconsistent bridge_hash); skipped")
+            verifier.close()
+            return None
+        todo, other = split_by_hash(rows, bridge_hash)
         if other:
-            self.log.info(f"replay: {other} pending runs recorded under another bridge_hash than port "
-                          f"{self.replay_port}'s ({str(bridge_hash)[:12]}); skipped")
+            self.log.info(f"headless: {other} pending runs recorded under another bridge_hash than the engine's "
+                          f"({bridge_hash[:12]}); skipped")
         if self.max_replays is not None:
             todo = todo[: self.max_replays]
-        self.log.info(f"replay: {len(todo)} runs to replay on port {self.replay_port}")
-        done = 0
-        for row in todo:
-            path = self.root / row["path"]
-            key = row["run_key"]
-            if not path.exists():
+        if not todo:
+            verifier.close()
+            return None
+        verifier.submit([self.root / r["path"] for r in todo])
+        self.log.info(f"headless: verifying {len(todo)} runs on {n} workers (booted in "
+                      f"{time.monotonic() - t0:.0f}s, bridge {bridge_hash[:12]})")
+        return verifier
+
+    def _record_headless(self, items: list[dict[str, Any]], gui_q: deque, queued: set[str]) -> int:
+        verdicts = []
+        now_ms = int(time.time() * 1000)
+        for item in items:
+            if item.get("ok") is None:
+                self.log.error(f"headless: {item['path']}: no verdict ({item.get('error')}); stays pending")
                 continue
+            verdicts.append(ReplayVerdict(item["path"], "headless", item["ok"], item["detail"], item["steps_total"],
+                                          now_ms, item["bridge_hash"]))
+            if item["ok"]:
+                self.log.info(f"headless {item['report']}")
+                continue
+            self.log.warning(f"headless {item['report']} | {item['detail']}")
+            path = Path(item["path"])
+            row = {"run_key": run_key(path), "steps": item["steps_total"], "bridge_hash": item["bridge_hash"],
+                   "path": path.resolve().relative_to(self.root.resolve()).as_posix()}
+            if row["run_key"] not in queued and self._gui_filter([row], "headless divergence"):
+                queued.add(row["run_key"])
+                gui_q.append(row)
+        if verdicts:
+            record_replays(self.root, verdicts)
+        return len(verdicts)
+
+    def _gui_filter(self, rows: list[dict[str, Any]], why: str) -> list[dict[str, Any]]:
+        """Rows the live replay instance can verify (same bridge_hash); starts the instance on first use."""
+        if self._gui_up is None:
             try:
+                self._gui_hash = self.instance.ensure().get("bridge_hash")
+                self._gui_up = True
+            except Exception as exc:  # launcher/instance problems must not kill the loop
+                self.log.error(f"replay instance unavailable: {exc}")
+                self._gui_up = False
+        if not self._gui_up:
+            return []
+        todo, other = split_by_hash(rows, self._gui_hash)
+        if other:
+            self.log.info(f"gui: {other} {why} runs recorded under another bridge_hash than port "
+                          f"{self.replay_port}'s ({str(self._gui_hash)[:12]}); skipped")
+        if self.max_replays is not None:
+            todo = todo[: self.max_replays]
+        if todo:
+            self.log.info(f"gui: {len(todo)} {why} runs queued for port {self.replay_port}")
+        return todo
+
+    def _gui_replay(self, row: dict[str, Any]) -> int:
+        from balatro_env.data.replay import replay
+
+        path = self.root / row["path"]
+        key = row["run_key"]
+        if not path.exists():
+            return 0
+        try:
+            self.instance.ensure()
+        except Exception as exc:
+            self.log.error(f"replay instance unavailable: {exc}")
+            return 0
+        self.log.info(f"gui replay: {key} ({row.get('steps')} steps)")
+        res = replay(path, self.replay_port, log=self.log.info)
+        if not res.ok and res.divergence_kind in ("bridge", "start"):  # instance trouble, not a divergence
+            n = self.bridge_attempts[key] = self.bridge_attempts.get(key, 0) + 1
+            alive = self.instance.health() is not None
+            self.log.warning(f"gui replay: {key} bridge failure #{n} ({res.message}); instance "
+                             f"{'alive (hung)' if alive else 'down'}; restarting port {self.replay_port}")
+            try:  # crashed or hung: restart only the replay port's own process
+                self.instance.kill()
                 self.instance.ensure()
             except Exception as exc:
                 self.log.error(f"replay instance unavailable: {exc}")
-                break
-            self.log.info(f"replay: {key} ({row.get('steps')} steps)")
-            res = replay(path, self.replay_port, log=self.log.info)
-            if not res.ok and res.divergence_kind in ("bridge", "start"):  # instance trouble, not a divergence
-                n = self.bridge_attempts[key] = self.bridge_attempts.get(key, 0) + 1
-                alive = self.instance.health() is not None
-                self.log.warning(f"replay: {key} bridge failure #{n} ({res.message}); instance "
-                                 f"{'alive (hung)' if alive else 'down'}; restarting port {self.replay_port}")
-                try:  # crashed or hung: restart only the replay port's own process
-                    self.instance.kill()
-                    self.instance.ensure()
-                except Exception as exc:
-                    self.log.error(f"replay instance unavailable: {exc}")
-                    break
-                if n < MAX_BRIDGE_ATTEMPTS:
-                    continue
-            update_replay_result(self.root, path, res.ok, res.detail(), res.replay_path,
-                                 int(time.time() * 1000), res.steps_total)
-            done += 1
-            self.log.info(res.report().splitlines()[0] + ("" if res.ok else f" | {res.detail()}"))
-            self.status()
-        return done
+                self._gui_up = False
+            if n < MAX_BRIDGE_ATTEMPTS:
+                return 0
+        record_replays(self.root, [ReplayVerdict(path, "gui", res.ok, res.detail(), res.steps_total,
+                                                 int(time.time() * 1000), self._gui_hash, res.replay_path)])
+        self.log.info("gui " + res.report().splitlines()[0] + ("" if res.ok else f" | {res.detail()}"))
+        return 1
 
     def run(self, interval_s: float, once: bool = False) -> None:
-        self.log.info(f"dataops start: data {self.root.resolve()}, replay port {self.replay_port}, "
+        self.log.info(f"dataops start: data {self.root.resolve()}, replay port {self.replay_port}, headless workers "
+                      f"{self.headless_workers}, gui spot-check 1/{self.gui_every or 'off'}, "
                       f"interval {interval_s:.0f}s, status {self.status_out}")
         while True:
             t0 = time.monotonic()

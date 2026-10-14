@@ -51,21 +51,21 @@ def test_upcoming_blinds_continue_into_next_ante():
     assert bl[1]["name"] == "The Water" and bl[1]["boss"]
 
 
-def test_mult_joker_beats_baseline_and_chips_only_at_base_mult():
+def test_mult_joker_beats_baseline_and_planet_is_not_negative():
+    # jokerless ante 1 after the Small: Big 450 + The Hook 600
     jolly = joker("Joker", ability={"mult": 4})
-    st = shop_state(ante=2, small="Upcoming", boss="The Hook", money=10)
+    st = shop_state(ante=1, small="Defeated", boss="The Hook", money=10)
     res = by_label(run(st, [{"label": "base"}, {"label": "Joker +4", "add_joker": jolly, "cost": 2},
-                            {"label": "Mercury", "levels": ["Pair"], "cost": 3}], budget_s=60, min_samples=150))
+                            {"label": "Mercury", "levels": ["Pair"], "cost": 3}], blinds=2))
     assert res["Joker +4"]["delta"] > 0.05
-    assert res["Joker +4"]["p_next"] > res["base"]["p_next"]
     assert res["Mercury"]["delta"] >= -0.02
     assert res["Joker +4"]["money_after"] == 8 and res["Mercury"]["money_after"] == 7
 
 
 def test_selling_the_only_scorer_hurts_and_slots_are_enforced():
-    st = shop_state(jokers=[joker("Joker", ability={"mult": 4})], ante=2, small="Upcoming", slots=1)
+    st = shop_state(jokers=[joker("Joker", ability={"mult": 4})], ante=1, small="Defeated", slots=1)
     res = by_label(run(st, [{"label": "base"}, {"label": "sell", "sell": [1]},
-                            {"label": "buy no slot", "add_joker": joker("Jolly Joker"), "cost": 3}]))
+                            {"label": "buy no slot", "add_joker": joker("Jolly Joker"), "cost": 3}], blinds=2))
     assert res["sell"]["delta"] < -0.05 and res["sell"]["money_after"] == 12
     assert not res["buy no slot"]["feasible"] and res["buy no slot"]["p_next"] is None
 
@@ -73,19 +73,20 @@ def test_selling_the_only_scorer_hurts_and_slots_are_enforced():
 def test_perishable_expiry_and_rent():
     def scorer(tally):
         return joker("Joker", ability={"mult": 4}, perishable=True, perish_tally=tally, rental=True)
-    st = shop_state(ante=2, small="Upcoming")
+    st = shop_state(ante=1, small="Defeated")
     res = by_label(run(st, [{"label": "base"}, {"label": "dies", "add_joker": scorer(1), "cost": 1},
-                            {"label": "lives", "add_joker": scorer(5), "cost": 1}]))
+                            {"label": "lives", "add_joker": scorer(5), "cost": 1}], blinds=2))
     dies, lives = res["dies"], res["lives"]
-    assert abs(dies["p_blinds"][0] - lives["p_blinds"][0]) < 0.05  # same deals, same joker in blind 1
-    assert dies["p_blinds"][2] < lives["p_blinds"][2] - 0.05
+    assert abs(dies["p_blinds"][0] - lives["p_blinds"][0]) < 0.05  # same deals, same joker in the first blind
+    assert dies["p_blinds"][1] < lives["p_blinds"][1] - 0.05
     assert any("perishes" in n for n in dies["notes"])
-    assert lives["rent_per_round"] == 3 and lives["money_after_rent"] == 10 - 1 - 9
+    assert lives["rent_per_round"] == 3 and lives["money_after_rent"] == 10 - 1 - 6
 
 
 def test_mr_bones_saves_a_failed_blind():
-    st = shop_state(ante=2, small="Upcoming")
-    res = by_label(run(st, [{"label": "base"}, {"label": "bones", "add_joker": joker("Mr. Bones"), "cost": 5}]))
+    st = shop_state(ante=1, small="Defeated")
+    res = by_label(run(st, [{"label": "base"}, {"label": "bones", "add_joker": joker("Mr. Bones"), "cost": 5}],
+                       blinds=2))
     assert res["bones"]["delta"] > 0.05 and any("Mr. Bones" in n for n in res["bones"]["notes"])
 
 

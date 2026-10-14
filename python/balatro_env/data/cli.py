@@ -52,9 +52,14 @@ def cmd_manifest(args: argparse.Namespace) -> int:
 
 
 def cmd_replay(args: argparse.Namespace) -> int:
+    from balatro_env.data.bridge import Bridge, BridgeError
     from balatro_env.data.replay import replay
 
     files = _expand(args.paths, data_dir(args.data_dir))
+    try:
+        bridge_hash = Bridge(args.port).health().get("bridge_hash")
+    except BridgeError:
+        bridge_hash = None
     failed = 0
     for f in files:
         res = replay(f, args.port, compare_legal=not args.no_legal, check_file=not args.no_file_check)
@@ -62,7 +67,7 @@ def cmd_replay(args: argparse.Namespace) -> int:
         failed += not res.ok
         if args.update_manifest:
             update_replay_result(args.data_dir, f, res.ok, res.detail(), res.replay_path,
-                                 int(time.time() * 1000), res.steps_total)
+                                 int(time.time() * 1000), res.steps_total, host="gui", bridge_hash=bridge_hash)
     print(f"{len(files) - failed}/{len(files)} replays matched")
     return 1 if failed else 0
 
@@ -130,7 +135,8 @@ def cmd_dataops(args: argparse.Namespace) -> int:
     from balatro_env.data.dataops import DataOps
 
     DataOps(args.data_dir, args.replay_port, args.status_out, args.runs_dir, include_fuzz=args.include_fuzz,
-            max_replays=args.max_replays, live_window_s=args.live_window).run(args.interval, once=args.once)
+            max_replays=args.max_replays, live_window_s=args.live_window, headless_workers=args.headless_workers,
+            gui_every=args.gui_every).run(args.interval, once=args.once)
     return 0
 
 
@@ -196,10 +202,15 @@ def build_parser() -> argparse.ArgumentParser:
     d.set_defaults(fn=cmd_dashboard)
 
     o = sub.add_parser("dataops", help="loop: compress, validate, manifest, replay new runs, status")
-    o.add_argument("--replay-port", type=int, required=True, help="port of the dedicated replay instance")
+    o.add_argument("--replay-port", type=int, required=True, help="port of the dedicated live (gui) replay instance")
+    o.add_argument("--headless-workers", type=int, default=3,
+                   help="headless replay processes (0 = replay every run live on --replay-port)")
+    o.add_argument("--gui-every", type=int, default=10,
+                   help="live spot-check sample: ~1 in N headless-verified runs is also replayed live (0 = only "
+                        "headless divergences)")
     o.add_argument("--interval", type=float, default=300, help="seconds between iteration starts")
     o.add_argument("--once", action="store_true", help="run a single iteration and exit")
-    o.add_argument("--max-replays", type=int, default=None, help="cap replays per iteration")
+    o.add_argument("--max-replays", type=int, default=None, help="cap replays per host per iteration")
     o.add_argument("--include-fuzz", action="store_true", help="also replay FUZZ* runs")
     o.add_argument("--status-out", default=str(STATUS_PATH))
     o.add_argument("--runs-dir", default=str(RUNS_DIR))

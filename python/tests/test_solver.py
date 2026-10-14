@@ -60,7 +60,8 @@ def test_made_hand_that_clears_is_played_now():
     res = plan(st)
     top = res[0]
     assert top["action"] == "PLAY" and set(idx(st, "AH", "KH", "9H", "6H", "3H")) <= set(top["cards"])
-    assert top["p_clear"] == 1.0 and top["hands_left"] == 2.0 and top["discards_used"] == 0.0
+    assert top["p_model"] == 1.0 and top["hands_left"] == 2.0 and top["discards_used"] == 0.0
+    assert top["p_clear"] == pytest.approx(solver.calibrate(1.0)) and top["p_clear"] > 0.99
 
 
 def test_open_ended_straight_draw_beats_keeping_high_cards():
@@ -72,8 +73,8 @@ def test_open_ended_straight_draw_beats_keeping_high_cards():
     kept = set(c["index"] for c in st["hand"]) - set(top["cards"])
     assert set(idx(st, "9S", "8H", "7D", "6C")) <= kept, top
     high = solver.evaluate_action(st, "DISCARD", idx(st, "9S", "8H", "7D", "6C", "3S"), estimate)  # keep K Q 2
-    assert top["p_clear"] >= high["p_clear"] + 0.3
-    assert top["p_clear"] > 0.5
+    assert top["p_model"] >= high["p_model"] + 0.3
+    assert top["p_model"] > 0.5
 
 
 def test_four_flush_with_two_discards_beats_banking_two_pair():
@@ -84,9 +85,9 @@ def test_four_flush_with_two_discards_beats_banking_two_pair():
     top = res[0]
     bank = solver.evaluate_action(st, "PLAY", idx(st, "AH", "AS", "KH", "KS"), estimate)
     assert not (top["action"] == "PLAY" and set(idx(st, "AH", "KH")) <= set(top["cards"]))
-    assert top["p_clear"] > bank["p_clear"] + 0.05
+    assert top["p_model"] > bank["p_model"] + 0.05
     flush = solver.evaluate_action(st, "DISCARD", idx(st, "AS", "KS", "6C", "2D"), estimate)
-    assert flush["p_clear"] > bank["p_clear"]
+    assert flush["p_model"] > bank["p_model"]
 
 
 def test_jokerless_ante1_small_blind_pace():
@@ -96,12 +97,12 @@ def test_jokerless_ante1_small_blind_pace():
     assert time.perf_counter() - t0 < 6.0 and fast[0]["n"] >= 16  # 2 s budget + top-ups; slack for a loaded machine
     res = plan(st)
     top = res[0]
-    assert top["n"] == 400 and 0.4 <= top["p_clear"] <= 1.0
+    assert top["n"] == 400 and 0.4 <= top["p_model"] <= 1.0
     pair_alone = solver.evaluate_action(st, "PLAY", idx(st, "5S", "5D"), estimate)
-    assert top["p_clear"] > pair_alone["p_clear"]
-    assert all({"action", "cards", "p_clear", "exp_score", "note"} <= set(r) for r in res)
-    full = [r["p_clear"] for r in res if r["n"] == 400]
-    assert top["p_clear"] >= max(full) - solver.TIE_P
+    assert top["p_model"] > pair_alone["p_model"]
+    assert all({"action", "cards", "p_clear", "p_model", "exp_score", "note"} <= set(r) for r in res)
+    full = [r["p_model"] for r in res if r["n"] == 400]
+    assert top["p_model"] >= max(full) - solver.TIE_P
 
 
 def test_tied_options_rank_by_dollars_then_growth():
@@ -109,10 +110,10 @@ def test_tied_options_rank_by_dollars_then_growth():
     st = state(["KS", "KH", "QS", "QD", "7C", "5D", "3H", "2C"], need=60, hands=3, discards=2, jokers=["Square Joker"])
     res = plan(st, samples=100)
     top = res[0]
-    assert top["action"] == "PLAY" and top["p_clear"] == 1.0 and top["dollars"] == 2.0
+    assert top["action"] == "PLAY" and top["p_model"] == 1.0 and top["dollars"] == 2.0
     assert sorted(top["cards"]) == idx(st, "KS", "KH", "QS", "QD") and top["growth"] == 1.0
     five = solver.evaluate_action(st, "PLAY", idx(st, "KS", "KH", "QS", "QD", "2C"), estimate, samples=100)
-    assert five["p_clear"] == 1.0 and five["value"] < top["value"]
+    assert five["p_model"] == 1.0 and five["value"] < top["value"]
 
 
 def test_green_joker_loses_mult_per_discard():
@@ -135,7 +136,24 @@ def test_no_discards_offers_dig_plays_and_keeps_the_pair():
     assert digs
     top = res[0]
     assert top["action"] == "PLAY"
-    assert not set(idx(st, "AS", "AD")) <= set(top["cards"]) or top["p_clear"] >= max(r["p_clear"] for r in digs)
+    assert not set(idx(st, "AS", "AD")) <= set(top["cards"]) or top["p_model"] >= max(r["p_model"] for r in digs)
+
+
+def test_misprint_is_sampled_per_hand():
+    # final hand Pair KK = 30 chips x (2 + Misprint 0..23): 300 needs a roll >= 8, i.e. 16/24 (est's fixed +6 says 0)
+    st = state(["KS", "KH", "9C", "7D", "5S", "4H", "2C", "JD"], need=300, hands=1, discards=0, jokers=["Misprint"])
+    st["jokers"][0]["ability"] = {"extra": {"min": 0, "max": 23}}
+    top = plan(st)[0]
+    assert 0.55 < top["p_model"] < 0.8
+
+
+def test_pillar_ahead_plays_fewest_cards():
+    st = state(["AS", "AD", "QH", "9C", "7S", "5D", "3H", "2C"], need=3000, hands=3, discards=0, blind="Big Blind",
+               blind_select={"choices": {"Boss": {"name": "The Pillar", "boss": True}}})
+    res = plan(st, samples=60)
+    assert not any("filler" in r["note"] for r in res)
+    assert all(len(r["cards"]) == 1 for r in res if r["note"].startswith("dig"))
+
 
 
 def test_hidden_draw_order_is_never_read():
@@ -160,10 +178,10 @@ def test_acrobat_holds_the_made_hand_for_the_final_hand():
     res = plan(st, samples=100)
     top = res[0]
     assert top["action"] == "PLAY" and set(top["cards"]) <= set(idx(st, "QS", "7D", "2C"))
-    assert any(r["note"].startswith("throwaway") and r["p_clear"] == 1.0 for r in res)
-    assert top["p_clear"] == 1.0
+    assert any(r["note"].startswith("throwaway") and r["p_model"] == 1.0 for r in res)
+    assert top["p_model"] == 1.0
     now = find(res, "PLAY", idx(st, "AH", "KH", "9H", "6H", "3H"))
-    assert now["p_clear"] < 0.5
+    assert now["p_model"] < 0.5
 
 
 def test_classify_and_odds():

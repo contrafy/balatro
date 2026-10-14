@@ -14,9 +14,11 @@ from __future__ import annotations
 import argparse
 import json
 import importlib
+import math
 import multiprocessing as mp
 import statistics
 import sys
+import zlib
 from pathlib import Path
 
 from balatro_env.analysis.gold_stats import is_player_gold
@@ -63,20 +65,72 @@ def _work(args):
         r = mod.evaluate_action(job["obs"], job["kind"], job["cards"], estimate, samples=samples)
     except Exception as e:  # noqa: BLE001 - one odd observation must not stop the sweep
         return {"run": job["run"], "i": job["i"], "error": f"{type(e).__name__}: {e}"}
-    return {k: job[k] for k in ("run", "i", "kind", "cleared", "first", "boss", "jokers")} | {"p": r["p_clear"]}
+    p = r["p_clear"]
+    b = job["obs"].get("blind") or {}
+    need = max(1.0, float((b.get("chips_needed") or 0) - (b.get("chips_scored") or 0)))
+    return {k: job[k] for k in ("run", "i", "kind", "cleared", "first", "boss", "jokers")} | {
+        "p": p, "p_model": r.get("p_model", p), "ratio": r["exp_score"] / need,
+        "h": int(job["obs"].get("hands_remaining") or 0), "d": int(job["obs"].get("discards_remaining") or 0)}
+
+
+def _logit(p):
+    q = min(0.995, max(0.005, p))  # same clipping as solver.calibrate
+    return math.log(q / (1 - q))
+
+
+def fit_platt(rows, l2=1e-3, iters=60):
+    """Platt scaling: logistic regression of the realized clear on (1, logit(p_model)) by Newton-Raphson;
+    returns (a, b) for solver.CALIBRATION."""
+    a, b = 0.0, 1.0
+    xs = [_logit(r["p_model"]) for r in rows]
+    ys = [1.0 if r["cleared"] else 0.0 for r in rows]
+    for _ in range(iters):
+        ga, gb = -l2 * a, -l2 * b
+        haa, hab, hbb = l2, 0.0, l2
+        for x, y in zip(xs, ys):
+            pz = 1 / (1 + math.exp(-max(-30.0, min(30.0, a + b * x))))
+            ga += y - pz
+            gb += (y - pz) * x
+            v = pz * (1 - pz)
+            haa += v
+            hab += v * x
+            hbb += v * x * x
+        det = haa * hbb - hab * hab
+        da, db = (hbb * ga - hab * gb) / det, (haa * gb - hab * ga) / det
+        a, b = a + da, b + db
+        if max(abs(da), abs(db)) < 1e-9:
+            break
+    return round(a, 4), round(b, 4)
+
+
+def apply_platt(w, p):
+    return 1 / (1 + math.exp(-max(-30.0, min(30.0, w[0] + w[1] * _logit(p)))))
+
+
+def out_of_fold(rows):
+    """2-fold by run: each half is recalibrated with Platt coefficients fitted on the other half."""
+    folds = ([r for r in rows if zlib.crc32(r["run"].encode()) % 2 == 0],
+             [r for r in rows if zlib.crc32(r["run"].encode()) % 2 == 1])
+    out = []
+    for test, train in ((folds[0], folds[1]), (folds[1], folds[0])):
+        if train:
+            w = fit_platt(train)
+            out += [dict(r, p=apply_platt(w, r["p_model"])) for r in test]
+    return out
 
 
 def table(rows, title):
-    out = [f"### {title} ({len(rows)} decisions)", "", "| predicted | n | mean predicted | realized | diff | ok |",
-           "|---|---|---|---|---|---|"]
+    out = [f"### {title} ({len(rows)} decisions)", "",
+           "| predicted | n | mean predicted | realized | diff | 2 SE | ok |", "|---|---|---|---|---|---|---|"]
     for lo, hi in BINS:
         b = [r for r in rows if lo <= r["p"] < hi]
         if not b:
             continue
         mp_ = statistics.mean(r["p"] for r in b)
         re_ = statistics.mean(1.0 if r["cleared"] else 0.0 for r in b)
-        ok = "yes" if abs(mp_ - re_) < 0.05 else ("n<30" if len(b) < 30 else "NO")
-        out.append(f"| {lo:.2f}-{min(hi, 1.0):.2f} | {len(b)} | {mp_:.3f} | {re_:.3f} | {re_ - mp_:+.3f} | {ok} |")
+        se2 = 2 * math.sqrt(max(mp_ * (1 - mp_), 1e-4) / len(b))
+        ok = "yes" if abs(mp_ - re_) < 0.05 else ("n<30" if len(b) < 30 else ("NO (within 2 SE)" if abs(mp_ - re_) < se2 else "NO"))
+        out.append(f"| {lo:.2f}-{min(hi, 1.0):.2f} | {len(b)} | {mp_:.3f} | {re_:.3f} | {re_ - mp_:+.3f} | {se2:.3f} | {ok} |")
     if rows:
         brier = statistics.mean((r["p"] - (1.0 if r["cleared"] else 0.0)) ** 2 for r in rows)
         out += ["", f"Brier {brier:.4f}; mean predicted {statistics.mean(r['p'] for r in rows):.3f}, realized "
@@ -88,9 +142,12 @@ def report(rows, module):
     ok = [r for r in rows if "error" not in r]
     errs = [r for r in rows if "error" in r]
     parts = [f"# Solver calibration ({module}): p_clear of the player's action vs realized clear", "",
-             f"Decisions {len(ok)}, errors {len(errs)}", "", table(ok, "All decisions"), "",
+             f"Decisions {len(ok)}, errors {len(errs)}", "", table(ok, "All decisions (p_clear as reported)"), "",
              table([r for r in ok if r["first"]], "First decision of each blind"), "",
-             table([r for r in ok if r["boss"]], "Boss blinds")]
+             table([r for r in ok if r["boss"]], "Boss blinds"), "",
+             table([dict(r, p=r["p_model"]) for r in ok], "All decisions, raw model p (p_model)"), "",
+             table(out_of_fold(ok), "p_model Platt-recalibrated out-of-fold (2-fold by run)"), "",
+             f"Platt coefficients fitted on all decisions (solver.CALIBRATION): {fit_platt(ok)}"]
     worst = sorted((r for r in ok if not r["cleared"]), key=lambda r: -r["p"])[:15]
     parts += ["", "## Lost blinds with the highest predicted p", "", "| run step | action | p | boss | jokers |",
               "|---|---|---|---|---|"]
