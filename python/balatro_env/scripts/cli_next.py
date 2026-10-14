@@ -1378,6 +1378,10 @@ def _round_q(d, **kw):
         fn = getattr(_round_solver(), "round_score_quantiles", None)
         if fn is None:
             return None
+        if "boss" in kw:
+            import inspect
+            if "boss" not in inspect.signature(fn).parameters:
+                kw.pop("boss")  # older solver: no boss rules in the fresh round
         r = fn(d, estimate, n=40, seed=7, time_budget_s=1.5, **kw)
         return r if r and r.get("n") and r.get("round") and r["round"][1] > 0 else None
     except Exception:

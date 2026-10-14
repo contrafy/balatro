@@ -12235,3 +12235,60 @@
 7818	a1	The Pillar	Flush	AC KC(DEBUFF) QC 3C 2C	Greedy Joker,Devious Joker	est=244	actual=244	OK
 7804	a7	-	High Card	AC	Sly Joker,Abstract Joker,Burglar,Obelisk,Ramen,Campfire	est=5443	actual=5443	OK
 7817	a1	-	Two Pair	9H 9D 7H 7C	Chaos the Clown(polychrome)	est=156	actual=156	OK
+7807	a4	The Window	Two Pair	TS TD(DEBUFF) 7H 7C	Popcorn,Mad Joker,Odd Todd,Chaos the Clown,Blueprint,The Duo	est=11872	actual=11872	OK
+7815	a3	The Arm	Two Pair	JC JD 5C 5D	Mystic Summit,Photograph,Abstract Joker,Jolly Joker	est=1950	actual=1950	OK
+7804	a7	-	Flush	KS JS TS(bonus) 8S 6S	Sly Joker,Abstract Joker,Burglar,Obelisk,Ramen,Campfire	est=18224	actual=18224	OK
+7815	a3	The Arm	Pair	4S 4D	Mystic Summit,Photograph,Abstract Joker,Jolly Joker	est=1254	actual=1254	OK
+7817	a1	-	Flush	KS JS TS 9S 5S	Chaos the Clown(polychrome)	est=474	actual=474	OK
+7804	a7	-	Full House	TS TH 3S 3H 3D	Sly Joker,Abstract Joker,Burglar,Obelisk,Ramen,Campfire	est=27648	actual=27648	OK
+7809	a1	The Hook	Straight	6H 5D 4C 3H 2C	Ice Cream	est=560	actual=560	OK
+7818	a1	The Pillar	Flush	AD(DEBUFF) KD(DEBUFF) QD 7D(DEBUFF) 4D	Greedy Joker,Devious Joker	est=490	actual=490	OK
+7801	a1	The Club	High Card	AS	Burglar,Card Sharp	est=16	actual=16	OK
+7812	a2	-	Straight	QC JC TH 9D 8H	Blue Joker,Greedy Joker	est=1155	actual=1155	OK
+7806	a5	-	High Card	6C	Joker(foil),Supernova,Mystic Summit,Acrobat,Card Sharp,Baseball Card	est=4313	actual=4313	OK
+7813	a2	-	Pair	JH JC	Shoot the Moon,Lusty Joker,Supernova	est=660	actual=660	OK
+7809	a1	The Hook	Pair	QH QD	Ice Cream	est=230	actual=230	OK
+7804	a7	-	Flush	AS 7S 5S 4S 2S	Sly Joker,Abstract Joker,Burglar,Obelisk,Ramen,Campfire	est=11827	actual=11827	OK
+7806	a5	-	High Card	5H	Joker(foil),Supernova,Mystic Summit,Acrobat,Card Sharp,Baseball Card	est=13230	actual=13230	OK
+7801	a1	The Club	Pair	4C(DEBUFF) 4D	Burglar,Card Sharp	est=28	actual=28	OK
+7813	a2	-	High Card	AH	Shoot the Moon,Lusty Joker,Supernova	est=496	actual=496	OK
+7806	a5	-	High Card	5D	Joker(foil),Supernova,Mystic Summit,Acrobat,Card Sharp,Baseball Card	est=41107	actual=41107	OK
+7804	a7	-	Pair	7C 7D	Sly Joker,Abstract Joker,Burglar,Obelisk,Ramen,Campfire	est=3738	actual=3738	OK
+7811	a2	The Manacle	Two Pair	KH KC TS TC	Smiley Face,Scholar,Credit Card,Wrathful Joker	est=900	actual=900	OK
+7813	a2	-	Pair	9H 9D	Shoot the Moon,Lusty Joker,Supernova	est=1008	actual=1008	OK
+7808	a1	-	Two Pair	KS KD JS JC	Onyx Agate	est=540	actual=540	OK
+7802	a4	The Plant	Three of a Kind	2S 2H 2D	Scholar,Bloodstone,Popcorn,Sly Joker,Smiley Face(holo),Golden Joker	est=3150	actual=3591	OK
+7801	a1	The Club	Pair	JH JD	Burglar,Card Sharp	est=180	actual=180	OK
+7804	a7	-	Four of a Kind	9S(lucky) 9H 9C(lucky) 9D	Sly Joker,Abstract Joker,Burglar,Obelisk,Ramen,Campfire	est=8760	actual=8760	OK
+7817	a1	The Club	Pair	JS JD	Chaos the Clown(polychrome),Ice Cream	est=390	actual=390	OK
+7811	a2	The Manacle	Pair	AS AC	Smiley Face,Scholar,Credit Card,Wrathful Joker	est=936	actual=936	OK
+7816	a3	-	Two Pair	6S 6H 4C 4D	Even Steven,Ice Cream,Trading Card	est=2250	actual=2250	OK
+7803	a3	The Tooth	Pair	3S 3C	Wrathful Joker,Blue Joker,Odd Todd,Popcorn,Ice Cream	est=6700	actual=6700	OK
+7817	a1	The Club	Two Pair	KH KC(DEBUFF) TH TD	Chaos the Clown(polychrome),Ice Cream	est=435	actual=435	OK
+7801	a1	The Club	Flush	AD QD 7D 6D 2D	Burglar,Card Sharp	est=284	actual=284	OK
+7814	a2	The Psychic	Full House	QS QH QD 8S 8H	Hanging Chad,Mystic Summit,Droll Joker,Abstract Joker	est=3286	actual=3286	OK
+7811	a2	The Manacle	Pair	JH JD	Smiley Face,Scholar,Credit Card,Wrathful Joker	est=360	actual=360	OK
+7816	a3	-	Straight	JD TH 9H 8D 7C	Even Steven,Ice Cream,Trading Card	est=1848	actual=1848	OK
+7815	a1	-	Flush	JC 8C 6C 4C 2C		est=260	actual=260	OK
+7802	a4	The Plant	Two Pair	AS AC TS TH	Scholar,Bloodstone,Popcorn,Sly Joker,Smiley Face(holo),Golden Joker	est=4988	actual=4988	OK
+7801	a1	The Club	Pair	QS QC(DEBUFF)	Burglar,Card Sharp	est=120	actual=120	OK
+7808	a1	The Hook	Full House	KH KD 5S 5H 5D	Onyx Agate	est=300	actual=300	OK
+7816	a3	-	Pair	TC TD	Even Steven,Ice Cream,Trading Card	est=1050	actual=1050	OK
+7802	a4	The Plant	Two Pair	9S 9C 5H 5C	Scholar,Bloodstone,Popcorn,Sly Joker,Smiley Face(holo),Golden Joker	est=2478	actual=2655	OK
+7809	a2	-	Straight	6C 5S 4S 3S 2D	Ice Cream,Hanging Chad,Abstract Joker,Droll Joker	est=2272	actual=2272	OK
+7815	a1	-	Straight	KD QH JS TS 9D		est=316	actual=316	OK
+7808	a1	The Hook	Straight	QS JC TH 9C 8C	Onyx Agate	est=1925	actual=1925	OK
+7818	a2	-	Straight	9D 8C 7S 6C 5D	Greedy Joker,Devious Joker	est=2535	actual=2535	OK
+7807	a5	-	Two Pair	AS AD 5S 5D	Popcorn,Mad Joker,Odd Todd,Chaos the Clown,Blueprint,The Duo	est=19600	actual=19600	OK
+7813	a2	The Wall	Flush	AH JH 7H 6H 3H	Shoot the Moon,Lusty Joker,Supernova,Turtle Bean	est=1440	actual=1440	OK
+7812	a2	The Fish	Pair	3H 3D	Blue Joker,Greedy Joker,Space Joker(holo),Jolly Joker	est=2392	actual=2392	OK
+7806	a5	The Pillar	High Card	2H	Joker(foil),Supernova,Mystic Summit,Acrobat,Card Sharp,Baseball Card	est=4522	actual=4522	OK
+7817	a2	-	Pair	TC TD	Chaos the Clown(polychrome),Ice Cream	est=360	actual=360	OK
+7807	a5	-	Two Pair	TH TD 4H 4C	Popcorn,Mad Joker,Odd Todd,Chaos the Clown,Blueprint,The Duo	est=6800	actual=6800	OK
+7806	a5	The Pillar	High Card	5S	Joker(foil),Supernova,Mystic Summit,Acrobat,Card Sharp,Baseball Card	est=14647	actual=14647	OK
+7803	a4	-	Two Pair	5S 5D 2H 2D	Wrathful Joker,Odd Todd,Popcorn,Ice Cream	est=4642	actual=4642	OK
+7806	a5	The Pillar	High Card	AS	Joker(foil),Supernova,Mystic Summit,Acrobat,Card Sharp,Baseball Card	est=49248	actual=49248	OK
+7817	a2	-	Two Pair	8S 8C 2C 2D	Chaos the Clown(polychrome),Ice Cream	est=375	actual=375	OK
+7814	a3	-	Straight	KC QS JC TS 9D	Hanging Chad,Mystic Summit,Droll Joker,Abstract Joker,Joker	est=2277	actual=2277	OK
+7810	a4	The Wheel	Full House	QC QH 8S 8H 8C	Walkie Talkie,Jolly Joker,Scary Face,Onyx Agate,Hanging Chad,Mystic Summit	est=12056	actual=12056	OK
+7817	a2	-	Pair	KS KC	Chaos the Clown(polychrome),Ice Cream	est=330	actual=330	OK

@@ -769,14 +769,18 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
     jokers = resolved
     jnames = [j.get("name") for j in jokers]
     scoring = sorted(scoring, key=lambda c: c.get("index") or 0)
-    is_face = (lambda c: c.get("rank") is not None) if "Pareidolia" in jnames else _is_face  # Pareidolia: every card is a face
+    # a Stone card has no rank and no suit (card.lua get_id / is_suit): no face, no rank/suit joker, no Hack retrigger
+    # (DrawSolver: Walkie Talkie fired on a stoned 4C, est 375 vs 65)
+    stone = lambda c: "Stone" in _enh(c) and "Vampire" not in [j.get("name") for j in resolved]
+    is_face0 = (lambda c: c.get("rank") is not None) if "Pareidolia" in jnames else _is_face  # Pareidolia: every card is a face
+    is_face = lambda c: is_face0(c) and not stone(c)
     first_face_done = False
     first_face_idx = next((c.get("index") for c in scoring if is_face(c) and not c.get("debuff")), None)
     final_hand = int(state.get("hands_remaining") or 0) == 1
     expanded = []
     for pos, c in enumerate(scoring):
         times = 1
-        if "Hack" in jnames and _r(c) in {"2", "3", "4", "5"}:
+        if "Hack" in jnames and _r(c) in {"2", "3", "4", "5"} and not stone(c):
             times += 1
         if "Sock and Buskin" in jnames and is_face(c):
             times += 1
@@ -818,6 +822,8 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
             mult += 10
         elif ed == "polychrome":
             mult *= 1.5
+        if "Stone" in enh:
+            continue  # rank/suit jokers skip Stone cards
         for j in jokers:
             n = j.get("name")
             if n == "Smiley Face" and is_face(c):
@@ -883,24 +889,31 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
     p_k = max(0, n_h - 2) / n_h if bl_e.get("name") == "The Hook" and not bl_e.get("disabled") and bl_e.get("boss", True) and n_h else 1.0
     if p_k < 1.0:
         notes.append(f"The Hook: 2 random held cards are discarded before scoring; held effects counted at {p_k:.0%}")
+    # held effects repeat once per Red seal and once per Mime (Blueprint/Brainstorm copies of Mime included) (7801
+    # LIH39HVG: a held Steel est 37123 vs 53280)
+    n_mime = jn_h.count("Mime")
     for c in sorted(held_all, key=lambda c: c.get("index") or 0):
         if c.get("debuff"):
             continue
-        if "Steel" in _enh(c):
-            mult *= 1 + 0.5 * p_k
-        # The Mark deals every face card face-down: an unknown held card there is a J/Q/K, each about 1/3 likely
-        # (7805: Shoot the Moon est ignored face-down Queens)
-        fd_face = mark and c.get("rank") is None and c.get("facing") == "back"
-        for n0 in jn_h:
-            if n0 == "Shoot the Moon" and (_r(c) == "Q" if not fd_face else True):
-                mult += (13 if not fd_face else 13 / 3) * p_k
-            elif n0 == "Raised Fist" and c is fist_low:
-                # The Hook: Raised Fist scores the lowest REMAINING held card, never lower than this one: no discount
-                # (7802 LFBTMULM: est 522 vs 1350)
-                lo = RANK_VAL.get(_r(c), 0)
-                mult += 2 * (11 if lo == 14 else min(lo, 10))
-            elif n0 == "Baron" and (_r(c) == "K" if not fd_face else True):
-                mult *= 1 + (0.5 if not fd_face else 0.5 / 3) * p_k
+        reps = 1 + n_mime + (1 if str(c.get("seal") or "") == "Red" else 0)
+        for _rep in range(reps):
+            if "Steel" in _enh(c):
+                mult *= 1 + 0.5 * p_k
+            if "Stone" in _enh(c):
+                continue  # no rank: Shoot the Moon / Baron rank checks never see it
+            # The Mark deals every face card face-down: an unknown held card there is a J/Q/K, each about 1/3 likely
+            # (7805: Shoot the Moon est ignored face-down Queens)
+            fd_face = mark and c.get("rank") is None and c.get("facing") == "back"
+            for n0 in jn_h:
+                if n0 == "Shoot the Moon" and (_r(c) == "Q" if not fd_face else True):
+                    mult += (13 if not fd_face else 13 / 3) * p_k
+                elif n0 == "Raised Fist" and c is fist_low:
+                    # The Hook: Raised Fist scores the lowest REMAINING held card, never lower than this one: no discount
+                    # (7802 LFBTMULM: est 522 vs 1350)
+                    lo = RANK_VAL.get(_r(c), 0)
+                    mult += 2 * (11 if lo == 14 else min(lo, 10))
+                elif n0 == "Baron" and (_r(c) == "K" if not fd_face else True):
+                    mult *= 1 + (0.5 if not fd_face else 0.5 / 3) * p_k
     for j in jokers:
         n = j.get("name")
         ab = j.get("ability") or {}
