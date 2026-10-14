@@ -73,29 +73,28 @@ _Updated 13:00._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 13:43:48 by `balatro-data status` (edits inside this block are overwritten). Player runs: 389 (372 finished, 17 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 15:01:39 by `balatro-data status` (edits inside this block are overwritten). Player runs: 402 (386 finished, 16 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (17)
+### Live runs (16)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | LIH39HVG | 8 | SELECTING_HAND | 5 | 9 | 12 | Small Blind 0/25000 | DISCARD {"card_indices":[3,8]} | Need 25000: keep QS QC held (+26 mult for Shoot) and 8S 6C 5D 4S straight draw (a 7 = 4-8 straight … | 13s |
-| 7802 | port-7802 | claude-opus-5-5 | PFMSHPC7 | 8 | SHOP | 5 | 11 | 7 | Small Blind (25000) | SHOP_END | left, nothing scoring affordable; ante 5 never skip | 6s |
-| 7803 | port-7803 | claude-opus-5-5 | 2BPSGE63 | 8 | BLIND_SELECT | 5 | 11 | 10 | Big Blind (37500) | SELECT_BLIND | Big 37500, round est ~30k with 13-card hands; Bones backup | 7s |
-| 7804 | port-7804 | claude-opus-5-5 | DTU21E47 | 8 | SELECTING_HAND | 4 | 8 | -1 | Big Blind 5250/13500 | DISCARD {"card_indices":[1,2,3,4,10]} | need 8250 in 2 hands = 2 straights; keep TD 8S 6S 5C 3C low-straight draws, solver 0.73 vs 0.52 | 11s |
-| 7806 | port-7806 | claude-opus-5-5 | M4XX7Z7H | 8 | ROUND_EVAL | 3 | 6 | 10 | Small Blind (3200) | CASH_OUT | cash out small | 16s |
-| 7807 | port-7807 | claude-sonnet-5-5 | 36JD65LP | 8 | BLIND_SELECT | 3 | 5 | 1 | Big Blind (4800) | SELECT_BLIND | Big 4800 | 5s |
-| 7808 | port-7808 | claude-sonnet-5-5 | NE4L52DR | 8 | ROUND_EVAL | 4 | 7 | 13 | Small Blind (9000) | CASH_OUT | cash out Small | 1s |
-| 7809 | port-7809 | claude-sonnet-5-5 | QRLTNY22 | 8 | BLIND_SELECT | 1 | 0 | 4 | Small Blind (300) | SELECT_BLIND | ante 1 Small, no joker tag worth skip | 5s |
-| 7810 | port-7810 | claude-sonnet-5-5 | AQJ81BLL | 8 | SELECTING_HAND | 5 | 11 | 4 | Small Blind 4219/25000 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | final hand FH QQQJJ est 23805 (Acrobat x3, 5 faces Smiley) vs 20781 needed | 15s |
-| 7811 | port-7811 | claude-sonnet-5-5 | 8L82LUBU | 8 | SHOP | 5 | 10 | 19 | Small Blind (25000) | SHOP_REROLL | EMERGENCY ratio 0.14: reroll (9->4) hunting xMult; can sell +4 Joker for a slot | 5s |
-| 7812 | port-7812 | claude-sonnet-5-5 | ME9AMTUQ | 8 | SELECTING_HAND | 8 | 19 | 3 | Crimson Heart 22032/400000 | PLAY_HAND {"card_indices":[8,9,10,11]} | Crimson Heart (Blueprint off): Two Pair 6633 x3 est 77724 now, keeps the strongest Two Pair AA77 (e… | 23s |
-| 7813 | port-7813 | claude-sonnet-5-5 | L28P5GTT | 8 | SHOP | 3 | 5 | 24 | Small Blind (3200) | SHOP_BUY {"slot":1} | only rental (none held, rule OK): +0..23 mult flat before Ramen x1.9 ~ +50% score; now, rent /round… | 2s |
-| 7814 | port-7814 | claude-haiku-5-5 | KYCDEPKN | 8 | SHOP | 2 | 3 | 8 | Small Blind (1000) | SHOP_END | shopadvise LEAVE: nothing beats buying nothing (Venus/packs within 0.05); keep for rent and the ant… | 2s |
-| 7815 | port-7815 | claude-sonnet-5-5 | 4798FA1L | 8 | BLIND_SELECT | 4 | 8 | 38 | The Wall (36000) | SELECT_BLIND | The Wall 36000 | 32s |
-| 7816 | port-7816 | claude-sonnet-5-5 | YBDUFNBV | 8 | SELECTING_HAND | 2 | 6 | 3 | The Psychic 1560/2000 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | Two Pair AA99 + 8C 5 cards, est ~660 vs 440 needed | 2s |
-| 7817 | port-7817 | claude-opus-5-5 | 3UW372XP | 8 | ROUND_EVAL | 5 | 12 | 0 | Small Blind (25000) | CASH_OUT | cash out Small | 14s |
-| 7818 | port-7818 | claude-haiku-5-5 | AED7CJY5 | 8 | BLIND_SELECT | 1 | 2 | 0 | The Goad (600) | SELECT_BLIND | Boss The Goad 600 (debuffs spades): 3 jokers, Abstract +9, Gros +15, Crafty flush +80; must clear, … | 20s |
+| 7801 | port-7801 | claude-fable-5-1 | LIH39HVG | 8 | BLIND_SELECT | 6 | 10 | 0 | The Wall (240000) | SELECT_BLIND | The Wall 240000: unbeatable; goal is >=60000 for Mr. Bones (Glass 6S first in an L4 straight/flush … | 22s |
+| 7802 | port-7802 | claude-opus-5-5 | PFMSHPC7 | 8 | ROUND_EVAL | 6 | 14 | 13 | The House (120000) | CASH_OUT | House cleared, cash out | 38s |
+| 7803 | port-7803 | claude-opus-5-5 | 2798TTIY | 8 | ROUND_EVAL | 1 | 2 | 1 | Big Blind (450) | CASH_OUT | cash out Big | 9s |
+| 7804 | port-7804 | claude-opus-5-5 | 9BFAAC9S | 8 | SHOP | 3 | 5 | 7 | Small Blind (3200) | SHOP_END | full slots, , leave | 6s |
+| 7805 | port-7805 | claude-opus-5-5 | FWWIECQF | 8 | SHOP | 3 | 6 | 24 | Big Blind (4800) | SHOP_BUY_BOOSTER {"slot":1} | Mega Arcana (2 picks): Death/Strength to add Queens for Shoot the Moon or Justice glass; 6 left abo… | 15s |
+| 7806 | port-7806 | claude-opus-5-5 | M4XX7Z7H | 8 | SHOP | 5 | 11 | 13 | Small Blind (25000) | SHOP_BUY_BOOSTER {"slot":2} | Small 25000 vs round ~22k: Celestial for Mercury (Pair L3), left | 13s |
+| 7807 | port-7807 | claude-sonnet-5-5 | X62GSYR8 | 8 | SHOP | 2 | 3 | 8 | Small Blind (1000) | SHOP_END | pass Devious (straight-gated, SIM +0.03 noise); keep for rent and next shop | 5s |
+| 7808 | port-7808 | claude-sonnet-5-5 | 762P89ZR | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 180/450 | PLAY_HAND {"card_indices":[1,3,6,7,8]} | Diamond flush with Scholar ace est 744 vs 270 needed, clears the Big | 11s |
+| 7809 | port-7809 | claude-sonnet-5-5 | WKN5GZVU | 8 | SHOP | 1 | 2 | 0 | Big Blind (450) | SHOP_END | reroll showed Raised Fist , only /bin/bash + Certificate; Hiker/Delayed Gratification are eternal r… | 2s |
+| 7810 | port-7810 | claude-sonnet-5-5 | R5DXHPXU | 8 | BLIND_SELECT | 3 | 6 | 10 | Small Blind (3200) | SELECT_BLIND | Small 3200, Handy tag not worth a skip | 14s |
+| 7811 | port-7811 | (unknown) | 4S1TWZ36 | 8 | BLIND_SELECT | 1 | 2 | 6 | The Head (600) | SELECT_BLIND | The Head boss 600, Stencil x6 | 0s |
+| 7813 | port-7813 | claude-sonnet-5-5 | L28P5GTT | 8 | ROUND_EVAL | 5 | 9 | 31 | Big Blind (37500) | CASH_OUT | cash out Big | 29s |
+| 7814 | port-7814 | claude-haiku-5-5 | 5QRAK62D | 8 | ROUND_EVAL | 1 | 2 | -2 | Big Blind (450) | CASH_OUT | Big 450 cleared with Pair AA est 704; collect reward, money went - from rent | 2s |
+| 7815 | port-7815 | claude-sonnet-5-5 | IC16RW5G | 8 | SELECTING_HAND | 1 | 3 | 7 | The Window 0/600 | DISCARD {"card_indices":[2,4,1,7,8]} | keep 6S 5S 5C (pair 5 + 6), discard debuffed diamonds and junk, draw 5 hoping Queens held (+13 each… | 10s |
+| 7817 | port-7817 | claude-opus-5-5 | 8KNB2U3T | 8 | SELECTING_HAND | 2 | 5 | 9 | The Arm 1060/2000 | PLAY_HAND {"card_indices":[4,5,6]} | Trips 999 + Wily 100 chips, est well over the 940 needed | 11s |
+| 7818 | port-7818 | claude-haiku-5-5 | 5BJLA8XC | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 104/300 | DISCARD {"card_indices":[1,2,3,4]} | Ante 1 Small need 196 more; Two Pair 68 alone too small; last discard keeps 44 33 for a full house … | 2s |
 
 ### Results by model x stake x deck
 
@@ -103,10 +102,10 @@ _Generated 2026-10-14 13:43:48 by `balatro-data status` (edits inside this block
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 30 | 0 | 30 | 0 | 0 | 4.1 | 7 |
-| claude-haiku-5-5 | 8 | Black | 11 | 0 | 11 | 0 | 0 | 3.0 | 5 |
+| claude-haiku-5-5 | 8 | Black | 13 | 0 | 13 | 0 | 0 | 3.0 | 5 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 216 | 2 | 214 | 0 | 0 | 4.03 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 109 | 1 | 108 | 0 | 0 | 3.67 | 8 |
+| claude-opus-5-5 | 8 | Black | 219 | 2 | 217 | 0 | 0 | 4.04 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 118 | 1 | 117 | 0 | 0 | 3.72 | 8 |
 
 ### Deepest runs
 
@@ -117,44 +116,44 @@ _Generated 2026-10-14 13:43:48 by `balatro-data status` (edits inside this block
 | 3 | 2WEJC1IS | claude-sonnet-5-5 | 8 | Black | win | 8 | Cerulean Bell 431900/400000 | [7807_2WEJC1IS.md](runs/7807_2WEJC1IS.md) |
 | 4 | B6KZC39M | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 207920/400000 | [7807_B6KZC39M.md](runs/7807_B6KZC39M.md) |
 | 5 | E57ZB14D | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 249600/400000 | [7805_E57ZB14D.md](runs/7805_E57ZB14D.md) |
-| 6 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
-| 7 | A5LJXXMW | claude-opus-5-5 | 8 | Black | loss | 8 | Crimson Heart 275896/400000 | [7804_A5LJXXMW.md](runs/7804_A5LJXXMW.md) |
-| 8 | CLA5SVN7 | claude-opus-5-5 | 8 | Black | loss | 7 | The Ox 79619/220000 | [7803_CLA5SVN7.md](runs/7803_CLA5SVN7.md) |
-| 9 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
-| 10 | X5MG1LC2 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 158968/165000 | [7802_X5MG1LC2.md](runs/7802_X5MG1LC2.md) |
+| 6 | ME9AMTUQ | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 152568/400000 | [7812_ME9AMTUQ.md](runs/7812_ME9AMTUQ.md) |
+| 7 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
+| 8 | A5LJXXMW | claude-opus-5-5 | 8 | Black | loss | 8 | Crimson Heart 275896/400000 | [7804_A5LJXXMW.md](runs/7804_A5LJXXMW.md) |
+| 9 | CLA5SVN7 | claude-opus-5-5 | 8 | Black | loss | 7 | The Ox 79619/220000 | [7803_CLA5SVN7.md](runs/7803_CLA5SVN7.md) |
+| 10 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
 
 ### Data validity
 
-- Player runs: 389 files in manifest; schema_ok 389, schema invalid 0; replay_ok 368, replay failed 0, awaiting replay 3, open/unended 18; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 274 / failed 0; gui (live) ok 126 / failed 0; cross-checked by both 32, disagreeing 0.
-- All files (incl. fuzz + replays): 589; schema_ok 587; replay_ok 374 (headless 274, gui 132); replay failed 0; awaiting replay 194; quarantined 2.
+- Player runs: 402 files in manifest; schema_ok 402, schema invalid 0; replay_ok 382, replay failed 0, awaiting replay 3, open/unended 17; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 288 / failed 0; gui (live) ok 128 / failed 0; cross-checked by both 34, disagreeing 0.
+- All files (incl. fuzz + replays): 604; schema_ok 602; replay_ok 388 (headless 288, gui 134); replay failed 0; awaiting replay 196; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 2722 |
+| port-7805 | 2 | 2 | 2763 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 2368 |
-| port-7803 | 1 | 1 | 2802 |
-| port-7804 | 1 | 1 | 2438 |
-| port-7807 | 1 | 1 | 2967 |
+| port-7802 | 1 | 1 | 2390 |
+| port-7803 | 1 | 1 | 2831 |
+| port-7804 | 1 | 1 | 2483 |
+| port-7807 | 1 | 1 | 3005 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1682 |
-| port-7806 | 0 | 0 | 2824 |
-| port-7808 | 0 | 0 | 717 |
-| port-7809 | 0 | 0 | 2780 |
-| port-7810 | 0 | 0 | 3141 |
-| port-7811 | 0 | 0 | 438 |
-| port-7812 | 0 | 0 | 480 |
-| port-7813 | 0 | 0 | 437 |
-| port-7814 | 0 | 0 | 443 |
-| port-7815 | 0 | 0 | 508 |
-| port-7816 | 0 | 0 | 466 |
-| port-7817 | 0 | 0 | 430 |
-| port-7818 | 0 | 0 | 445 |
+| port-7801 | 0 | 0 | 1707 |
+| port-7806 | 0 | 0 | 2869 |
+| port-7808 | 0 | 0 | 754 |
+| port-7809 | 0 | 0 | 2822 |
+| port-7810 | 0 | 0 | 3189 |
+| port-7811 | 0 | 0 | 473 |
+| port-7812 | 0 | 0 | 512 |
+| port-7813 | 0 | 0 | 478 |
+| port-7814 | 0 | 0 | 479 |
+| port-7815 | 0 | 0 | 529 |
+| port-7816 | 0 | 0 | 508 |
+| port-7817 | 0 | 0 | 468 |
+| port-7818 | 0 | 0 | 483 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
@@ -212,4 +211,8 @@ _Generated 2026-10-14 13:43:48 by `balatro-data status` (edits inside this block
 - 12:15 Second Gold win: Sonnet, `2WEJC1IS`. Following the plan of "Sonnet/Haiku win Gold, then switch decks",
   7814 becomes a Haiku 5.5 port, to test whether PLAYBOOK 2b plus the advisor carry the weakest tier. Gold
   continues on all ports until Haiku has a meaningful sample. The deck switch waits for the user's call.
+- 13:55-15:00 A third account-wide 429 rate-limit episode hit with 18 players plus 2 workers.
+  `retry.waitForUsageReset` absorbed it: every agent paused and resumed, so some runs show 75-85 min durations. The
+  account limit, not the machine, bounds throughput at this concurrency. The machine held steady: 9+ GB RAM free,
+  GPU 75-92%.
 

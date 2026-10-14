@@ -3952,7 +3952,8 @@ def _shop_rules(d):
             skip(label, "no free joker slot and every owned joker is worth more" if strong else "no free joker slot (not strong enough to replace a joker)")
             continue
         say_skipped()
-        print(f"ADVICE: BUY -> b {cmd}   ({label})")
+        waived = "  [money floor waived: " + ("an xMult/scorer" if strong else "this buy") + f" (${money - cost} left vs the ${floor} floor)]" if floor and money - cost < floor else ""
+        print(f"ADVICE: BUY -> b {cmd}   ({label}){waived}")  # say why the floor line does not apply (Haiku 7818 AED7CJY5)
         return
     say_skipped()
     # INVARIANT: in an EMERGENCY, or with <2 scorers at ante <= 3, never LEAVE while an affordable scorer is on offer
@@ -4199,6 +4200,10 @@ def pack_advise(d):
             return
         n_t = TV.get(c.get("name"), (0, 0, ""))[1]
         tg_c = tgt_cards[:n_t]
+        if c.get("name") == "The Hanged Man":
+            # destroys its targets: the two least useful cards (singletons, lowest chips), never the pair you build on
+            # (7803 2BPSGE63 / 45TCWCZP destroyed QQ / KK)
+            tg_c = sorted(hand, key=lambda x: (by_rank[_r(x)], CHIP_VAL.get(_r(x), 0)))[:2]
         if c.get("name") == "Death" and len(hand) >= 2:
             # Death: the LEFT card becomes a copy of the RIGHT one: worst card left, best card right (7803 C5AF29KG picked
             # two Aces, a no-op)

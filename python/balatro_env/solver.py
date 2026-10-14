@@ -146,6 +146,11 @@ class RoundSolver:
         self.pareidolia = "Pareidolia" in jn
         self.photograph = "Photograph" in jn
         self.held_down = bool(jn & {"Blackboard", "Raised Fist"})  # held-card jokers a drawn card can weaken
+        # Hit the Road: +x(extra) per non-debuffed Jack DISCARDED this round (card.lua); ctx[4] counts the Jacks
+        # discarded since this decision, applied on top of the joker's current x_mult
+        htr = [j for j in _lst(state.get("jokers")) if j.get("name") == "Hit the Road" and not j.get("debuff")]
+        self.htr = bool(htr)
+        self.htr_extra = float((htr[0].get("ability") or {}).get("extra") or 0.5) if htr else 0.0
         self.card_sharp = "Card Sharp" in jn
         self.growth_j = jn & GROWTH_JOKERS
         active = [j.get("name") for j in _lst(state.get("jokers")) if not j.get("debuff")]
@@ -185,7 +190,7 @@ class RoundSolver:
         self._ob_visible = frozenset(k for k, v in hl_s.items() if v.get("visible", True))
         ob0 = None if ob_j is None else (float((ob_j.get("ability") or {}).get("x_mult") or 1),
                                           tuple(sorted((k, int(v.get("played") or 0)) for k, v in hl_s.items())))
-        self.ctx0 = (lock, used, rtypes, ob0)
+        self.ctx0 = (lock, used, rtypes, ob0, 0)  # (Mouth lock, Eye used types, Card Sharp types, Obelisk, HtR Jacks)
         self._base = dict(state, blind=dict(b, only_hand=None, hands_used=[]))
         self._st = {}
         self._nb = 0  # each Card gets its own bit: card sets are keyed by int masks
@@ -376,15 +381,16 @@ class RoundSolver:
         return r
 
     # ---- scoring ------------------------------------------------------------------------------------------------
-    def _state(self, h, d, ob=None):
+    def _state(self, h, d, ob=None, jd=0):
         """State at hands_remaining=h, discards_remaining=d of this round: Green Joker has gained +1 mult per hand
         played and lost 1 per discard since the decision; Ice Cream has lost 5 chips per hand played; with an Obelisk
-        state ob = (x_mult, played counts) the Obelisk and hand_levels.played are set from it."""
-        st = self._st.get((h, d, ob))
+        state ob = (x_mult, played counts) the Obelisk and hand_levels.played are set from it; Hit the Road has
+        gained +x0.5 per Jack discarded since the decision (jd)."""
+        st = self._st.get((h, d, ob, jd))
         if st is None:
             st = dict(self._base, hands_remaining=h, discards_remaining=d)
             played, disc = self.h0 - h, self.d0 - d
-            if ((played or disc) and self.jn & {"Green Joker", "Ice Cream"}) or ob is not None:
+            if ((played or disc) and self.jn & {"Green Joker", "Ice Cream"}) or ob is not None or jd:
                 js = []
                 for j in _lst(self._base.get("jokers")):
                     ab = j.get("ability") or {}
@@ -396,13 +402,16 @@ class RoundSolver:
                                                                               - float(ex.get("chip_mod") or 5) * played))))
                     elif j.get("name") == "Obelisk" and ob is not None and not j.get("debuff"):
                         j = dict(j, ability=dict(ab, x_mult=ob[0]))
+                    elif j.get("name") == "Hit the Road" and jd and not j.get("debuff"):
+                        j = dict(j, ability=dict(ab, x_mult=max(1.0, float(ab.get("x_mult") or 1))
+                                                 + self.htr_extra * jd))
                     js.append(j)
                 st["jokers"] = js
             if ob is not None:
                 counts = dict(ob[1])
                 st["hand_levels"] = {k: dict(v, played=counts.get(k, 0))
                                      for k, v in (self._base.get("hand_levels") or {}).items()}
-            self._st[(h, d, ob)] = st
+            self._st[(h, d, ob, jd)] = st
         return st
 
     def _obelisk_after(self, ob, t):
@@ -496,12 +505,12 @@ class RoundSolver:
             return False
         cards = list(self.slots)
         sel = [cards[p] for p in cand["pos"]]
-        lock, used, rtypes, ob = self.ctx0
+        lock, used, rtypes, ob, jd = self.ctx0
         h, need = self.h0, self.need0
         while sel and h > 0:
             ids = {id(c) for c in sel}
             rest = [c for c in cards if id(c) not in ids]
-            s, t = self.score(sel, rest, h, self.d0, (lock, used, rtypes, ob))
+            s, t = self.score(sel, rest, h, self.d0, (lock, used, rtypes, ob, jd))
             need -= s
             h -= 1
             if need <= 0:
@@ -520,7 +529,7 @@ class RoundSolver:
                 # the next hand holds the cards drawn now too: Blackboard (a red one) / Raised Fist (a lower one)
                 # can lose to them, so the follow-up is not certain (7807 E1PM6PSH)
                 return False
-            _s, sel, _t = self.best_play(cards, h, self.d0, (lock, used, rtypes, ob))
+            _s, sel, _t = self.best_play(cards, h, self.d0, (lock, used, rtypes, ob, jd))
         return False
 
     def _first_for(self, cand):
@@ -534,11 +543,11 @@ class RoundSolver:
         held = [c for c in self.slots if c is not None and c not in play]
         return self.best_order(play, held)
 
-    def _components(self, t, sc, played, held, h, d, rep, ob=None):
+    def _components(self, t, sc, played, held, h, d, rep, ob=None, jd=0):
         """Score of a play split into its random parts (estimate itself is deterministic):
         (base with every Misprint at 0, score per Misprint mult point, Misprint count, score per Lucky +20 hit,
         Lucky triggers, Bloodstone x1.5 chances, score of a Space Joker level-up, Space Joker count)."""
-        st = self._state(h, d, ob)
+        st = self._state(h, d, ob, jd)
         if self.n_misprint:  # cli.estimate takes the roll from _misprint_roll (default its mean): pin it at 6
             st = dict(st, _misprint_roll=6)
         scd = [c.d for c in sc]
@@ -590,7 +599,7 @@ class RoundSolver:
         if not played:
             return 0.0, "High Card"
         t, sc, scm = self.classify(played)
-        lock, used, rtypes, ob = ctx
+        lock, used, rtypes, ob, jd = ctx
         if (lock and t != lock) or t in used:
             return 0.0, t
         if self.psychic and len(played) < 5 and len(played) + len(held) >= 5:
@@ -602,10 +611,10 @@ class RoundSolver:
                 hm |= c.bit
         else:
             hm = 0
-        key = (t, scm, len(played), hm, (h, d) if self.hd_dep else None, rep, ob)
+        key = (t, scm, len(played), hm, (h, d) if self.hd_dep else None, rep, ob, jd)
         comp = self._score_memo.get(key)
         if comp is None:
-            comp = self._components(t, sc, played, held, h, d, rep, ob)
+            comp = self._components(t, sc, played, held, h, d, rep, ob, jd)
             if not self.random_fx:
                 comp = comp[0]
             self._score_memo[key] = comp
@@ -863,6 +872,11 @@ class RoundSolver:
         n = 3 if self.serpent else self.hand_size - n_keep
         return max(0, min(n, pile_P))
 
+    @staticmethod
+    def _jacks(cards):
+        """Jacks that count for Hit the Road when discarded (card.lua: a debuffed card does not trigger it)."""
+        return sum(1 for c in cards if c.rank == 11 and not c.debuff)
+
     def _keep_sets(self, cards, bp):
         """Structural keep sets (frozensets of positions): best play, rank groups, each suit, straight windows (and
         open-ended pairs of windows), top cards, each also united with the best play; each throws 1..lim cards."""
@@ -871,6 +885,10 @@ class RoundSolver:
         bpi = {id(x) for x in (bp or ())}
         B = frozenset(i for i in range(n) if id(cards[i]) in bpi)
         raw = [B, frozenset()]
+        if self.htr:  # Hit the Road: throw every Jack (alone, or with everything outside the best play)
+            nj = frozenset(i for i in range(n) if not (cards[i].rank == 11 and not cards[i].debuff))
+            if len(nj) < n:
+                raw += [nj, nj & B]
         groups = {}
         for i in ranked:
             groups.setdefault(cards[i].rank, []).append(i)
@@ -976,7 +994,10 @@ class RoundSolver:
         pile = _Pile(pile_cards, self.suit_keys)
         scored = []
         for K in self._keep_sets(cards, bp):
-            u, _l = self.keep_value([cards[i] for i in K], pile, need, h, d, ctx, self._n_draw(len(K), pile.P))
+            kc = ctx
+            if self.htr and d > 0:  # Hit the Road: the Jacks this discard throws raise every later hand's xMult
+                kc = ctx[:4] + (ctx[4] + self._jacks([c for i, c in enumerate(cards) if i not in K]),)
+            u, _l = self.keep_value([cards[i] for i in K], pile, need, h, d, kc, self._n_draw(len(K), pile.P))
             scored.append((u, K))
         scored.sort(key=lambda t: -t[0])
         keep = scored[0][1] if scored else frozenset()
@@ -1043,7 +1064,7 @@ class RoundSolver:
         Each played hand's random jokers/cards are sampled from rng. Returns (cleared, total scored, hands left,
         discards used, growth-joker progress, cards played)."""
         h, d, need = self.h0, self.d0, self.need0
-        lock, used, rtypes, ob = self.ctx0
+        lock, used, rtypes, ob, jd = self.ctx0
         self.last_ob = ob  # Obelisk state at the end of this rollout (shop_sim carries it to the next round)
         total = 0.0
         growth = 0.0
@@ -1058,7 +1079,7 @@ class RoundSolver:
             ids = {id(c) for c in sel}
             rest = [c for c in cards if id(c) not in ids]
             if kind == PLAY:
-                s, t = self.score(sel, rest, h, d, (lock, used, rtypes, ob), rng)
+                s, t = self.score(sel, rest, h, d, (lock, used, rtypes, ob, jd), rng)
                 ob = self.last_ob = self._obelisk_after(ob, t)
                 total += s
                 need -= s
@@ -1083,6 +1104,8 @@ class RoundSolver:
                 d -= 1
                 if "Green Joker" in self.growth_j:
                     growth -= 1
+                if self.htr:
+                    jd += self._jacks(sel)
             n = 3 if self.serpent else max(0, self.hand_size - len(rest))
             drawn = order[pos:pos + n]
             if self.fish and kind == PLAY:  # The Fish: cards drawn after a played hand come face down
@@ -1102,12 +1125,12 @@ class RoundSolver:
             elif len(up) < len(cards):
                 # the player decides on the face-up cards only; unknown cards are worth nothing held (they stay
                 # hidden), so they go along blind: fillers of a play (they may pair up) or discards (redrawn)
-                kind, sel = self.policy(up, order[pos:], h, d, need, (lock, used, rtypes, ob))
+                kind, sel = self.policy(up, order[pos:], h, d, need, (lock, used, rtypes, ob, jd))
                 if not (kind == PLAY and self.psychic):
                     blind = [c for c in cards if id(c) in down]
                     sel = list(sel) + blind[:max(0, self.lim - len(sel))]
             else:
-                kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes, ob))
+                kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes, ob, jd))
 
     # ---- sampling ---------------------------------------------------------------------------------------------
     def _sample(self, s):
@@ -1169,7 +1192,10 @@ class RoundSolver:
         for k in range(1, min(self.lim, n) + 1):
             for throw in itertools.combinations(range(n), k):
                 K = frozenset(i for i in range(n) if i not in throw)
-                keep_rank[K] = self.keep_value([known[i] for i in K], pile_vis, self.need0, h, d, ctx,
+                kc = ctx
+                if self.htr and d > 0:  # Hit the Road: discarded Jacks raise the later hands' xMult
+                    kc = ctx[:4] + (ctx[4] + self._jacks([known[i] for i in throw]),)
+                keep_rank[K] = self.keep_value([known[i] for i in K], pile_vis, self.need0, h, d, kc,
                                                self._n_draw(len(K), pile_vis.P))
         top_keeps = sorted(keep_rank.items(), key=lambda kv: -kv[1][0])
         # best play of each hand type, plain and with fillers
@@ -1537,7 +1563,10 @@ def consumable_options(state, estimate_fn=None, *, time_budget_s=3.0, samples=12
     for c, fx, s in plans:
         if out and time.perf_counter() - t0 > time_budget_s:
             break  # every candidate costs at least 16 samples per first action: stop at the budget
-        st = dict(state, hand=_apply_tarot(hand, fx, s),
+        # Fortune Teller gains +1 mult per tarot used (card.lua); the tarot is spent
+        js = [dict(j, ability=dict(j.get("ability") or {}, mult=float((j.get("ability") or {}).get("mult") or 0) + 1))
+              if j.get("name") == "Fortune Teller" and not j.get("debuff") else j for j in _lst(state.get("jokers"))]
+        st = dict(state, hand=_apply_tarot(hand, fx, s), jokers=js,
                   consumables=[x for x in _lst(state.get("consumables")) if x is not c])
         res = best_round_plan(st, est, samples=samples, time_budget_s=left / len(plans), seed=seed)
         if not res:
