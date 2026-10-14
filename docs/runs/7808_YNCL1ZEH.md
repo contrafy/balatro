@@ -1,1 +1,6 @@
 # Run YNCL1ZEH (port 7808, claude-sonnet-5-5) - Black Deck Gold Stake - IN PROGRESS
+
+Ante 1 (D6/Economy/The Window 600, $4): Small flush AD KD QD 9D 4D 316 (one hand). Shop: Buffoon pack -> Shoot the Moon (+13 mult per Queen HELD). Big: Pair 55 with QH QD held 560. Shop $8: Sly{RENTAL} $1 (+50 chips). Window: Pair 22 960.
+Ante 2 (Standard/Economy/The Head 2000, $11): foil Riff-raff $8 (2 commons per blind: Credit Card, Even Steven, 8 Ball, Delayed Gratification). Small 2P 1460, Big Pair 22 4104, Head Pair 66 + 2P TT44 -> 2560.
+Ante 3 (Buffoon/Juggle/The Manacle 6400, $14): bought Hanging Chad (sold Credit Card). Skipped Small for Buffoon tag: pack was junk (Ride the Bus, eternal Wily/To the Moon, perishable rental Joker) = wasted skip. Big Pair AA 2310 + TT 6600, Manacle Pair 55/66/44 = 6104+3906.
+Ante 4 (Coupon/Handy/The House 18000, $18): EMERGENCY ratio 0.28 with 0 xMult. Sold Delayed Grat -> Supernova; Arcana -> Judgement (sold Sly for slot) -> Abstract Joker; sold Riff-raff -> foil Misprint from Jumbo Buffoon; sold Supernova -> foil Gros Michel; Mercury (Pair L2). Small FH KKK66 7488 + High 3015; Big Flush TD.. 7622 + Flush 7350; House: disc facedown, High TC 9450 + Pair 88 12010 (QC held).

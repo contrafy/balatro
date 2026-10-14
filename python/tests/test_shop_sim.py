@@ -404,3 +404,14 @@ def test_perish_tally_inside_ability_is_read():
     # 7808 W99CGI9N: a top-level perish_tally=None hid ability.perish_tally, the joker never perished in the sim
     j = joker("Joker", ability={"mult": 4, "perish_tally": 1}, perishable=True, perish_tally=None)
     assert shop_sim._jokers_at([j], 1, set())[0].get("debuff")
+
+
+def test_permanent_scorer_beats_a_perishable_rental_at_ante_1():
+    # 7803 86BLGMNF: a $1 perishable rental Wrathful ranked above a $5 permanent scorer at ante 1
+    st = shop_state(jokers=[joker("Joker", ability={"mult": 4})], money=5, ante=1, small="Select", boss="The Hook")
+    rent = joker("Wrathful Joker", ability={"extra": {"s_mult": 3, "suit": "Spades"}}, rental=True, perishable=True,
+                 perish_tally=5, cost=1)
+    perm = joker("Jolly Joker", ability={"t_mult": 8, "type": "Pair"}, cost=5)
+    res = by_label(run(st, [{"label": "base"}, {"label": "rental", "add_joker": rent, "cost": 1},
+                            {"label": "perm", "add_joker": perm, "cost": 5}], budget_s=6, min_samples=48))
+    assert res["perm"]["value"] > res["rental"]["value"]

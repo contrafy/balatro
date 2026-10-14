@@ -115,13 +115,16 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   value. Hands 1-2 dig (or bank under The Hook), hand 3 is the hand; level its type (Full House to L5). Copy chains
   resolve recursively in `est`; check `b order` keeps the chain after every buy.
 - SMALL BLIND SKIP: ante 1 only for a tag that gives jokers NOW (Buffoon = Mega Buffoon pack, Top-up = 2 jokers; needs a
-  free slot). Ante 2-4: other useful tags need 2+ scoring jokers, and at ante 3-4 your typical hand must reach half this
-  ante's boss (skippers died 40-46% vs 25-33%). Rare/Uncommon/Polychrome/Negative/Coupon tags pay in the NEXT shop,
-  after the Big Blind. Ante 5+: never skip, except the Throwback plan above. Rent-broke (a rental and <$4 after it):
-  skip the Small, its shop could buy nothing.
-- RENTAL: priced at -$3 x rounds left (a perishable rental only until it perishes). Take one only for a reliable/growth
-  xMult, or as a scorer you need to survive ante 1-2 (`NEEDED NOW`). Never two before ante 5. A flat rental is sold
-  once 2 other non-rental scorers carry your hands (41 Gold rentals cost $393, mostly flat jokers held until death).
+  free slot). From ante 2 a tag that adds no score now (Coupon, Economy, Investment, D6, Juggle...) is skipped only when
+  this ante's boss is SAFE: your simulated round under its rule reaches 1.25x its chips. At ante 3-4 your typical hand
+  must also reach half this ante's boss (skippers died 40-46% vs 25-33%). Rare/Uncommon/Polychrome/Negative/Coupon
+  tags pay in the NEXT shop, after the Big Blind; skipping the Big too means NO shop before the boss, so a Big skip
+  needs the same 1.25x boss gate unless its tag opens a pack now. Ante 5+: never skip, except the Throwback plan above.
+- RENTAL (470-run study, docs/analysis/rental_study.md): never a flat (non-xMult) rental at ante 1-2, even with 0
+  scorers (P(reach ante 5) 38% vs 57%); the stopgap is a perishable scorer or a Buffoon pack. One xMult rental is fine.
+  Never two rentals before ante 5. Priced at -$3 x rounds left; a flat rental is sold once 2 non-rental scorers carry.
+- FIRST BUYS (ante 1-2, TIER 1): until you own 2 permanent (no rental/perishable) any-hand +mult scorers, `shopadvise`
+  buys one of those first; perishable, conditional and start-at-zero growth jokers come after ("tier 2").
 - PERISHABLE: a bridge for 5 rounds (~1.7 antes). Plan with "scorers still alive next ante" (`shopadvise` prints it):
   a joker with perish_tally <= blinds left this ante does not count, so buy its permanent replacement NOW. A perished
   joker (`PERISHED`) scores nothing: sell it. Growth jokers (Hologram, Constellation...) are never worth it perishable.
@@ -149,8 +152,9 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
 - BUFFOON PACKS: ante 2-5 with <2 reliable/growth xMults they rank 80 (an xMult sighting in 18% of packs). Inside a pack
   run `advise`: jokers are ranked by what they add to a round dealt from YOUR deck (`+N% round est now`; ties never go
   by slot order), with stickers; a bridge must score now (Erosion on a full deck adds 0); SKIP when everything is junk.
-- SCORE CHECK and GOLD CHECK (`shopadvise`): your best hand over 40 deals from your deck (75th pct; sees Odd Todd,
-  Shoot the Moon, Splash...) vs boss/3 of the next ante; calibrated on 1120 Gold shops (ratio <0.35 died by the next
+- SCORE CHECK and GOLD CHECK (`shopadvise`): a simulated round from your deck (discards used) vs THIS ANTE's boss at its
+  real chips (The Wall 4x, Violet Vessel 6x) under its own rule, and vs the NEXT ANTE's boss/3; the worse ratio sets the
+  band. Calibrated on 1120 Gold shops (ratio <0.35 died by the next
   ante 84% = EMERGENCY: buy the cheapest multiplier through the floor; <0.7 died 65%: scoring jokers may break the floor;
   >=1.5 died 18%). `shopadvise` lists every higher-ranked item it passes over and why. Targets: 1 reliable/growth xMult
   (incl. Acrobat, Ramen, Stencil; card-trigger xMults like Photograph do not count: they multiply before +mult jokers)
@@ -185,13 +189,15 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   only break SIM ties (within 0.03 in the shop, 0.01 in packs; a permanent joker beats a perishable/rental one) and
   decide what the SIM cannot model: vouchers, tarots, boss counters, main-hand planets (they level forever, unless the
   SIM shows the buy hurts). A rental SELL FIRST is simulated: the joker is kept when selling it costs > 0.02. Hard
-  rules stay: no eternal rental before ante 7; no second rental (perishable too) before ante 5 unless the buy sells the
-  first (`SELL then BUY`), at ante 5 only for two xMults or a +0.15 SIM gain with money >= 0 through the boss; no
-  eternal Troubadour / second eternal utility; the $ floor unless TIGHT/EMERGENCY or a +0.15 SIM gain. In packs (already
-  paid) the eternal-rental bar yields to a +0.15 rent-adjusted gain, and a free sticker-free joker into a free slot is
-  never skipped. Credit Card: in EMERGENCY the -$20 debt is spendable on rerolls for a scorer.
+  rules stay: no flat rental at ante 1-2; no eternal rental before ante 7; no second rental (perishable too) before ante 5
+  unless the buy sells the first (`SELL then BUY`), at ante 5 only for two xMults or a +0.15 SIM gain with money >= 0
+  through the boss; no eternal Troubadour; a second eternal non-xMult/utility only on a +0.15 SIM or +50% est gain; the
+  $ floor unless TIGHT/EMERGENCY or a +0.15 SIM gain. TIGHT/EMERGENCY with $4+ never ends on a bare LEAVE. In packs
+  (already paid) the eternal-rental bar yields to a +0.15 rent-adjusted gain, and a free sticker-free joker into a free
+  slot is never skipped. Credit Card: in EMERGENCY the -$20 debt is spendable on rerolls for a scorer.
 - INDICES SHIFT after a reroll/pick/sell: use a name guard, `b buy Clever` or `b buy 1 --expect Clever` (refused on a
-  mismatch); every slot command echoes its target name.
+  mismatch); every slot command echoes its target name. `order` lines carry `--expect "A,B,C"` (the joker row they were
+  computed on). Run commands one at a time: a read issued together with an action may print the pre-action state.
 - THE MOUTH: the first played hand locks the type for all 3 hands. Open with a type you can repeat (main hand / Pair),
   never a one-off Straight/Flush/Full House unless that one hand clears the whole blind; keep a discard until the lock.
   A locked High Card is any single card. Owning Burglar (0 discards) before The Mouth: sell it or lock High Card.

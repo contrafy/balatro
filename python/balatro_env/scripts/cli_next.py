@@ -359,7 +359,12 @@ def show(d):
                                                           for j in lst(d.get("jokers")))))  # 7806 FA2MCBFK: Psychic vs a 5-card build
         if tk == "tag_boss" and not harmless and boss_n in ("The Wall", "Violet Vessel", "The Needle", "The Flint", "The Arm", "The Eye", "The Mouth", "The Psychic",
                                                             "The Plant", "Crimson Heart", "Cerulean Bell", "Amber Acorn", "Verdant Leaf", "The Water", "The Manacle"):
-            NOW_TAGS[tk] = f"rerolls {boss_n} right now (7807's win used a Boss Tag on The Wall)"
+            # ... and only when this boss is hard for THIS build: its simulated round under its rule below 1.25x its chips
+            # (7807 YYSKPHK2 rerolled a mild The Club into The Arm)
+            bc_t = int((ch.get("Boss") or {}).get("chips") or 0)
+            rq_bt = _round_q(dict(d, _misprint_roll=11.5, _plan_fillers=True), **_boss_kw(d, boss_n)) if bc_t else None
+            if rq_bt is None or rq_bt["round"][1] < 1.25 * bc_t:
+                NOW_TAGS[tk] = f"rerolls {boss_n} right now (7807's win used a Boss Tag on The Wall)"
         # The Big Blind comes BEFORE any shop, so it must be beaten with what you own plus what the tag pays right now.
         # Stake 2-3 data (2026-08-30) and Gold data (2026-10-13: 328/450 and 448/450 with zero jokers after skipping for a
         # Rare/Polychrome tag) show a jokerless deck loses the ante-1 Big Blind; a shop-time tag cannot help it.
@@ -4021,6 +4026,8 @@ def _shop_rules(d):
                 # 2b: treat it as already gone: 1-in-6 per round is ~42% destroyed within 3 rounds; never ranked above a
                 # permanent +mult joker, and bought only next to one (7810 1NA92BT7: '+750%' as the only mult source)
                 score = min(score, 48 if not owns_mult else int(45 + 30 * 0.58 * max(0.0, marginal_gain(d, mh, c))))
+            elif name == "Bootstraps" and money - cost < 5:
+                cls, score = f"PLUS(adds 0 now: +2 mult per $5 and you keep ${money - cost} after buying it)", min(score, 20)  # 7813 5Z56W9Z8
             elif name in ("Popcorn", "Ice Cream", "Turtle Bean"):
                 score = min(score, 60)  # decaying: below a permanent joker of the same gain (Main 16:xx, Ice Cream rated BUY)
             elif name == "Madness" and not any(not _stk(j)["eternal"] and (_is_scoring(classify_joker(j.get("name"), 0, mh)[0]) or joker_share(d, j, mh) >= 0.1)
@@ -4043,6 +4050,10 @@ def _shop_rules(d):
                 # shop too (7815 NBY8F68S: Half Joker NEEDED NOW before The Psychic, lost by 51)
                 score = min(score, 40)
                 st_notes = [n for n in st_notes if not n.startswith("NEEDED NOW")] + [f"DEAD against this ante's boss {boss_ahead}"]
+            if ante <= 2 and _stk(c)["rental"] and not _xmult_like(d, c):
+                # HARD (docs/analysis/rental_study.md, 470 runs): no flat rental at ante 1-2, even at 0 scorers
+                score = min(score, 3)
+                st_notes = [n for n in st_notes if not n.startswith("NEEDED NOW")] + ["BARRED: flat rental at ante 1-2 (P(reach ante 5) 38% vs 57%)"]
             needed = next((n for n in st_notes if n.startswith("NEEDED NOW")), "")
             options.append((score, cls, f"buy {c['index']}", (needed + " -> " if needed else "") + f"{name}{stickers(c)} ${cost} [{cls}]{' ' + ed if ed else ''}: {JOKER_DESC.get(name, 'unknown effect')}" + (f" | {'; '.join(n for n in st_notes if n != needed)}" if st_notes else ""), cost,
                             may_replace and ((cls.startswith("XMULT") and not cls.startswith("XMULT(conditional")) or cls == "COUNTER" or core_gain or (_fits_x(cls) and cls.startswith("XMULT(conditional") and n_x_now < 2 and ante >= 4) or (name in ("Blueprint", "Brainstorm") and n_x_now >= 1)),
@@ -4494,6 +4505,9 @@ def pack_advise(d):
             if gain <= -0.05:
                 sc = min(sc, 5)  # it lowers your rounds (fills a slot your Joker Stencil counts; 7805)
                 notes.append(f"{gain:.0%} round est: fills a slot your Stencil counts" if any(j.get("name") == "Joker Stencil" for j in jokers) else f"{gain:.0%} round est")
+            if ante <= 2 and _stk(c)["rental"] and not _xmult_like(d, c):
+                sc = min(sc, 3)  # HARD: no flat rental at ante 1-2, even free (docs/analysis/rental_study.md)
+                notes.append("BARRED: flat rental at ante 1-2")
             boss_pk = (((d.get("blind_select") or {}).get("choices") or {}).get("Boss") or {})
             if c.get("name") == "Pareidolia" and boss_pk.get("state") != "Defeated" and boss_pk.get("name") in ("The Mark", "The Plant"):
                 # every card becomes a face: The Mark deals them all face-down, The Plant debuffs them all (7809 2JAKDJCQ)
