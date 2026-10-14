@@ -364,3 +364,20 @@ def test_planet_pick_prefers_the_main_hand_within_noise():
     plan = {"kind": "Celestial", "main": "Saturn"}
     assert shop_sim._pick_value(sat, base, plan) >= shop_sim._value(base)  # never below skipping
     assert shop_sim._pick_value(sat, base, plan) > shop_sim._pick_value(jup, base, plan)
+
+
+def test_terminal_build_drops_perishables_expiring_at_the_horizon_end():
+    # 7817 6GRAU5IC: both carriers perish exactly at the end of the 3 blinds; the terminal round must play without
+    st = shop_state(jokers=[joker("Joker", ability={"mult": 4}, perishable=True, perish_tally=3)])
+    blind = {"name": "Boss (unknown)", "boss": False, "chips": 800}
+    assert not shop_sim._round_state(st, st, blind, 2, set())["jokers"][0]["debuff"]
+    assert shop_sim._round_state(st, st, blind, 3, set())["jokers"][0]["debuff"]
+
+
+def test_value_keeps_a_signal_when_a_far_blind_is_hopeless():
+    # 7806 FYEJZFFU: The Wall made P(all 3) 0 for every option; the option clearing the next blind more often wins
+    base = {"p_blinds": [0.98, 0.5, 0.0], "p_next": 0.0, "p_term": 0.0}
+    mad = {"p_blinds": [1.0, 0.58, 0.0], "p_next": 0.0, "p_term": 0.0}
+    assert shop_sim._value(mad) > shop_sim._value(base)
+    sure = {"p_blinds": [1.0, 1.0, 1.0], "p_next": 1.0, "p_term": 1.0}
+    assert shop_sim._value(sure) == pytest.approx(1.0)

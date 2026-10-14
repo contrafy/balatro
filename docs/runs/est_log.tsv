@@ -10930,3 +10930,10 @@
 7812	a1	-	Straight	9D 8C 7C 6D 5S	Odd Todd	est=632	actual=632	OK
 7809	a3	The Water	High Card	8S	Bull,Lusty Joker,Blue Joker,Photograph,Acrobat	est=109	actual=109	OK
 7815	a1	The Psychic	Two Pair	9H 9C 2S 2C	Jolly Joker,Acrobat	est=420	actual=420	OK
+7816	a3	-	Straight	AS KD QC JC TC	Space Joker,Greedy Joker,Crazy Joker,Odd Todd,Abstract Joker,Misprint	est=4816	actual=7100	MISS
+7806	a1	-	Pair	AH AD	Raised Fist	est=576	actual=576	OK
+7805	a5	The Mark	Pair	TD 9S 9C 6C	Scholar,Even Steven,Abstract Joker,Seeing Double,Splash,Throwback	est=15946	actual=15946	OK
+7807	a4	-	Pair	KS KD	Supernova,Ice Cream,Joker,Crazy Joker,Card Sharp	est=2310	actual=2310	OK
+7815	a1	The Psychic	Pair	QS QH	Jolly Joker,Acrobat	est=300	actual=300	OK
+7802	a2	-	Pair	9S 9H	Shoot the Moon,Raised Fist,Photograph	est=616	actual=616	OK
+7810	a3	The Wall	Pair	9H(bonus) 9D	Jolly Joker,Wily Joker	est=1339	actual=1339	OK

@@ -7765,3 +7765,8 @@
 7813	a5	$21	jokers=6/6	xmult_owned=1	TAROT:Temperance $3 | PACK:Jumbo Celestial Pack $6 | PACK:Jumbo Arcana Pack $6 | VOUCHER:Magic Trick $10 | PLUS(rare condition):Square Joker{ETERNAL} $4
 7804	a5	$10	jokers=5/6	xmult_owned=0	XMULT(final hand: x3 every round):Acrobat $6 | PLANET:Neptune $3 | VOUCHER:Paint Brush $10 | PACK:Standard Pack $4 | PACK:Jumbo Standard Pack $6
 7814	a1	$5	jokers=2/6	xmult_owned=0	VOUCHER:Grabber $10 | PACK:Celestial Pack $4 | PACK:Jumbo Arcana Pack $6 | COPY(2 free Common jokers every blind while slots are free):Riff-raff{ETERNAL,RENTAL(-$3/round)} $1
+7812	a1	$7	jokers=1/6	xmult_owned=0	XMULT:Card Sharp $6 | FEED:Diet Cola $6 | VOUCHER:Crystal Ball $10 | PACK:Jumbo Celestial Pack $6 | PACK:Arcana Pack $4
+7806	a1	$7	jokers=1/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Blue Joker{RENTAL(-$3/round)} $1 | XMULT(growth: must be fed):Vampire{ETERNAL} $7 | VOUCHER:Grabber $10 | PACK:Jumbo Celestial Pack $6 | PACK:Arcana Pack $4
+7816	a3	$7	jokers=5/6	xmult_owned=0	PACK:Jumbo Buffoon Pack $6 | PLUS(retrigger: retrigger first card 2x):Hanging Chad{PERISHABLE(5 rounds left)} $4 | VOUCHER:Clearance Sale $10 | PACK:Standard Pack $4 | PLUS(Flush/Straight-gated: non-core at Gold):Droll Joker{ETERNAL} $4
+7815	a2	$7	jokers=2/6	xmult_owned=0	VOUCHER:Hone $10 | PACK:Spectral Pack $4 | PLANET:Pluto $3 | PLANET:Earth $3 | PACK:Jumbo Arcana Pack $6
+7805	a6	$6	jokers=6/6	xmult_owned=0	PLANET:Mercury $3 | PACK:Jumbo Arcana Pack $6 | VOUCHER:Grabber $10 | PACK:Mega Standard Pack $8 | PLUS(rare condition):Square Joker{ETERNAL} $4
