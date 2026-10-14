@@ -11061,3 +11061,47 @@
 7814	a3	-	Two Pair	JC JD 6S 6C	Crazy Joker,Popcorn	est=936	actual=936	OK
 7807	a5	-	Pair	3C 3D	Supernova,Ice Cream,Joker,Crazy Joker,Card Sharp	est=2268	actual=2268	OK
 7805	a1	The Window	Pair	JH JC	Raised Fist,Space Joker	est=540	actual=540	OK
+7818	a2	The Arm	Straight	AD KS QH JH TD	Wily Joker(holo)	est=1134	actual=1134	OK
+7805	a1	The Window	Pair	TH TC	Raised Fist,Space Joker	est=540	actual=855	MISS
+7808	a2	-	Straight	6D 5H 4D 3S 2S	Devious Joker	est=1260	actual=1260	OK
+7816	a4	The House	Two Pair	9S 9D 5H 5D	Space Joker,Crazy Joker,Odd Todd,Abstract Joker,Misprint,Blue Joker	est=8777	actual=8908	OK
+7807	a5	-	Pair	AH(glass) AC(lucky)	Supernova,Ice Cream,Joker,Crazy Joker,Card Sharp	est=9108	actual=9108	OK
+7811	a4	-	Flush	9D 8D 6D 2D 2D	Lusty Joker,Misprint,Shoot the Moon,Even Steven,Vagabond(foil)	est=6887	actual=7242	OK
+7810	a3	-	Pair	QH QC	Half Joker,Joker Stencil	est=3300	actual=3300	OK
+7812	a4	-	High Card	3S	Swashbuckler,Brainstorm,Gift Card(holo),Odd Todd,Blueprint,Card Sharp	est=2379	actual=2379	OK
+7807	a5	-	Pair	8S(mult) 8C(mult)	Supernova,Ice Cream,Joker,Crazy Joker,Card Sharp	est=9234	actual=9234	OK
+7814	a3	-	Full House	9S 9H 9C 4S 4D	Crazy Joker,Popcorn	est=1800	actual=1800	OK
+7810	a3	-	Pair	JS JD	Half Joker,Joker Stencil	est=3300	actual=3300	OK
+7806	a4	-	Flush	AC KC JC 9C 8C	Blue Joker,Popcorn,Scholar,Egg,Seeing Double,Hologram(foil)	est=5736	actual=5736	OK
+7809	a5	-	High Card	3S	Lusty Joker,Photograph,Crafty Joker,Misprint,Acrobat	est=100	actual=128	MISS
+7811	a4	-	High Card	6H	Lusty Joker,Misprint,Shoot the Moon,Even Steven,Vagabond(foil)	est=4361	actual=3660	OK
+7812	a4	-	High Card	5H	Swashbuckler,Brainstorm,Gift Card(holo),Odd Todd,Blueprint,Card Sharp	est=22509	actual=22509	OK
+7804	a6	-	Pair	TH TD	Smiley Face,Clever Joker(polychrome),Campfire,Acrobat	est=168	actual=168	OK
+7814	a3	-	Pair	5S 5D	Crazy Joker,Popcorn	est=280	actual=280	OK
+7805	a2	-	Flush	KC 9C 8C 4C 2C	Raised Fist,Space Joker	est=1088	actual=1088	OK
+7809	a5	-	Pair	3H 3C	Lusty Joker,Photograph,Crafty Joker,Misprint,Acrobat	est=542	actual=403	MISS
+7814	a3	-	Pair	KS KH	Crazy Joker,Popcorn	est=420	actual=420	OK
+7806	a4	-	Two Pair	TS TH 2S 2C	Blue Joker,Popcorn,Scholar,Egg,Seeing Double,Hologram(foil)	est=5100	actual=5100	OK
+7802	a1	-	Full House	KC KD 3S 3H 3D		est=276	actual=276	OK
+7808	a2	-	High Card	AS	Devious Joker,Brainstorm	est=16	actual=16	OK
+7815	a3	The Tooth	Pair	5C 5D	Jolly Joker,Acrobat,Raised Fist,Wrathful Joker	est=1200	actual=1200	OK
+7801	a1	-	High Card	KH		est=15	actual=15	OK
+7802	a1	-	Pair	AS AH		est=64	actual=64	OK
+7809	a5	-	Straight	KC QS JH TH 9H	Lusty Joker,Photograph,Crafty Joker,Misprint,Acrobat	est=11281	actual=11772	OK
+7817	a3	The Tooth	Three of a Kind	7S 7H 7C	Misprint,Scary Face,Zany Joker,Jolly Joker	est=4495	actual=5550	OK
+7806	a4	-	Full House	9S 9H 9D 5C 5D	Blue Joker,Popcorn,Scholar,Egg,Seeing Double,Hologram(foil)	est=7020	actual=7020	OK
+7808	a2	-	Straight	TC 9S 8H 7S 6H	Devious Joker,Brainstorm	est=2100	actual=2100	OK
+7818	a3	-	Two Pair	AC AD 3S 3H	Misprint	est=648	actual=1056	MISS
+7804	a6	-	High Card	AH	Smiley Face,Clever Joker(polychrome),Campfire,Acrobat	est=45	actual=45	OK
+7815	a3	The Tooth	Pair	7H 7D	Jolly Joker,Acrobat,Raised Fist,Wrathful Joker	est=864	actual=864	OK
+7810	a3	The Needle	Three of a Kind	AS AH AD	Half Joker,Ride the Bus(polychrome),Joker Stencil	est=9072	actual=9072	OK
+7807	a1	-	Straight	TS 9S 8S 7S 6D		est=280	actual=280	OK
+7818	a3	-	Pair	8C 8D 4S(stone)	Misprint	est=1026	actual=152	MISS
+7817	a3	The Tooth	Pair	QS QH	Misprint,Scary Face,Zany Joker,Jolly Joker	est=1935	actual=1530	MISS
+7807	a1	-	Pair	2S 2D		est=28	actual=28	OK
+7818	a3	-	Straight	QC JS TS 9C 8S	Misprint	est=1193	actual=770	MISS
+7804	a6	-	Two Pair	QS QC 9H 9D	Smiley Face,Clever Joker(polychrome),Campfire,Acrobat	est=13972	actual=13972	OK
+7815	a3	The Tooth	Three of a Kind	6S 6H 6H(lucky)	Jolly Joker,Acrobat,Raised Fist,Wrathful Joker	est=7776	actual=7776	OK
+7803	a4	The Club	Two Pair	QS QH 9S 9D	Raised Fist,Mystic Summit,Arrowhead,Ice Cream,Abstract Joker,Odd Todd	est=19950	actual=19950	OK
+7801	a1	-	Flush	QC TC 9C 7C 6C		est=308	actual=308	OK
+7805	a2	-	Two Pair	KH KD 8S 8H	Raised Fist,Space Joker,Shoot the Moon	est=1624	actual=1624	OK

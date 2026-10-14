@@ -1390,6 +1390,14 @@ def advise(d):
     Crimson Heart, Verdant Leaf, face-down cards) are kept as they are."""
     import contextlib
     import io
+    # a face-down card that the rank-sorted hand bounds to ONE rank is known (7805 18T9WBYD: "1 in A..A" next to a visible
+    # AD, and advise played blind face-downs over the made Pair AA)
+    fd_b0 = _fd_bounds(lst(d.get("hand"))) if any(c.get("rank") is None for c in lst(d.get("hand"))) else {}
+    full_rank = {14: "Ace", 13: "King", 12: "Queen", 11: "Jack"}
+    if any(lo == hi for lo, hi in fd_b0.values()):
+        d = dict(d, hand=[dict(c, rank=full_rank.get(fd_b0[c.get("index")][0], str(fd_b0[c.get("index")][0])), facing="front")
+                          if c.get("rank") is None and c.get("index") in fd_b0 and fd_b0[c.get("index")][0] == fd_b0[c.get("index")][1] else c
+                          for c in lst(d.get("hand"))])
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
         _advise_rules(d)
@@ -3120,9 +3128,10 @@ def _shop_rules(d):
     ch_now = (d.get("blind_select") or {}).get("choices") or {}
     bl_left = sum(1 for k in ("Small", "Big", "Boss") if ((ch_now.get(k) or {}).get("state") or "Upcoming") not in ("Defeated", "Skipped"))
     rounds_left = _rounds_left(d)
-    # a perished joker still counts for Abstract Joker (+3 mult) and Swashbuckler: keep it while a slot is free (Main 07:xx)
+    # a perished joker still counts for Abstract Joker (+3 mult) and Swashbuckler: keep it; when a buy needs the slot the
+    # weakest-sell logic takes it first (Main 07:xx; 7805 18T9WBYD 2nd report)
     dead = [j for j in jokers if _dead_perishable(j)
-            and not (free > 0 and any(x.get("name") in ("Abstract Joker", "Swashbuckler") and not x.get("debuff") for x in jokers))]
+            and not any(x.get("name") in ("Abstract Joker", "Swashbuckler") and not x.get("debuff") for x in jokers)]
     if dead:
         j = dead[0]
         print(f"  SELL FIRST: b sell {j.get('index')}   ({j.get('name')} has perished: debuffed for the rest of the run, it scores nothing; selling returns ${j.get('sell_cost')} and frees the slot)")
@@ -3670,6 +3679,8 @@ def _shop_rules(d):
             sc = 5  # Burglar sets discards to 0: +1 discard is worth nothing (7809 D5KV79HL)
         if name in ("Seed Money", "Money Tree", "Clearance Sale", "Liquidation") and (emergency or (ante >= 5 and sc_ratio < 1.0)):
             sc = 5  # money compounding cannot pay back when the next boss already looks lost (7803 CS7C79XX)
+        if (emergency or (rentals and money - cost - rent_due < 4)) and name not in ("Director's Cut", "Retcon"):
+            sc = min(sc, 10)  # EMERGENCY or rent-broke: a voucher scores nothing now (7801 H9WSYGXJ: Telescope twice)
         strong_v = False
         thr_plan = any(j.get("name") == "Throwback" and not j.get("debuff") for j in jokers) and 4 <= ante <= 6
         if (threat or thr_plan) and name in ("Director's Cut", "Retcon"):
