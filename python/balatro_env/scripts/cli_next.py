@@ -1482,6 +1482,48 @@ def _played_ante_ids(d):
     return (rec.get("ids") or []) if rec.get("ante") == int(d.get("ante") or 1) and rec.get("seed") == seed else []
 
 
+def _plays_file():
+    return os.path.join(CACHE_DIR, f"{PORT}_plays.json")
+
+
+def _note_play_type(d_pre, d_post, n_cards):
+    """log [ante, hand type, cards played, blind] of each play this run (the type whose `played` count rose), for the
+    recency-weighted main hand."""
+    try:
+        hl0, hl1 = d_pre.get("hand_levels") or {}, d_post.get("hand_levels") or {}
+        t = next((k for k, v in hl1.items() if int((v or {}).get("played") or 0) > int((hl0.get(k) or {}).get("played") or 0)), None)
+        if t is None:
+            return
+        seed = str((d_pre.get("run") or {}).get("seed") or "")
+        try:
+            with open(_plays_file(), encoding="utf-8") as f:
+                rec = json.load(f)
+        except Exception:
+            rec = {}
+        if rec.get("seed") != seed:
+            rec = {"seed": seed, "plays": []}
+        rec["plays"] = (rec["plays"] + [[int(d_pre.get("ante") or 1), t, n_cards, (d_pre.get("blind") or {}).get("name")]])[-60:]
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(_plays_file(), "w", encoding="utf-8") as f:
+            json.dump(rec, f)
+    except Exception:
+        pass
+
+
+def _recent_plays(d):
+    """this run's logged plays from the last two antes: [(type, cards)], throwaways excluded."""
+    try:
+        with open(_plays_file(), encoding="utf-8") as f:
+            rec = json.load(f)
+    except Exception:
+        return []
+    if rec.get("seed") != str((d.get("run") or {}).get("seed") or ""):
+        return []
+    ante = int(d.get("ante") or 1)
+    return [(t, n) for a, t, n, bl in rec.get("plays") or [] if a >= ante - 1 and bl not in ("Crimson Heart", "Amber Acorn", "The Needle", "The Mouth", "The Eye")]
+
+
+
 def _round_solver():
     """python/balatro_env/solver.py loaded by path (the package __init__ imports torch)."""
     global _SOLVER
@@ -2437,6 +2479,19 @@ def _main_hand_raw(d):
         # a 2-3 hand Straight/Flush streak is dealt luck, not a plan; 4+ plays of one type are a plan (7809: six Flushes)
         return _joker_gated_hand(d) or "undecided"
     lead = best[1]
+    # RECENT PLAYS (Main 16:xx: ZP3LYK9R read Two Pair while every recent play was a Flush): over this ante and the last,
+    # the type with the largest (plays x typical est) that is at least half of those plays is the main hand
+    recent = _recent_plays(d)
+    if any(j.get("name") in ("Acrobat", "Dusk") and not j.get("debuff") for j in lst(d.get("jokers"))):
+        recent = [(t, n) for t, n in recent if not (t == "High Card" and n <= 2)]
+    if len(recent) >= 4:
+        cnt_r = Counter(t for t, _ in recent)
+        val_r = {t: c * typical_est(d, t) for t, c in cnt_r.items() if t in SYN_HANDS}
+        if val_r:
+            top_r = max(val_r, key=val_r.get)
+            if cnt_r[top_r] >= 3 and cnt_r[top_r] >= 0.5 * len(recent):
+                d["_mh_forced"] = True
+                return top_r
     # HARD INVARIANTS (Main 06:xx; 7809 read Flush with ~14 Pair plays at Pair L10): a type played >= 2x as often as
     # any other IS the main hand; otherwise a type leveled >= 3 above every other played type is
     pl = sorted(((int((v or {}).get("played") or 0), k) for k, v in hl.items()), reverse=True)
@@ -4978,6 +5033,7 @@ def main():
         _cache_reorder([j.get("name") for j in lst(d_pre.get("jokers"))], params.get("order") or [])
     if typ == "PLAY_HAND" and r.get("ok"):
         _note_played(d_pre, params.get("card_indices") or [])
+        _note_play_type(d_pre, d, len(params.get("card_indices") or []))
     if cmd == "play" and _EST_CTX and r.get("ok"):
         _log_est(d)
         if d_pre.get("_jokers_cached") and not d_pre["_jokers_cached"].get("inferred"):

@@ -8924,3 +8924,11 @@
 7803	a4	$10	jokers=6/6	xmult_owned=0	PLANET:Uranus $3 | PACK:Jumbo Arcana Pack $6 | VOUCHER:Magic Trick $10 | PLUS(one suit):Gluttonous Joker{RENTAL(-$3/round)} $1
 7811	a2	$1	jokers=2/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Raised Fist{ETERNAL} $5 | PLANET:Venus $3 | PACK:Arcana Pack $4 | PACK:Jumbo Celestial Pack $6 | VOUCHER:Hieroglyph $10
 7805	a1	$5	jokers=1/6	xmult_owned=0	PLUS(<=3 cards: not your main hand):Half Joker $5 | PACK:Mega Buffoon Pack $8 | UTIL:Mime{ETERNAL} $5 | VOUCHER:Planet Merchant $10 | PACK:Arcana Pack $4
+7802	a3	$15	jokers=3/6	xmult_owned=0	PACK:Buffoon Pack $4 | TAROT:The Tower $3 | PLANET:Neptune $3 | PACK:Jumbo Standard Pack $6 | VOUCHER:Paint Brush $10
+7804	a1	$5	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | PLUS:Blue Joker $5 | VOUCHER:Grabber $10 | PLANET:Neptune $3 | PACK:Jumbo Standard Pack $6
+7814	a3	$9	jokers=3/6	xmult_owned=0	PACK:Celestial Pack $4 | UTIL(run-saver: survive one blind at 25%, then destroyed):Mr. Bones $5 | PACK:Jumbo Standard Pack $6 | PLUS:Shoot the Moon{ETERNAL} $5
+7817	a2	$7	jokers=2/6	xmult_owned=0	PACK:Celestial Pack $4 | PLUS:Arrowhead{PERISHABLE(5 rounds left)} $7 | PACK:Arcana Pack $4 | VOUCHER:Grabber $10 | AVOID(destroys the joker to its right):Ceremonial Dagger $6
+7816	a1	$8	jokers=1/6	xmult_owned=0	PLUS:Supernova $5 | PACK:Buffoon Pack $4 | VOUCHER:Tarot Merchant $10 | PACK:Standard Pack $4 | ECON:Satellite{ETERNAL} $6
+7807	a3	$4	jokers=3/6	xmult_owned=0	PACK:Arcana Pack $4 | PACK:Jumbo Arcana Pack $6 | PLUS(card-phase multiplier: ~+10-25% on a flat build; the SIM measures it):Photograph{PERISHABLE(5 rounds left)} $5 | VOUCHER:Crystal Ball $10 | PLUS(common condition):Walkie Talkie{RENTAL(-$3/round)} $1
+7810	a5	$5	jokers=5/6	xmult_owned=0	PLANET:Mercury $3 | PACK:Jumbo Arcana Pack $6 | PACK:Arcana Pack $4 | TAROT:The Moon $3 | VOUCHER:Wasteful $10
+7813	a2	$10	jokers=2/6	xmult_owned=0	XMULT(growth: must be fed):Campfire{RENTAL(-$3/round)} $0 | UTIL:Hallucination $4 | VOUCHER:Reroll Surplus $10 | PACK:Mega Arcana Pack $8 | PACK:Standard Pack $4
