@@ -576,7 +576,7 @@ def test_boss_calibration_is_capped_and_monotone():
     ps = [i / 100 for i in range(101)]
     boss = [solver.calibrate(p, boss=True) for p in ps]
     assert all(b2 >= b1 for b1, b2 in zip(boss, boss[1:]))
-    assert solver.calibrate(0.95, boss=True) == pytest.approx(0.95) < solver.calibrate(0.95)
+    assert solver.calibrate(0.95, boss=True) == pytest.approx(0.95) and 0.95 < solver.calibrate(0.95)
     assert solver.calibrate(0.5, boss=True) == solver.calibrate(0.5)
 
 

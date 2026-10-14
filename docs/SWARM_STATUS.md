@@ -84,27 +84,29 @@ _Updated 17:00._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 17:00:41 by `balatro-data status` (edits inside this block are overwritten). Player runs: 505 (490 finished, 15 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 17:10:39 by `balatro-data status` (edits inside this block are overwritten). Player runs: 512 (495 finished, 17 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (15)
+### Live runs (17)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7803 | port-7803 | claude-opus-5-5 | NK8XJN2H | 8 | SELECTING_HAND | 4 | 10 | 2 | Big Blind 0/13500 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | solver top p 0.43: Straight TC-first est ~3180, draws 5 fresh cards; keeps both discards for Banner… | 32s |
-| 7804 | port-7804 | claude-opus-5-5 | RYU4JRWY | 8 | BLIND_SELECT | 4 | 9 | 13 | The Mark (18000) | SELECT_BLIND | boss The Mark 18000, ratio 1.67 | 11s |
-| 7805 | port-7805 | claude-opus-5-5 | 455ESHT5 | 8 | SHOP | 1 | 1 | 5 | Small Blind (300) | SHOP_BUY_BOOSTER {"slot":1} | Buffoon pack for first scorer; Gros Michel is flat rental (barred at ante 1), left | 4s |
-| 7806 | port-7806 | claude-opus-5-5 | T7PPVCEX | 8 | ROUND_EVAL | 3 | 7 | 7 | Big Blind (4800) | CASH_OUT | Big cleared | 7s |
-| 7807 | port-7807 | claude-sonnet-5-5 | WLYWXXNU | 8 | SHOP | 4 | 7 | 23 | Small Blind (9000) | SHOP_END | SIM says nothing helps; Vampire has no enhanced cards; keep 3 for interest (+) and xMult in next sh… | 2s |
-| 7809 | port-7809 | (unknown) | LATY9V82 | 8 | PACK_OPENING | 3 | 8 | 2 | Big Blind (4800) | SELECT_PACK_CARD {"index":3} | Judgement = random joker (no stickers from tarot) for the Wheel boss 6400 at 1.03x; Madness does no… | 15s |
-| 7810 | port-7810 | claude-sonnet-5-5 | PBATS6ST | 8 | BLIND_SELECT | 2 | 4 | 3 | Big Blind (1500) | SELECT_BLIND | play Big 1500 | 5s |
-| 7811 | port-7811 | claude-sonnet-5-5 | V7M2DYH4 | 8 | SELECTING_HAND | 2 | 4 | 2 | Small Blind 780/1000 | PLAY_HAND {"card_indices":[3,4,6,7,8]} | Straight 3-7 with Devious est 1750, need 220 | 8s |
-| 7812 | port-7812 | claude-sonnet-5-5 | GJWWQBMF | 8 | SELECTING_HAND | 5 | 9 | 3 | Small Blind 0/25000 | PLAY_HAND {"card_indices":[2,3,4,5,8]} | Two Pair TT99 lucky tens est ~10-11k + filler 2H to draw 5; need 25000, solver 0.90 | 1s |
-| 7813 | port-7813 | claude-sonnet-5-5 | M5VQEKU4 | 8 | BLIND_SELECT | 3 | 6 | 11 | Small Blind (3200) | SELECT_BLIND | Small 3200; round est ~9392 with Baseball x2.25 | 5s |
-| 7814 | port-7814 | claude-haiku-5-5 | 1E4KH2I1 | 8 | SELECTING_HAND | 5 | 13 | 5 | Small Blind 13680/25000 | PLAY_HAND {"card_indices":[1,2,3,5,6]} | Small 25000: need 11320, Full House AAA33 est 5628 is the top line (solver exp 7866); 1 hand left a… | 1s |
-| 7815 | port-7815 | claude-sonnet-5-5 | FPKFX7AQ | 8 | ROUND_EVAL | 4 | 9 | 10 | The Manacle (18000) | CASH_OUT | cash out ante 3 boss | 93s |
-| 7816 | port-7816 | claude-sonnet-5-5 | YKQMDZUK | 8 | SELECTING_HAND | 5 | 10 | 3 | Big Blind 0/37500 | PLAY_HAND {"card_indices":[4,5,6,7,8]} | Pair 4s + 9D 7D 5H, holds AD KS KH (Baron x2.25, Fist +22) est 11115; solver p 0.89 best vs 0.86 di… | 11s |
-| 7817 | port-7817 | claude-opus-5-5 | E9S54C11 | 8 | SELECTING_HAND | 4 | 9 | 1 | Big Blind 0/13500 | PLAY_HAND {"card_indices":[5,6,7,8,9]} | Two Pair TT99 + QH(red)/QD held est 10005 of 13500, p>=0.99 | 15s |
-| 7818 | port-7818 | claude-haiku-5-5 | EJS7KI8Y | 8 | BLIND_SELECT | 2 | 4 | 0 | Big Blind (1500) | SELECT_BLIND | Big Blind 1500; never skip Big. 3 jokers: Misprint, Ride the Bus x3, Ice Cream +100 chips | 0s |
+| 7801 | port-7801 | claude-fable-5-1 | 8Q27ATWC | 8 | ROUND_EVAL | 2 | 4 | 1 | Small Blind (1000) | CASH_OUT | Small cleared 2914/1000 | 33s |
+| 7802 | port-7802 | claude-opus-5-5 | V2HDUG4F | 8 | SELECTING_HAND | 2 | 6 | 0 | The Window 0/2000 | PLAY_HAND {"card_indices":[2,3,4,7,8]} | Full House KKK77 est 888, solver best p0.32 of 2000 | 4s |
+| 7803 | port-7803 | claude-opus-5-5 | AF96E3ER | 8 | SHOP | 1 | 1 | 4 | Small Blind (300) | SHOP_BUY_BOOSTER {"slot":1} | Buffoon -> /bin/bash; 0 scorers, Smiley is a flat rental (hard-barred at ante 1-2); SIM 0.25 vs 0.1… | 3s |
+| 7804 | port-7804 | claude-opus-5-5 | NPMBQNI1 | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | small cleared, cash out | 4s |
+| 7805 | port-7805 | claude-opus-5-5 | 455ESHT5 | 8 | BLIND_SELECT | 3 | 6 | 6 | Big Blind (4800) | SELECT_BLIND | play Big 4800; need the post-Big shop (Uncommon tag joker) before The Mouth | 6s |
+| 7806 | port-7806 | claude-opus-5-5 | T7PPVCEX | 8 | PACK_OPENING | 5 | 10 | 18 | Small Blind (25000) | SELECT_PACK_CARD {"index":1} | no Mercury/Pluto; Uranus levels Two Pair (Clever +80), my third type for The Eye | 33s |
+| 7808 | port-7808 | claude-sonnet-5-5 | AHX6JJ6F | 8 | BLIND_SELECT | 2 | 5 | 1 | The Mark (2000) | SELECT_BLIND | boss The Mark 2000; Riff-raff triggers | 9s |
+| 7809 | port-7809 | (unknown) | LATY9V82 | 8 | BLIND_SELECT | 5 | 14 | 1 | The Needle (25000) | SELECT_BLIND | play boss The Needle 25000 (one hand) | 78s |
+| 7810 | port-7810 | claude-sonnet-5-5 | PBATS6ST | 8 | SELECTING_HAND | 3 | 9 | 0 | The Mouth 0/6400 | DISCARD {"card_indices":[3,5,6,7,8]} | solver p 0.49 vs 0.28 rule: keep QC TD 8D (face + even ranks, 11 outs to Two Pair worth ~3-4k); Mou… | 18s |
+| 7811 | port-7811 | claude-sonnet-5-5 | V7M2DYH4 | 8 | ROUND_EVAL | 4 | 8 | 13 | The Pillar (18000) | CASH_OUT | cash out Pillar | 2m |
+| 7812 | port-7812 | claude-sonnet-5-5 | DI1851LB | 8 | ROUND_EVAL | 2 | 4 | 4 | Small Blind (1000) | CASH_OUT | cash out Small ante 2 | 25s |
+| 7813 | port-7813 | claude-sonnet-5-5 | M5VQEKU4 | 8 | ROUND_EVAL | 4 | 10 | -1 | Big Blind (13500) | CASH_OUT | cash out ante 4 Big | 24s |
+| 7814 | port-7814 | claude-haiku-5-5 | AJQQDHL9 | 8 | SELECTING_HAND | 2 | 5 | 0 | Big Blind 0/1500 | DISCARD {"card_indices":[5,8]} | Pair 4s est 306 vs need 1500: keep the pair plus QC JC 9D 8H for a draw, discard 7C and 2S (advice … | 8s |
+| 7815 | port-7815 | claude-sonnet-5-5 | FPKFX7AQ | 8 | SELECTING_HAND | 4 | 12 | 2 | The Wheel 0/18000 | PLAY_HAND {"card_indices":[2,3,5,6,7]} | solver top p 0.49: Pair 66 est 3718 + fillers TD 9C 7C draw 5 new cards, keep QH 8H 4H and the disc… | 2s |
+| 7816 | port-7816 | claude-sonnet-5-5 | YKQMDZUK | 8 | SHOP | 6 | 12 | 10 | Big Blind (90000) | SHOP_BUY_BOOSTER {"slot":1} | Celestial for Mercury (Pair L5); 0 -> ; next-ante ratio 0.72 so levels matter | 10s |
+| 7817 | port-7817 | claude-opus-5-5 | E9S54C11 | 8 | SELECTING_HAND | 5 | 11 | 2 | Big Blind 0/37500 | DISCARD {"card_indices":[1,2,3,5,8]} | need 37500; solver best p 0.20: keep 9S 55, dig 5 for Queens/trips (also arms Summit) | 8s |
+| 7818 | port-7818 | claude-haiku-5-5 | EJS7KI8Y | 8 | BLIND_SELECT | 4 | 10 | 0 | Big Blind (13500) | SELECT_BLIND | Big Blind 13500 (ante 4): never skip; /bin/bash money, 4 jokers, Two Pair L2 and Pair L2; final-han… | 0s |
 
 ### Results by model x stake x deck
 
@@ -112,10 +114,10 @@ _Generated 2026-10-14 17:00:41 by `balatro-data status` (edits inside this block
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 33 | 1 | 32 | 0 | 0 | 4.24 | 8 |
-| claude-haiku-5-5 | 8 | Black | 27 | 0 | 27 | 0 | 0 | 2.96 | 5 |
+| claude-haiku-5-5 | 8 | Black | 28 | 0 | 28 | 0 | 0 | 3.04 | 5 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 247 | 2 | 245 | 0 | 0 | 4.08 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 177 | 1 | 176 | 0 | 0 | 3.62 | 8 |
+| claude-opus-5-5 | 8 | Black | 249 | 2 | 247 | 0 | 0 | 4.08 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 179 | 1 | 178 | 0 | 0 | 3.64 | 8 |
 
 ### Deepest runs
 
@@ -134,36 +136,36 @@ _Generated 2026-10-14 17:00:41 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 505 files in manifest; schema_ok 505, schema invalid 0; replay_ok 486, replay failed 0, awaiting replay 3, open/unended 16; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 392 / failed 0; gui (live) ok 138 / failed 0; cross-checked by both 44, disagreeing 0.
-- All files (incl. fuzz + replays): 717; schema_ok 715; replay_ok 492 (headless 392, gui 144); replay failed 0; awaiting replay 206; quarantined 2.
+- Player runs: 512 files in manifest; schema_ok 512, schema invalid 0; replay_ok 491, replay failed 0, awaiting replay 3, open/unended 18; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 397 / failed 0; gui (live) ok 139 / failed 0; cross-checked by both 45, disagreeing 0.
+- All files (incl. fuzz + replays): 725; schema_ok 723; replay_ok 497 (headless 397, gui 145); replay failed 0; awaiting replay 207; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 3124 |
+| port-7805 | 2 | 2 | 3164 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 2785 |
-| port-7803 | 1 | 1 | 3227 |
-| port-7804 | 1 | 1 | 2889 |
-| port-7807 | 1 | 1 | 3482 |
+| port-7802 | 1 | 1 | 2823 |
+| port-7803 | 1 | 1 | 3253 |
+| port-7804 | 1 | 1 | 2914 |
+| port-7807 | 1 | 1 | 3523 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1980 |
-| port-7806 | 0 | 0 | 3275 |
-| port-7808 | 0 | 0 | 1160 |
-| port-7809 | 0 | 0 | 3271 |
-| port-7810 | 0 | 0 | 3643 |
-| port-7811 | 0 | 0 | 900 |
-| port-7812 | 0 | 0 | 944 |
-| port-7813 | 0 | 0 | 914 |
-| port-7814 | 0 | 0 | 920 |
-| port-7815 | 0 | 0 | 936 |
-| port-7816 | 0 | 0 | 949 |
-| port-7817 | 0 | 0 | 839 |
-| port-7818 | 0 | 0 | 928 |
+| port-7801 | 0 | 0 | 2006 |
+| port-7806 | 0 | 0 | 3308 |
+| port-7808 | 0 | 0 | 1198 |
+| port-7809 | 0 | 0 | 3319 |
+| port-7810 | 0 | 0 | 3684 |
+| port-7811 | 0 | 0 | 929 |
+| port-7812 | 0 | 0 | 982 |
+| port-7813 | 0 | 0 | 944 |
+| port-7814 | 0 | 0 | 954 |
+| port-7815 | 0 | 0 | 962 |
+| port-7816 | 0 | 0 | 981 |
+| port-7817 | 0 | 0 | 862 |
+| port-7818 | 0 | 0 | 965 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

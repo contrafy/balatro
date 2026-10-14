@@ -460,6 +460,16 @@ def show(d):
             skip_ok = not weak_hand
         IMMEDIATE_T = ("tag_buffoon", "tag_charm", "tag_top_up", "tag_rare", "tag_uncommon", "tag_polychrome", "tag_holo", "tag_foil", "tag_meteor") + \
             (("tag_negative",) if lst(d.get("jokers")) else ()) + (("tag_boss",) if "tag_boss" in NOW_TAGS else ())  # a Boss Tag that rerolls a hard boss helps now
+        if skip_ok and bs.get("on_deck") == "Small" and tk not in ("tag_buffoon", "tag_top_up") and ante_n >= 2:
+            # the Small's shop comes BEFORE the Big: a skip also needs the Big SAFE (1.25x) with the jokers you own now
+            # (7810 NHC67KV1 skipped for a Rare tag with one weak scorer and died at the Big 978/1500)
+            big_c = int((ch.get("Big") or {}).get("chips") or 0)
+            rq_bg = _round_q(dict(d, _misprint_roll=11.5, _plan_fillers=True)) if big_c else None
+            r_bg = rq_bg["round"][1] if rq_bg else (deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * _hands_pr(d)
+            if big_c and r_bg < 1.25 * big_c:
+                skip_ok = False
+                weak_hand = True
+                thr_ok = False
         if skip_ok and not thr_ok and tk not in IMMEDIATE_T and ante_n >= 2:
             # Main 16:xx (3 runs in 15 min: 3CR57DK4 Coupon a3, IPRZ7H22 Economy a2, 6RXJJ82T Negative a2): a tag that
             # adds no score skips only when this ante's boss is SAFE on the simulated round (1.25x, its own rule)
@@ -1349,10 +1359,19 @@ def show_hands(d):
                 idxs = idxs + stones  # Stone cards always score +50: fold them into the candidate so est and the play line agree
                 head_, rest_ = line.split("idx ", 1)
                 line = f"{head_}idx {' '.join(map(str, idxs))} |{rest_.split('|', 1)[1]}"
-        cards = _cards_by_idx(d, idxs)
+        sc_idx = list(idxs)  # the scoring cards; red Blackboard fillers below are played but do not score
+        if "Blackboard" in jn_ and len(idxs) < 5 and "Half Joker" not in jn_ and not (b_.get("boss") and b_.get("name") == "The Tooth"):
+            # Blackboard: x3 only when every HELD card is a Spade/Club: play the red cards as fillers so the candidate's est
+            # is the play the advice makes (7811 SDRXSM5R: list 5830 vs played 17490)
+            reds = [c.get("index") for c in lst(d.get("hand")) if c.get("index") not in idxs and not _suit_matches(c, "S", jn_) and not _suit_matches(c, "C", jn_)]
+            if reds and len(idxs) + len(reds) <= 5:
+                idxs = idxs + reds
+                head_, rest_ = line.split("idx ", 1)
+                line = f"{head_}idx {' '.join(map(str, idxs))} |{rest_.split('|', 1)[1]}"
+        cards = _cards_by_idx(d, sc_idx)
         rep = _repeat_flag(d, hand_name)
         psy5 = 5 if (bool((d.get("blind") or {}).get("boss")) and (d.get("blind") or {}).get("name") == "The Psychic") else None
-        est, notes = estimate(hand_name, cards, _held(d, idxs), d, repeat=rep, played_n=psy5)  # The Psychic forces 5 cards: Half Joker etc. see the padded play
+        est, notes = estimate(hand_name, cards, _held(d, idxs), d, repeat=rep, played_n=psy5 or (len(idxs) if len(idxs) != len(sc_idx) else None))  # The Psychic forces 5 cards: Half Joker etc. see the padded play
         extra = ""
         if rep is None and any(j.get("name") == "Card Sharp" for j in lst(d.get("jokers"))):
             est3, _ = estimate(hand_name, cards, _held(d, idxs), d, repeat=True)
@@ -1761,8 +1780,18 @@ def advise(d):
                 sol.append(f"  SOLVER USE {u.get('name')} (consumable {u.get('consumable')}) on {u.get('targets')}: round p {u.get('p_clear', 0):.2f}  ({u.get('note')})")
                 if u.get("p_clear", 0) > plan[0]["p_clear"] + 0.05 and not u.get("low_confidence"):
                     sol.append(f"  (rule advice was: {adv[8:]})")
-                    adv = (f"ADVICE: USE -> b use {u.get('consumable')} {' '.join(map(str, u.get('targets') or []))}   (solver: using {u.get('name')} first clears "
-                           f"{u.get('p_clear', 0):.0%} vs {plan[0]['p_clear']:.0%}; then re-run advise)")
+                    tg_u = list(u.get("targets") or [])
+                    if u.get("name") == "Death" and len(tg_u) == 2 and tg_u[0] > tg_u[1]:
+                        # card.lua: every selected card becomes a copy of the RIGHTMOST one; the solver's [converted, model]
+                        # has the model on the left here, so move the converted card left of it first (7805 35N2BV9W: AD
+                        # became QH)
+                        cv, mo = tg_u
+                        adv = (f"ADVICE: MOVE then USE -> b move hand {cv} {mo}  then  b use {u.get('consumable')} {mo} {mo + 1}   (solver: Death turns card {cv} "
+                               f"into a copy of card {mo}; the game copies the RIGHTMOST selected card, so card {cv} moves to {mo} first (the model is then {mo + 1}); "
+                               f"clears {u.get('p_clear', 0):.0%} vs {plan[0]['p_clear']:.0%}; then re-run advise)")
+                    else:
+                        adv = (f"ADVICE: USE -> b use {u.get('consumable')} {' '.join(map(str, tg_u))}   (solver: using {u.get('name')} first clears "
+                               f"{u.get('p_clear', 0):.0%} vs {plan[0]['p_clear']:.0%}; then re-run advise)")
         lines = lines[:adv_i] + sol + [adv] + lines[adv_i + 1:]
     tip = _copy_order_tip(d) if d.get("phase") == "SELECTING_HAND" and d.get("hands_played", 0) == 0 else None
     forced = [c.get("index") for c in lst(d.get("hand")) if c.get("forced")]
@@ -2613,8 +2642,12 @@ def _xmult_like(d, aj):
     owned xMult."""
     nm = aj.get("name")
     mh = main_hand(d)
-    return (classify_joker(nm, 0, mh)[0].startswith("XMULT") or nm in TYPE_X_JOKERS or nm in ("Joker Stencil", "Throwback")
-            or (nm in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") for j in lst(d.get("jokers")))))
+    cls = classify_joker(nm, 0, mh)[0]
+    x = (cls.startswith("XMULT") or nm in TYPE_X_JOKERS or nm in ("Joker Stencil", "Throwback")
+         or (nm in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") for j in lst(d.get("jokers")))))
+    if x and ("growth" in cls or "conditional" in cls) and not any(aj is j for j in lst(d.get("jokers"))) and marginal_gain(d, mh, aj) < 0.05:
+        return False  # an xMult that is x1 on your deck now (Vampire with no enhanced cards: 7802 DQD8BD9U) is not one yet
+    return x
 
 
 def _tier1(d, c, mh):
@@ -2644,6 +2677,10 @@ def _eternal_bar(d, aj):
     nm = aj.get("name")
     if nm in ("Troubadour", "Merry Andy"):
         return f"ETERNAL {nm}: {AVOID_JOKERS[nm]} for the rest of the run"
+    if nm in ("Blueprint", "Brainstorm") and any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers"))):
+        return None  # a copier of a scoring joker is a scorer (7802 NRDPBB88: Blueprint next to The Trio barred)
+    if int(d.get("joker_slots") or 5) - len(lst(d.get("jokers"))) >= 3:
+        return None  # 2+ slots stay free after it: no slot is lost yet (4th Gold win 7801 7RFNYICY: Walkie{E} barred at 3/6)
     cls = classify_joker(nm, 0, main_hand(d))[0]
     if (cls.startswith("UTIL") or cls.startswith("AVOID")) and any(_stk(j)["eternal"] for j in lst(d.get("jokers"))) and \
             nm not in ("Smeared Joker", "Four Fingers", "Shortcut", "Pareidolia", "Splash") and marginal_gain(d, main_hand(d), aj) < 0.5:
@@ -3870,8 +3907,8 @@ def _shop_rules(d):
     boss_c = ((d.get("blind_select") or {}).get("choices") or {}).get("Boss") or {}
     boss_ahead = boss_c.get("name") if boss_c.get("state") != "Defeated" else None
     BOSS_KILLS = {"The Plant": {"Smiley Face", "Scary Face", "Photograph", "Sock and Buskin", "Business Card", "Midas Touch", "Reserved Parking", "Triboulet"},
-                  "The Head": {"Lusty Joker", "Bloodstone"}, "The Goad": {"Wrathful Joker", "Arrowhead"},
-                  "The Club": {"Gluttonous Joker", "Onyx Agate"}, "The Window": {"Greedy Joker", "Rough Gem"},
+                  "The Head": {"Lusty Joker", "Bloodstone", "Flower Pot"}, "The Goad": {"Wrathful Joker", "Arrowhead", "Flower Pot", "Blackboard"},
+                  "The Club": {"Gluttonous Joker", "Onyx Agate", "Seeing Double", "Flower Pot", "Blackboard"}, "The Window": {"Greedy Joker", "Rough Gem", "Flower Pot"},
                   "The Needle": {"Card Sharp"}, "The Eye": {"Card Sharp"}, "The Water": {"Banner"}}  # blind.lua: Eye no repeated type, Water 0 discards (Summit always on), Needle 1 hand
     crippled = [j.get("name") for j in jokers if j.get("name") in BOSS_KILLS.get(boss_ahead or "", set())]
     # BOSS PREP: the boss is known from the ante start. When it counters this build, buy a counter or keep money for one
@@ -4945,7 +4982,9 @@ def pre_checks(cmd, typ, params, ints, d):
     if cmd in ("use", "pick") and name == "Death" and len(tg) == 2:
         hc = _cards_by_idx(d, tg)
         if len(hc) == 2:
-            print(f"Death: {card_str(hc[0])} (idx {tg[0]}) becomes a copy of {card_str(hc[1])} (idx {tg[1]}). The LEFT (lower index) card is overwritten.")
+            lo_c, hi_c = sorted(hc, key=lambda x: x.get("index") or 0)
+            print(f"Death: {card_str(lo_c)} (idx {lo_c.get('index')}) becomes a copy of {card_str(hi_c)} (idx {hi_c.get('index')}): the game copies the "
+                  "RIGHTMOST selected card (higher hand index), whatever order you type. To duplicate the left card, `b move hand` it to the right first.")
     if cmd == "play":
         b = d.get("blind") or {}
         if b.get("boss") and b.get("name") == "The Psychic" and len(ints) != 5:
