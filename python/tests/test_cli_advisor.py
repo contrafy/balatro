@@ -40,11 +40,12 @@ def shop(jokers=(), shop_jokers=(), money=10, ante=2, boosters=()):
                                                              "Boss": {"name": "The Hook", "chips": 2000, "state": "Upcoming"}}}}
 
 
-def blind_select(tag, jokers=(), ante=1):
-    return {"phase": "BLIND_SELECT", "stake": 8, "ante": ante, "money": 4, "joker_slots": 6, "jokers": list(jokers),
-            "blind_select": {"on_deck": "Small", "choices": {"Small": {"name": "Small Blind", "chips": 300, "state": "Select", "tag": tag, "tag_key": tag},
-                                                             "Big": {"name": "Big Blind", "chips": 450, "state": "Upcoming"},
-                                                             "Boss": {"name": "The Hook", "chips": 600, "state": "Upcoming"}}}}
+def blind_select(tag, jokers=(), ante=1, levels=None):
+    sm, bg, bo = {2: (1000, 1500, 2000), 3: (3200, 4800, 6400)}.get(ante, (300, 450, 600))
+    return {"phase": "BLIND_SELECT", "stake": 8, "ante": ante, "money": 4, "joker_slots": 6, "jokers": list(jokers), "hand_levels": levels or {},
+            "blind_select": {"on_deck": "Small", "choices": {"Small": {"name": "Small Blind", "chips": sm, "state": "Select", "tag": tag, "tag_key": tag},
+                                                             "Big": {"name": "Big Blind", "chips": bg, "state": "Upcoming"},
+                                                             "Boss": {"name": "The Hook", "chips": bo, "state": "Upcoming"}}}}
 
 
 def test_stickers_display():
@@ -102,15 +103,17 @@ def test_sell_precheck_blocks_eternal(monkeypatch):
         cli.pre_checks("sell", "SELL_JOKER", {"index": 1}, [1], d)
 
 
-@pytest.mark.parametrize("tag,jokers,ante,expect", [
-    ("tag_rare", [], 1, "b blind"),            # pays in the next shop, after the Big Blind
-    ("tag_polychrome", [], 1, "b blind"),
-    ("tag_buffoon", [], 1, "b skip"),          # Mega Buffoon pack opens right away
-    ("tag_rare", [joker("Joker", 1), joker("Jolly Joker", 2)], 1, "b blind"),  # ante 1: joker-now tags only
-    ("tag_rare", [joker("Joker", 1), joker("Jolly Joker", 2)], 2, "b skip"),
+@pytest.mark.parametrize("tag,jokers,ante,expect,strong", [
+    ("tag_rare", [], 1, "b blind", None),            # pays in the next shop, after the Big Blind
+    ("tag_polychrome", [], 1, "b blind", None),
+    ("tag_buffoon", [], 1, "b skip", None),          # Mega Buffoon pack opens right away
+    ("tag_rare", [joker("Joker", 1), joker("Jolly Joker", 2)], 1, "b blind", None),  # ante 1: joker-now tags only
+    ("tag_rare", [joker("Joker", 1, ability={"mult": 4}), joker("Jolly Joker", 2, ability={"t_mult": 8, "type": "Pair"})], 2, "b blind", None),  # EMERGENCY: no skip
+    ("tag_rare", [joker("Joker", 1, ability={"mult": 4}), joker("Jolly Joker", 2, ability={"t_mult": 8, "type": "Pair"})], 2, "b skip", "strong"),
 ])
-def test_small_blind_skip_advice(tag, jokers, ante, expect):
-    assert expect in _advice(_out(cli.show, blind_select(tag, jokers, ante)))
+def test_small_blind_skip_advice(tag, jokers, ante, expect, strong):
+    lv = {"Pair": {"level": 6, "chips": 60, "mult": 7, "played": 5}} if strong else {"Pair": {"level": 1, "chips": 10, "mult": 2, "played": 5}}
+    assert expect in _advice(_out(cli.show, blind_select(tag, jokers, ante, lv)))
 
 
 def _card(rank, suit, i):
@@ -706,3 +709,24 @@ def test_main_hand_prefers_much_higher_level():
     d = shop(ante=4)
     d["hand_levels"] = {"Pair": {"played": 6, "level": 7, "chips": 70, "mult": 14}, "Two Pair": {"played": 5, "level": 2, "chips": 40, "mult": 3}}
     assert cli.main_hand(d) == "Pair"
+
+
+def test_thin_margin_takes_biggest_clearing_hand():
+    # 7810 The Eye last hand: Two Pair 5874 (main hand) vs need 5350 was advised over a Full House 10036
+    d = _hand_state([("King", "Spades"), ("King", "Hearts"), ("King", "Clubs"), ("9", "Diamonds"), ("9", "Spades"), ("4", "Hearts"), ("3", "Clubs"), ("2", "Diamonds")],
+                    need=370, hands=1)
+    d["hand_levels"] = {"Two Pair": {"level": 3, "chips": 60, "mult": 4, "played": 9}, "Full House": {"level": 2, "chips": 65, "mult": 6, "played": 1},
+                        "Pair": {"level": 1, "chips": 10, "mult": 2}, "Three of a Kind": {"level": 1, "chips": 30, "mult": 3}}
+    a = _advice(_out(cli._advise_rules, d))
+    assert "FULL" in a or "b play 1 2 3 4 5" in a
+
+
+def test_main_hand_hysteresis_keeps_previous_until_two_shops():
+    d = shop(jokers=[joker("Mad Joker", 1, ability={"t_mult": 10, "type": "Two Pair"})], ante=3)
+    d["hand_levels"] = {"Pair": {"played": 5, "level": 2, "chips": 15, "mult": 3}, "Two Pair": {"played": 4, "level": 2, "chips": 30, "mult": 3}}
+    raw = cli._main_hand_raw(dict(d))
+    other = "Pair" if raw == "Two Pair" else "Two Pair"
+    d["_mh_hyst"] = {"mh": other}
+    assert cli.main_hand(d) == other  # remembered main hand kept
+    d["_mh_hyst"] = {"mh": other, "pend": raw, "n": 2}
+    assert cli.main_hand(d) == raw
