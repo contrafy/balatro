@@ -145,6 +145,7 @@ class RoundSolver:
         self.smeared = "Smeared Joker" in jn
         self.pareidolia = "Pareidolia" in jn
         self.photograph = "Photograph" in jn
+        self.held_down = bool(jn & {"Blackboard", "Raised Fist"})  # held-card jokers a drawn card can weaken
         self.card_sharp = "Card Sharp" in jn
         self.growth_j = jn & GROWTH_JOKERS
         active = [j.get("name") for j in _lst(state.get("jokers")) if not j.get("debuff")]
@@ -489,7 +490,8 @@ class RoundSolver:
 
     def _certain(self, cand):
         """True when this PLAY plus the best plays of the cards already in hand (no draws used) clear the blind for
-        sure: deterministic scoring (no Misprint/Lucky/Bloodstone/Space rolls), no face-down cards, no The Hook."""
+        sure: deterministic scoring (no Misprint/Lucky/Bloodstone/Space rolls), no face-down cards, no The Hook, and
+        no held-card joker that a drawn card can weaken when a later hand is needed."""
         if cand["kind"] != PLAY or self.random_fx or self.fd_pos or self.hook or self.psychic:
             return False
         cards = list(self.slots)
@@ -513,6 +515,10 @@ class RoundSolver:
                 rtypes = rtypes | {t}
             cards = rest
             if not cards or h <= 0:
+                return False
+            if self.held_down and self.pool:
+                # the next hand holds the cards drawn now too: Blackboard (a red one) / Raised Fist (a lower one)
+                # can lose to them, so the follow-up is not certain (7807 E1PM6PSH)
                 return False
             _s, sel, _t = self.best_play(cards, h, self.d0, (lock, used, rtypes, ob))
         return False
@@ -1223,10 +1229,10 @@ class RoundSolver:
         return out
 
     def forced_after(self, kind):
-        """True when, after this first action, the rest of the round is forced (only the best final play is left):
-        the final hand itself, or a play with 2 hands and 0 discards. Its p is exact under the model, so it is
-        reported raw instead of through the calibration map."""
-        return self.h0 <= 1 or (self.h0 == 2 and self.d0 == 0 and kind == PLAY)
+        """True when the p of this first action is reported raw instead of through the calibration map: the final hand,
+        or no discard left (the rest of the round is plays of known cards and draws, which the model covers: raw p
+        is calibrated there on recorded data, the map over-lifted it, 7814 T5IPHJUR 0.88 -> 0.95)."""
+        return self.h0 <= 1 or self.d0 == 0
 
     def evaluate(self, cands, samples=400, time_budget_s=2.0):
         """Successive halving on common sampled draw orders; returns ranked option dicts.

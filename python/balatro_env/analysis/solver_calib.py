@@ -140,8 +140,8 @@ def table(rows, title):
 
 
 def _forced(r):
-    """Same rule as RoundSolver.forced_after: final hand, or a play at 2 hands with 0 discards."""
-    return r["h"] <= 1 or (r["h"] == 2 and r["d"] == 0 and r["kind"] == "PLAY")
+    """Same rule as RoundSolver.forced_after: final hand, or no discard left (p reported raw)."""
+    return r["h"] <= 1 or r["d"] == 0
 
 
 def report(rows, module):
