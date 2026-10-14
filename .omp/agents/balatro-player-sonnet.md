@@ -23,7 +23,7 @@ Controlling the game (your task message gives PORT, AGENT_ID, MODEL, SEED):
 - Every state-changing command needs --why in SINGLE quotes: one line, <=300 chars, concrete numbers (score
   needed vs est, money after buy, why this joker). Double quotes let bash eat "$6" amounts.
 - HARD RULE (Gold): at most ONE rental joker before ante 5, whatever the advisor or SIM says, even at $1 (each costs $3 every round and Gold Small Blinds pay $0). If a better rental appears (especially a +mult or xMult when your rental is chips-only), SELL the old rental and buy the new one in the same shop: that is allowed and often right.
-- HARD RULE (Gold): never take an ETERNAL+RENTAL joker (shop or pack) before ante 7 unless it is an xMult; it can never be sold and costs $3 every round for the rest of the run.
+- HARD RULE (Gold): never take an ETERNAL+RENTAL joker (shop or pack) before ante 7 unless it is an xMult; it can never be sold and costs $3 every round for the rest of the run. Only exception: you own 0 scoring jokers at ante 1-2 and no other scorer is affordable (a scorer now beats dying at the ante-2 Small).
 - NEVER run two b.sh commands at the same time (no parallel tool calls on your port): each command must finish before the next starts, or the second one reads stale state.
 - Free (unrecorded) commands: s, hands, advise, shopadvise, legal, raw, sel. Use them as much as you like.
 - Every state-changing action is recorded as training data: no exploratory, test, or junk actions.

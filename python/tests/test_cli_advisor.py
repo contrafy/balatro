@@ -735,8 +735,9 @@ def test_main_hand_hysteresis_keeps_previous_until_two_shops():
 
 
 def test_sim_veto_covers_needed_now(monkeypatch):
-    # 7810: Banner{ETERNAL} 'NEEDED NOW' advised although its own SIM was 0.71 vs baseline 0.72
-    d = shop(jokers=[], shop_jokers=[{"index": 1, "name": "Banner", "set": "Joker", "cost": 5, "eternal": True}], money=8, ante=1)
+    # 7810: Banner{ETERNAL} 'NEEDED NOW' advised although its own SIM was 0.71 vs baseline 0.72 (a chips-only joker is no
+    # longer NEEDED NOW at all, so the case is kept with a +mult joker)
+    d = shop(jokers=[], shop_jokers=[{"index": 1, "name": "Jolly Joker", "set": "Joker", "cost": 5, "eternal": True}], money=8, ante=1)
     d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
 
     class FakeSim:
@@ -931,3 +932,20 @@ def test_copy_chain_blueprint_brainstorm_acrobat():
     one = cli.estimate("Pair", cards, [], st([joker("Acrobat", 1)]))[0]
     chain = cli.estimate("Pair", cards, [], st([joker("Acrobat", 1), joker("Blueprint", 2), joker("Brainstorm", 3)]))[0]
     assert chain == 9 * one
+
+
+def test_buy_pack_n_never_buys_a_joker(tmp_path, monkeypatch):
+    # 7814 UGZ2813E: `buy pack 2` silently bought shop joker J2
+    monkeypatch.setattr(cli, "CACHE_DIR", str(tmp_path))
+    st = _fake_bridge(monkeypatch)
+    st["jokers"] = st["jokers"][:1]  # a free slot: SHOP_BUY of joker 1 is legal
+    sent = []
+    real_act = cli.act
+    monkeypatch.setattr(cli, "act", lambda typ, params: (sent.append(typ), real_act(typ, params))[1])
+    monkeypatch.setattr(cli.sys, "argv", ["cli", "buy", "pack", "1", "--why", "pack"])
+    with contextlib.redirect_stdout(io.StringIO()):
+        try:
+            cli.main()
+        except SystemExit:
+            pass
+    assert "SHOP_BUY" not in sent

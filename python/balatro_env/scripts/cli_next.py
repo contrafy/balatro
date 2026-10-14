@@ -942,8 +942,13 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
                 rem = 0 if rem_n == every else (rem_n + 1) % (every + 1)
             else:
                 rem = ab.get("loyalty_remaining")
-            if rem == 0:
-                mult *= float((ab.get("extra") or {}).get("Xmult", 4) if isinstance(ab.get("extra"), dict) else 4)
+            xl = float((ab.get("extra") or {}).get("Xmult", 4) if isinstance(ab.get("extra"), dict) else 4)
+            if state.get("_plan_fillers"):
+                # a planned round (SCORE CHECK, round est): x4 once per every+1 hands, so its expected factor (7807 BC8S6R97:
+                # SCORE CHECK counted x4 on every hand, 21.5k vs ~6k)
+                mult *= 1 + (xl - 1) / (every + 1)
+            elif rem == 0:
+                mult *= xl
                 notes.append("Loyalty Card fires on THIS hand (x4)")
             elif rem == every:
                 notes.append(f"Loyalty Card fired on the LAST hand: x4 again in {every + 1} hands")
@@ -1310,6 +1315,8 @@ def _hands_pr(d, jokers=None):
 ORDER_JOKERS = {"Hanging Chad", "Photograph"}  # retrigger / x2 on the FIRST scored (face) card: hand order matters
 GROWTH_X = {"Throwback", "Hologram", "Constellation", "Lucky Cat", "Campfire", "Glass Joker", "Vampire", "Madness", "Obelisk",
             "Ramen", "Steel Joker", "Caino", "Canio", "Yorick", "Hit the Road", "Joker Stencil"}  # xMults that grow: never "flat rentals"
+CHIPS_ONLY_J = {"Sly Joker", "Wily Joker", "Clever Joker", "Devious Joker", "Crafty Joker", "Scary Face", "Ice Cream", "Stuntman",
+                "Arrowhead", "Castle", "Runner", "Square Joker", "Blue Joker", "Banner", "Odd Todd", "Wee Joker", "Hiker"}  # +chips only
 
 
 def _order_gain(d, hand_name, idxs):
@@ -1460,6 +1467,8 @@ def advise(d):
         # PLAYBOOK 2b step 5: a DISCARD that breaks a made Pair/Two Pair/Trips needs a 0.10 margin (7805 RTJZMPXF broke
         # QQ66 at +0.07)
         made_pf = max((c for c in _candidates(d) if c[0] in ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")), key=lambda c: c[2], default=None)
+        if made_pf is not None and made_pf[0] == "Pair" and made_pf[2] * max(1, int(d.get("hands_remaining") or 1)) < 0.8 * need_now:
+            made_pf = None  # a Pair far off pace is not a made hand worth shielding (7818 VP4RNVT2: est 36 vs need 300)
         # ... and so does a PLAY that drops cards of the made hand (7810 GLE6W9AC: "play Pair QQ + fillers" over made QQ66)
         breaks = made_pf is not None and ((top["action"] == "DISCARD" and bool(set(top.get("cards") or []) & set(made_pf[1])))
                                           or (top["action"] == "PLAY" and not set(made_pf[1]) <= set(top.get("cards") or [])))
@@ -2364,6 +2373,12 @@ def classify_joker(name, cost, mh):
         return "XMULT(conditional, suit: rarely fires outside a Flush build)", 35
     if name in AVOID_JOKERS:
         return "AVOID(" + AVOID_JOKERS[name] + ")", 5
+    if name in ("Photograph", "Bloodstone") or (name == "Triboulet"):
+        # card-phase multipliers: they multiply the BASE mult while cards score, before the joker row (+10-25% on a flat
+        # build), never a joker-row xMult (7816 N22YQIEH, 7808 2F196DBH, 7807 GEJ9QVYY: Photograph rated XMULT 81)
+        return "PLUS(card-phase multiplier: ~+10-25% on a flat build; the SIM measures it)", 45
+    if name == "Cartomancer":
+        return "UTIL(a tarot per blind: no score at Gold)", 10
     if name == "Acrobat":
         # x3 on the final hand of EVERY round (`advise` saves the best hand for it): the core xMult of the deepest Gold run
         return "XMULT(final hand: x3 every round)", 85
@@ -2680,7 +2695,8 @@ def sticker_adjust(c, cls, base_sc, score, ante, rounds_left, own_rentals, bridg
     core = (_is_scoring_cls(cls) and base_sc >= 60) or cls.startswith(("LEVELS", "COPY", "COUNTER")) or core_hint
     growth = "growth" in cls
     # ante 1-2 with fewer than 2 scorers: surviving the next blinds beats any sticker cost on a joker that scores
-    survive = bridge and ante <= 2 and _is_scoring_cls(cls) and not growth  # a growth xMult starts at x1: no survival help
+    # ... except a chips-only joker: chips multiply by a base mult of 2-4 (7818 QRYGWYX6: rental Scary Face as NEEDED NOW)
+    survive = bridge and ante <= 2 and _is_scoring_cls(cls) and not growth and c.get("name") not in CHIPS_ONLY_J
     if survive and (s["eternal"] or s["rental"]):
         notes.append("NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2")
     in_pack = pack_free is not None  # a pack pick is already paid for: only future costs (slot, rent) count
@@ -3741,6 +3757,8 @@ def _shop_rules(d):
             if o[1] == "PACK" and "Buffoon" not in o[3] and not ("Celestial" in o[3] and "MAIN SCALING" in o[3]):
                 # Arcana/Spectral/Standard/Celestial packs are not joker views: below the jokers and Buffoon packs (7804 N6ILXWVS)
                 return (min(o[0], 55),) + tuple(o[1:])
+            if o[1] == "TAROT":
+                return (min(o[0], 25),) + tuple(o[1:])  # a tarot (The Devil, The Hermit) scores nothing now (7818 QRYGWYX6)
             return (o[0] + bump,) + tuple(o[1:5]) + ((o[5] or bump > 0),) + tuple(o[6:])
         options = [_emerg(o) for o in options]
     if tight:
@@ -4526,6 +4544,25 @@ def main():
     # verbs the advice text uses are accepted as commands (7818 VHC4HWPP: Haiku typed `discard`)
     cmd = {"discard": "disc", "redeem": "vouch", "voucher": "vouch", "leave": "endshop", "cashout": "cash", "select": "blind",
            "sellj": "sell", "sellcons": "sellc", "state": "s", "shop": "shopadvise"}.get(cmd.lower(), cmd.lower())
+    # "buy pack 2" / "buy voucher 1" / "sell joker 2" / "sell tarot 1" / "use tarot 1" / "pick card 2": an area word after
+    # the verb picks the command; it never falls through to `buy <first int>` (7814 UGZ2813E: `buy pack 2` bought joker J2)
+    if rest and rest[0].lower() in ("pack", "booster", "voucher", "joker", "tarot", "planet", "spectral", "card", "consumable", "cons"):
+        area_w = rest[0].lower()
+        remap = {("buy", "pack"): "pack", ("buy", "booster"): "pack", ("buy", "voucher"): "vouch", ("buy", "joker"): "buy",
+                 ("buy", "tarot"): "buy", ("buy", "planet"): "buy", ("buy", "spectral"): "buy", ("buy", "card"): "buy",
+                 ("sell", "joker"): "sell", ("sell", "tarot"): "sellc", ("sell", "planet"): "sellc", ("sell", "spectral"): "sellc",
+                 ("sell", "consumable"): "sellc", ("sell", "cons"): "sellc", ("use", "tarot"): "use", ("use", "planet"): "use",
+                 ("use", "spectral"): "use", ("use", "consumable"): "use", ("use", "cons"): "use", ("pick", "card"): "pick",
+                 ("pick", "joker"): "pick", ("pick", "planet"): "pick", ("pick", "tarot"): "pick", ("pick", "spectral"): "pick"}
+        if (cmd, area_w) not in remap:
+            print(f"REFUSED (nothing sent): `{cmd} {area_w} ...` is ambiguous; use `{cmd} N` (see `help`)"); sys.exit(1)
+        cmd, rest = remap[(cmd, area_w)], rest[1:]
+    global _EXPECT
+    words = [x for x in rest if not re.sub(r"^[A-Za-z]{0,2}", "", x).lstrip("-").isdigit()]
+    if cmd in ("buy", "buyuse", "vouch", "pack", "pick", "sell", "sellc", "use") and words and any(re.sub(r"^[A-Za-z]{0,2}", "", x).isdigit() for x in rest):
+        # `buy 2 clever`: a word next to a slot number is a name guard, never ignored
+        _EXPECT = _EXPECT or " ".join(words)
+        rest = [x for x in rest if x not in words]
     ints = [int(re.sub(r"^[A-Za-z]+", "", x)) for x in rest if re.sub(r"^[A-Za-z]+", "", x).lstrip("-").isdigit() and re.sub(r"^[A-Za-z]+", "", x) != ""]
     if cmd == "help":
         print(USAGE); return

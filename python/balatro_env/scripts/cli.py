@@ -367,7 +367,7 @@ def show(d):
         big_c = int((ch.get("Big") or {}).get("chips") or 0)
         big_ok = big_c > 0 and (deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * _hands_pr(d) >= big_c
         poor = (money_b + 3 - 3 * n_rent < 4) and (n_rent >= 1 or (big_ok and ante_n >= 2))
-        if poor and ante_n <= 4 and tk and not riff and bs.get("on_deck") == "Small":
+        if poor and ante_n <= 7 and tk and not riff and bs.get("on_deck") == "Small":  # any ante (7806 UGQG5ZYN: ante 5, $2, $3 rent)
             skip_ok = True
             NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag (the shop after this Small would find you broke: ${d.get('money')})")
         if (tk in cash and ((cash[tk] >= 5 and 3 * n_rent >= 6) or cash[tk] >= 12) and big_ok and ante_n <= 4 and not riff and bs.get("on_deck") == "Small"):
@@ -447,7 +447,7 @@ def show(d):
             print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss {'with the 1.3x+ margin' if thr else 'with your carrier alive'}, so skip the Big too: {pay_b} ({big_t}); "
                   f"Boss Tag rerolls a Wall/Violet boss, Garbage/Skip/Economy pay money for the post-boss shop. The boss is never skipped. "
                   f"This is the PLAYBOOK 2b exception to 'never skip the Big': {'the Throwback plan' if thr else 'the perishable carrier would die before the boss'}.)")
-        elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok or buff_x) and skip_ok:
+        elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok or buff_x or poor) and skip_ok:
             gold = f" Skipping also avoids one round-end ({sum(1 for j in lst(d.get('jokers')) if _stk(j)['rental'])} rental charge(s), one perishable tick)." if stake_n >= 8 and any(_stk(j)["rental"] or _stk(j)["perishable"] for j in lst(d.get("jokers"))) else ""
             print(f"ADVICE: b skip   (stake {stake_n}: the Small Blind pays $0, so skipping costs one shop visit; tag pays: {pay} ({small.get('tag')}). You own {scoring_j} scoring joker(s) for the Big Blind.{gold}"
                   + (" Skip plan: skip the Big too while your rounds beat the boss by 1.3x+; the boss is never skipped.)" if thr_ok else " Big and Boss blinds are never skipped.)"))
@@ -1498,6 +1498,21 @@ def advise(d):
             why = (f"clears {pt:.0%} vs {pr_:.0%} (calibrated) for the rule pick" if better_p else
                    "this play clears the blind now; " + (f"tied clear chance, +{dv:.1f} value ($ left / growth)" if tied else f"{pt:.0%} vs {pr_:.0%}"))
             adv = f"ADVICE: {top['action']} -> {cmd}   (solver: {why}; {top['note']})"
+        # held hand-changing tarots (Strength, Death, Justice...): DrawSolver's consumable_options plays each USE through
+        # the round; switch when a USE clears clearly more often than the best line without it
+        if any(c.get("set") == "Tarot" for c in lst(d.get("consumables"))):
+            try:
+                co = getattr(_round_solver(), "consumable_options", None)
+                uses = co(d, estimate, time_budget_s=2.5) if co else []
+            except Exception:
+                uses = []
+            if uses:
+                u = uses[0]
+                sol.append(f"  SOLVER USE {u.get('name')} (consumable {u.get('consumable')}) on {u.get('targets')}: round p {u.get('p_clear', 0):.2f}  ({u.get('note')})")
+                if u.get("p_clear", 0) > plan[0]["p_clear"] + 0.05 and not u.get("low_confidence"):
+                    sol.append(f"  (rule advice was: {adv[8:]})")
+                    adv = (f"ADVICE: USE -> b use {u.get('consumable')} {' '.join(map(str, u.get('targets') or []))}   (solver: using {u.get('name')} first clears "
+                           f"{u.get('p_clear', 0):.0%} vs {plan[0]['p_clear']:.0%}; then re-run advise)")
         lines = lines[:adv_i] + sol + [adv] + lines[adv_i + 1:]
     tip = _copy_order_tip(d) if d.get("phase") == "SELECTING_HAND" and d.get("hands_played", 0) == 0 else None
     forced = [c.get("index") for c in lst(d.get("hand")) if c.get("forced")]
