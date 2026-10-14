@@ -28,19 +28,20 @@ _Interim, 05:30 (updated as the night goes on)._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 06:20:42 by `balatro-data status` (edits inside this block are overwritten). Player runs: 172 (165 finished, 7 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 06:31:29 by `balatro-data status` (edits inside this block are overwritten). Player runs: 180 (172 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (7)
+### Live runs (8)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7802 | port-7802 | claude-opus-5-5 | 5BG1Y56E | 8 | SHOP | 2 | 3 | 9 | Small Blind (1000) | SHOP_BUY {"slot":2} | EMERGENCY 0.31: Photograph x2 on first face (perishable bridge, SIM p_next 0.69 vs 0.35); left | 6s |
-| 7803 | port-7803 | claude-opus-5-5 | PA2UGD4M | 8 | SELECTING_HAND | 3 | 7 | 6 | The Flint 255/6400 | PLAY_HAND {"card_indices":[3,4,5,6,7]} | Straight J-7 with QS held (+13) and Order x3 est 3186, best available; need 2959 more on last hand | 11s |
-| 7804 | port-7804 | claude-opus-5-5 | URLL5KX1 | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | Small cleared 312/300, collect hand money | 4s |
-| 7806 | port-7806 | claude-opus-5-5 | 1VZN1XQH | 8 | SHOP | 5 | 10 | 21 | Small Blind (25000) | SHOP_REROLL | EMERGENCY 0.11: reroll for any multiplier, 4 left | 1s |
-| 7807 | port-7807 | claude-opus-5-5 | CEP8X4P6 | 8 | SHOP | 4 | 8 | 17 | Big Blind (13500) | SHOP_REROLL | Chaos free reroll (/bin/bash) hunting an xMult before ante 5 (0 xMult, ratio 0.60) | 14s |
-| 7809 | port-7809 | claude-opus-5-5 | B2KYV37D | 8 | SELECTING_HAND | 2 | 5 | 0 | Big Blind 1072/1500 | PLAY_HAND {"card_indices":[1,2,3,4]} | Two Pair QQJJ ~1100 >= 428 needed, clears Big | 8s |
-| 7810 | port-7810 | claude-sonnet-5-5 | EYZV71A2 | 8 | SELECTING_HAND | 1 | 2 | 2 | Big Blind 0/450 | PLAY_HAND {"card_indices":[1,2,3,4,8]} | Two Pair TT99 est 348 plus filler 2C to draw; need 450, then 2 hands left and 2 discards | 9s |
+| 7801 | port-7801 | claude-fable-5-1 | TPUW8U2C | 8 | SHOP | 2 | 3 | 4 | Small Blind (1000) | SHOP_END | , nothing else affordable; keep it for the next shop | 27s |
+| 7803 | port-7803 | claude-opus-5-5 | 4W67ZM38 | 8 | BLIND_SELECT | 1 | 0 | 4 | Small Blind (300) | SELECT_BLIND | ante 1 Small 300, Polychrome tag not a joker-now tag; play for shop | 10s |
+| 7804 | port-7804 | claude-opus-5-5 | GWCJ5DMP | 8 | SELECTING_HAND | 2 | 5 | 0 | Big Blind 650/1500 | PLAY_HAND {"card_indices":[1,6,7,8]} | dig: Pair 77 ~96 cycles 4 cards keeping QQJJ + 1 discard for Trips Q/J L2 ~800 last hand; solver p … | 2s |
+| 7805 | port-7805 | claude-opus-5-5 | FNL2JWDL | 8 | SHOP | 3 | 5 | -15 | Small Blind (3200) | SHOP_END | at -5 ( credit), slots full; Celestial would leave credit for nothing | 1s |
+| 7806 | port-7806 | claude-opus-5-5 | GICNFV6Z | 8 | SELECTING_HAND | 1 | 2 | 4 | Big Blind 0/450 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | FH JJJTT est 1710 vs 450 need, one-shot, saves 2 hands for $ | 3s |
+| 7807 | port-7807 | claude-opus-5-5 | D4BDFCY2 | 8 | SHOP | 3 | 6 | 7 | Big Blind (4800) | SHOP_BUY_BOOSTER {"slot":2} | EMERGENCY 0.26, House 6400 vs proj 2628: Jumbo Spectral is the only shot at a big swing (Wraith rar… | 1s |
+| 7809 | port-7809 | claude-opus-5-5 | B2KYV37D | 8 | SELECTING_HAND | 4 | 10 | 28 | The Pillar 0/18000 | PLAY_HAND {"card_indices":[1,2,5,6,8]} | Two Pair KKTT est 8640 of 18000 + filler 4S, solver p 0.85 | 0s |
+| 7810 | port-7810 | claude-sonnet-5-5 | EYZV71A2 | 8 | SHOP | 4 | 8 | 20 | Big Blind (13500) | SHOP_BUY_BOOSTER {"slot":1} | Arcana pack (0->6): Justice/Chariot/Hermit/Death could multiply; no xMult jokers on offer | 10s |
 
 ### Results by model x stake x deck
 
@@ -49,7 +50,7 @@ _Generated 2026-10-14 06:20:42 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 21 | 0 | 21 | 0 | 0 | 3.76 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 97 | 1 | 96 | 0 | 0 | 3.86 | 8 |
+| claude-opus-5-5 | 8 | Black | 104 | 1 | 103 | 0 | 0 | 3.79 | 8 |
 | claude-sonnet-5-5 | 8 | Black | 41 | 0 | 40 | 0 | 1 | 3.12 | 8 |
 
 ### Deepest runs
@@ -69,9 +70,9 @@ _Generated 2026-10-14 06:20:42 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 172 files in manifest; schema_ok 172, schema invalid 0; replay_ok 160, replay failed 0, awaiting replay 3, open/unended 9; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 66 / failed 0; gui (live) ok 104 / failed 0; cross-checked by both 10, disagreeing 0.
-- All files (incl. fuzz + replays): 350; schema_ok 348; replay_ok 166 (headless 66, gui 110); replay failed 0; awaiting replay 172; quarantined 2.
+- Player runs: 179 files in manifest; schema_ok 179, schema invalid 0; replay_ok 166, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 1.
+- Player-run replay verdicts by host: headless ok 72 / failed 0; gui (live) ok 105 / failed 0; cross-checked by both 11, disagreeing 0.
+- All files (incl. fuzz + replays): 357; schema_ok 355; replay_ok 172 (headless 72, gui 111); replay failed 0; awaiting replay 172; quarantined 2.
 
 ### Rejects per agent
 
@@ -79,18 +80,18 @@ _Generated 2026-10-14 06:20:42 by `balatro-data status` (edits inside this block
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 983 |
-| port-7803 | 1 | 1 | 1409 |
-| port-7804 | 1 | 1 | 1035 |
-| port-7805 | 1 | 1 | 1327 |
-| port-7807 | 1 | 1 | 1501 |
+| port-7802 | 1 | 1 | 1028 |
+| port-7803 | 1 | 1 | 1447 |
+| port-7804 | 1 | 1 | 1085 |
+| port-7805 | 1 | 1 | 1374 |
+| port-7807 | 1 | 1 | 1555 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 788 |
-| port-7806 | 0 | 0 | 1460 |
+| port-7801 | 0 | 0 | 811 |
+| port-7806 | 0 | 0 | 1502 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 1301 |
-| port-7810 | 0 | 0 | 1588 |
+| port-7809 | 0 | 0 | 1353 |
+| port-7810 | 0 | 0 | 1645 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
