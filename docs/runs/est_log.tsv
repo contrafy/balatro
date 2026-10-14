@@ -7056,3 +7056,28 @@
 7807	a8	Crimson Heart	Straight	8D 7H 6S 5D 4H	Clever Joker,Stuntman,Abstract Joker,Even Steven,Obelisk(foil),Throwback	est=77647	actual=83002	OK
 7810	a3	-	Two Pair	8H 8D 4S 4H	Raised Fist,Onyx Agate,The Duo,Arrowhead	est=5244	actual=5244	OK
 7809	a2	-	Pair	KS KD	Half Joker(holo),Burnt Joker	est=1485	actual=1485	OK
+7802	a4	-	Two Pair	9H 9C 7S 7H	Banner,Mad Joker,Mystic Summit,Popcorn,Blue Joker(negative),Gros Michel	est=7480	actual=7480	OK
+7801	a2	The Pillar	High Card	KD	Shoot the Moon,Joker,Hanging Chad	est=175	actual=175	OK
+7803	a2	-	Flush	AD JD 9D 7D 2D	Greedy Joker	est=1406	actual=1406	OK
+7809	a2	-	Pair	KS KH	Half Joker(holo),Burnt Joker	est=2040	actual=2040	OK
+7801	a2	The Pillar	Full House	TH TC TD 9C(DEBUFF) 9D	Shoot the Moon,Joker,Hanging Chad	est=2852	actual=2852	OK
+7804	a1	The Manacle	Two Pair	AS AC KC KD	Mr. Bones	est=124	actual=124	OK
+7804	a1	The Manacle	Pair	AH AD	Mr. Bones	est=64	actual=64	OK
+7804	a1	The Manacle	Pair	4H 4C	Mr. Bones	est=36	actual=36	OK
+7803	a2	-	Two Pair	TS TC 9H 9D	Greedy Joker,Sly Joker	est=540	actual=540	OK
+7805	a4	The Flint	Full House	3S 3H 3D 2S 2H	Mystic Summit,Fibonacci(foil),Mad Joker,Dusk,Jolly Joker(holo),The Duo	est=27432	actual=27432	OK
+7803	a2	-	Two Pair	KS KD 7S 7C	Greedy Joker,Sly Joker	est=520	actual=520	OK
+7807	a8	Crimson Heart	Full House	AH AD AD 3S 3H(steel)	Clever Joker,Stuntman,Abstract Joker,Even Steven,Obelisk(foil),Throwback	est=36590	actual=41817	OK
+7810	a3	The Club	Two Pair	AC(DEBUFF) AD 9S 9C(DEBUFF)	Raised Fist,Onyx Agate,The Duo,Arrowhead,Blue Joker,The Tribe	est=8740	actual=8740	OK
+7803	a2	-	Flush	AD JD 8D 7D 5D	Greedy Joker,Sly Joker	est=1444	actual=1444	OK
+7806	a7	-	Full House	QH(lucky) QD QD(wild) JC JD	Photograph,Jolly Joker,Scary Face,Hanging Chad,Blue Joker,Blackboard	est=70728	actual=70728	OK
+7804	a2	-	High Card	KC		est=15	actual=15	OK
+7809	a2	The Mark	Pair	4S 4H	Half Joker(holo),Burnt Joker	est=1632	actual=1632	OK
+7804	a2	-	High Card	AD		est=16	actual=16	OK
+7804	a2	-	Flush	AH KH JH TH 7H		est=332	actual=332	OK
+7806	a7	-	Pair	3C 3D	Photograph,Jolly Joker,Scary Face,Hanging Chad,Blue Joker,Blackboard	est=1651	actual=1651	OK
+7810	a4	-	Pair	2S 2C	Raised Fist,Onyx Agate,The Duo,Blue Joker,The Tribe	est=5916	actual=5916	OK
+7805	a5	-	Two Pair	AS AC 8S 8D(polychrome) JD(stone)	Mystic Summit,Fibonacci(foil),Mad Joker,Dusk,Jolly Joker(holo),The Duo	est=41202	actual=41202	OK
+7802	a4	The Psychic	Three of a Kind	QS QH QC	Banner,Mystic Summit,Popcorn,Blue Joker(negative),Gros Michel,Seeing Double	est=10496	actual=10496	OK
+7801	a3	-	Full House	6H 6C 6D 4S 4D	Shoot the Moon,Joker,Hanging Chad,The Duo,Credit Card(foil)	est=7038	actual=7038	OK
+7803	a2	The Flint	Two Pair	AD TS TD 8S 8D	Greedy Joker,Sly Joker,Splash	est=1070	actual=1070	OK

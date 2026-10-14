@@ -5197,3 +5197,17 @@
 7806	a7	$11	jokers=6/6	xmult_owned=1	TAROT:Death $3 | PLUS(bridge: +41% on your Pair now; decays):Popcorn{PERISHABLE(5 rounds left)} $5 | PACK:Arcana Pack $4 | PACK:Mega Arcana Pack $8 | VOUCHER:Telescope $10
 7804	a1	$5	jokers=1/6	xmult_owned=0	VOUCHER:Wasteful $10 | PACK:Arcana Pack $4 | TAROT:Justice $3 | PLUS(x0.25 per skipped blind: useless, we never skip):Throwback{ETERNAL} $6 | PACK:Standard Pack $4
 7805	a4	$26	jokers=5/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PACK:Jumbo Buffoon Pack $6 | PLUS:Misprint $4 | PLUS(main hand):Sly Joker{PERISHABLE(5 rounds left)} $3 | VOUCHER:Blank $10
+7810	a3	$13	jokers=4/6	xmult_owned=1	PLUS:Blue Joker $5 | XMULT(conditional, other hand: needs Flush, your main hand is Pair):The Tribe{PERISHABLE(5 rounds left)} $0 | VOUCHER:Grabber $10 | PACK:Standard Pack $4 | PACK:Standard Pack $4
+7809	a2	$5	jokers=2/6	xmult_owned=0	XMULT(conditional, unreliable):Blackboard{PERISHABLE(5 rounds left)} $6 | XMULT(conditional, unreliable):Driver's License{PERISHABLE(5 rounds left)} $7 | PACK:Celestial Pack $4 | VOUCHER:Clearance Sale $10 | PACK:Arcana Pack $4
+7805	a4	$20	jokers=6/6	xmult_owned=1	PACK:Jumbo Celestial Pack $6 | PLUS:Misprint $4 | PLUS(main hand):Sly Joker{PERISHABLE(5 rounds left)} $3 | VOUCHER:Blank $10
+7802	a4	$8	jokers=5/7	xmult_owned=0	PACK:Buffoon Pack $4 | PACK:Spectral Pack $4 | TAROT:The Chariot $3 | PLANET:Earth $3 | VOUCHER:Crystal Ball $10
+7803	a2	$6	jokers=1/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Director's Cut $10 | UTIL:Certificate{PERISHABLE(5 rounds left)} $6 | PACK:Jumbo Arcana Pack $6 | TAROT:The Empress $3
+7809	a2	$8	jokers=2/6	xmult_owned=0	VOUCHER:Clearance Sale $10 | PACK:Arcana Pack $4 | TAROT:The Moon $3 | PACK:Jumbo Standard Pack $6 | UTIL:Credit Card{ETERNAL} $1
+7801	a3	$13	jokers=3/6	xmult_owned=0	PACK:Buffoon Pack $4 | UTIL:Credit Card{ETERNAL,RENTAL(-$3/round)} $1 | PLUS(x0.25 per skipped blind: useless, we never skip):Throwback $6 | VOUCHER:Director's Cut $10 | PACK:Standard Pack $4
+7804	a2	$6	jokers=0/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | VOUCHER:Crystal Ball $10 | PLANET:Mars $3 | TAROT:Death $3 | PACK:Standard Pack $4
+7805	a5	$23	jokers=6/6	xmult_owned=1	XMULT:Baron $8 | PACK:Arcana Pack $4 | PACK:Spectral Pack $4 | TAROT:The Hanged Man $3 | VOUCHER:Clearance Sale $10
+7802	a4	$4	jokers=6/7	xmult_owned=0	PACK:Spectral Pack $4 | TAROT:The Chariot $3 | PLANET:Earth $3 | VOUCHER:Crystal Ball $10
+7801	a3	$9	jokers=4/6	xmult_owned=1	UTIL:Credit Card{ETERNAL,RENTAL(-$3/round)} $1 | PLUS(x0.25 per skipped blind: useless, we never skip):Throwback $6 | VOUCHER:Director's Cut $10 | PACK:Standard Pack $4
+7803	a2	$6	jokers=2/6	xmult_owned=0	VOUCHER:Director's Cut $10 | PACK:Celestial Pack $4 | PLANET:Mars $3 | PACK:Arcana Pack $4 | UTIL:Splash{ETERNAL} $3
+7809	a3	$12	jokers=2/6	xmult_owned=0	PACK:Buffoon Pack $4 | PLUS:Odd Todd{PERISHABLE(5 rounds left)} $4 | PACK:Arcana Pack $4 | VOUCHER:Crystal Ball $10 | PLUS(one suit):Gluttonous Joker{PERISHABLE(5 rounds left)} $5
+7805	a5	$20	jokers=6/6	xmult_owned=1	PACK:Jumbo Celestial Pack $6 | PACK:Jumbo Arcana Pack $6 | UTIL:Reserved Parking $6 | PLANET:Saturn $3 | VOUCHER:Clearance Sale $10
