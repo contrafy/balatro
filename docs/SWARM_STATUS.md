@@ -51,30 +51,32 @@ _Updated 07:50._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 11:00:42 by `balatro-data status` (edits inside this block are overwritten). Player runs: 263 (255 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 11:11:52 by `balatro-data status` (edits inside this block are overwritten). Player runs: 268 (258 finished, 10 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (8)
+### Live runs (10)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | QEY21ZAA | 8 | BLIND_SELECT | 5 | 9 | 4 | The Psychic (50000) | SELECT_BLIND | Boss The Psychic 50000 (5-card hands): plan FH (~34k) + two 2P (~10k each), hunt trips/FH with at m… | 9s |
-| 7802 | port-7802 | claude-opus-5-5 | F64SACWK | 8 | BLIND_SELECT | 3 | 6 | 24 | The Manacle (6400) | SELECT_BLIND | boss The Manacle 6400 (-1 hand size) | 3s |
-| 7803 | port-7803 | claude-opus-5-5 | 7MUK4NI9 | 8 | SHOP | 3 | 5 | 9 | Small Blind (3200) | SHOP_END | override Jumbo Standard (would leave , policy: Standard packs only with 5+ after); keep for Smiley … | 10s |
-| 7804 | port-7804 | claude-opus-5-5 | SL5MJZY1 | 8 | SELECTING_HAND | 2 | 4 | 0 | Big Blind 0/1500 | PLAY_HAND {"card_indices":[2,3,4,1]} | Pair QQ est 708 (Photograph+Ancient QH) of 1500, keep both discards for 2 hands | 5s |
-| 7805 | port-7805 | claude-opus-5-5 | R87RLKF6 | 8 | SHOP | 1 | 2 | 3 | Big Blind (450) | SHOP_END | left, Runner rental negative SIM; keep money for next joker | 4s |
-| 7807 | port-7807 | claude-opus-5-5 | G2HUKM9D | 8 | SELECTING_HAND | 5 | 9 | 21 | The House 0/50000 | DISCARD {"card_indices":[6,7,8]} | plan: Strength TS TC -> JJ for Trips JJJ (~42k) + fd1/fd2 (J..A) kickers; first discard junk fd6(8-… | 12s |
-| 7809 | port-7809 | claude-opus-5-5 | 7C89CEFK | 8 | SHOP | 4 | 8 | 31 | Small Blind (9000) | SHOP_BUY_BOOSTER {"slot":1} | Celestial SIM +0.07 (P clear 0.50->0.64); levels multiply through Stencil x4; 7 left | 7s |
-| 7810 | port-7810 | claude-sonnet-5-5 | 83YPG1WJ | 8 | BLIND_SELECT | 1 | 1 | 2 | Big Blind (450) | SELECT_BLIND | Big 450, must play | 3s |
+| 7801 | port-7801 | claude-fable-5-1 | 4JA3JTD1 | 8 | SELECTING_HAND | 1 | 2 | 0 | Big Blind 0/450 | PLAY_HAND {"card_indices":[3,4,8,7,6]} | Pair 99 est 616 >= 450 one-shot with Popcorn +20; low fillers; 2 unused hands pay | 3s |
+| 7802 | port-7802 | claude-opus-5-5 | LFBTMULM | 8 | SHOP | 3 | 5 | 11 | Small Blind (3200) | SHOP_END | keep 1 for xMult in next shops before Wall | 4s |
+| 7803 | port-7803 | claude-opus-5-5 | 7MUK4NI9 | 8 | PACK_OPENING | 5 | 10 | 16 | Small Blind (25000) | SELECT_PACK_CARD {"index":2} | Mercury: Pair L2 -> L3 (main hand) | 9s |
+| 7804 | port-7804 | claude-opus-5-5 | SL5MJZY1 | 8 | BLIND_SELECT | 4 | 8 | 3 | Big Blind (13500) | SELECT_BLIND | play Big 13500; Invisible Joker needs this round to be ready before Water | 7s |
+| 7805 | port-7805 | claude-opus-5-5 | R87RLKF6 | 8 | SELECTING_HAND | 3 | 9 | 5 | The House 0/6400 | PLAY_HAND {"card_indices":[3,4,5]} | House: face-down #4 sorts between KC and QC so it is K or Q: guaranteed face pair ~4275 of 6400; ke… | 41s |
+| 7806 | port-7806 | claude-opus-5-5 | REP4HF5A | 8 | SHOP | 3 | 6 | 10 | Small Blind (3200) | SHOP_BUY {"slot":1} | EMERGENCY 0.04: holo Raised Fist +10 mult +2x lowest held, only scorer (SIM ratio 0.81 vs 0.19); le… | 5s |
+| 7807 | port-7807 | claude-sonnet-5-5 | 5QV3QRN2 | 8 | SELECTING_HAND | 1 | 3 | 2 | The Window 0/600 | DISCARD {"card_indices":[1,2,6,7,9]} | Window debuffs diamonds; need 600 vs Two Pair 68; keep 8S 7S 6S 2S spade flush/straight draw, solve… | 11s |
+| 7808 | port-7808 | claude-sonnet-5-5 | CFCX6LSH | 8 | SELECTING_HAND | 1 | 3 | 4 | The Pillar 0/600 | PLAY_HAND {"card_indices":[1,2,6,7,8]} | Pillar 600: Pair 55 est 160 + fillers cycle 5 cards, keeps both discards for Banner (+60 chips); so… | 6s |
+| 7809 | port-7809 | claude-opus-5-5 | 7C89CEFK | 8 | SELECTING_HAND | 5 | 12 | 10 | Big Blind 36124/37500 | PLAY_HAND {"card_indices":[1]} | need 1376: High Card AH est 3182 clears; High Card count 0->1 keeps Pair count low for Obelisk rota… | 4s |
+| 7810 | port-7810 | claude-sonnet-5-5 | 83YPG1WJ | 8 | SHOP | 3 | 7 | 21 | Big Blind (4800) | USE_CONSUMABLE {"index":1} | Venus: Trips L3 | 1s |
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 26 | 0 | 26 | 0 | 0 | 4.0 | 7 |
+| claude-fable-5-1 | 8 | Black | 27 | 0 | 27 | 0 | 0 | 4.04 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 173 | 1 | 172 | 0 | 0 | 3.95 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 50 | 0 | 49 | 0 | 1 | 3.58 | 8 |
+| claude-opus-5-5 | 8 | Black | 175 | 1 | 174 | 0 | 0 | 3.96 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 50 | 0 | 50 | 0 | 0 | 3.6 | 8 |
 
 ### Deepest runs
 
@@ -93,28 +95,28 @@ _Generated 2026-10-14 11:00:42 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 263 files in manifest; schema_ok 263, schema invalid 0; replay_ok 250, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 156 / failed 0; gui (live) ok 116 / failed 0; cross-checked by both 22, disagreeing 0.
-- All files (incl. fuzz + replays): 453; schema_ok 451; replay_ok 256 (headless 156, gui 122); replay failed 0; awaiting replay 184; quarantined 2.
+- Player runs: 268 files in manifest; schema_ok 268, schema invalid 0; replay_ok 254, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 160 / failed 0; gui (live) ok 117 / failed 0; cross-checked by both 23, disagreeing 0.
+- All files (incl. fuzz + replays): 458; schema_ok 456; replay_ok 260 (headless 160, gui 123); replay failed 0; awaiting replay 184; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 2170 |
+| port-7805 | 2 | 2 | 2213 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1807 |
-| port-7803 | 1 | 1 | 2221 |
-| port-7804 | 1 | 1 | 1864 |
-| port-7807 | 1 | 1 | 2368 |
+| port-7802 | 1 | 1 | 1847 |
+| port-7803 | 1 | 1 | 2259 |
+| port-7804 | 1 | 1 | 1908 |
+| port-7807 | 1 | 1 | 2404 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1349 |
-| port-7806 | 0 | 0 | 2305 |
-| port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 2156 |
-| port-7810 | 0 | 0 | 2526 |
+| port-7801 | 0 | 0 | 1364 |
+| port-7806 | 0 | 0 | 2343 |
+| port-7808 | 0 | 0 | 182 |
+| port-7809 | 0 | 0 | 2193 |
+| port-7810 | 0 | 0 | 2578 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

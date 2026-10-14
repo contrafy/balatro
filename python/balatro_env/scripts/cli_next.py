@@ -589,9 +589,10 @@ def _suit_matches(c, wanted, jnames):
 
 
 def _suit_cover(scoring, jnames):
-    """suits covered by a scoring hand the way Flower Pot/Seeing Double count them: each non-Wild card fills the
-    first still-empty suit it matches (Smeared Joker lets a Heart fill Diamonds etc.), Wild cards fill leftovers."""
-    scoring = [c for c in scoring if not c.get("debuff")]  # card.lua is_suit: a debuffed card has no suit for jokers
+    """suits covered by a scoring hand the way Flower Pot counts them: each non-Wild card fills the first still-empty suit
+    it matches (Smeared Joker lets a Heart fill Diamonds etc.), Wild cards fill leftovers."""
+    # card.lua Flower Pot tests is_suit(suit, true) (bypass_debuff): a debuffed scoring card still supplies its suit
+    # (DrawSolver, 7805 THD1ZBW7: 2P JH* JD TS TC est 100 vs actual 300)
     covered = set()
     plain = [c for c in scoring if "Wild" not in _enh(c)]
     wild_n = len(scoring) - len(plain)
@@ -949,7 +950,7 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Seeing Double":
             # SMODS.seeing_double_check: one scoring card that is a Club (Wild counts) and ANOTHER that is a non-Club suit
             # (Wild counts too); 7802 est 24790 vs 49580 with a Wild as the club
-            live = [c for c in scoring if not c.get("debuff")]
+            live = [c for c in scoring if not c.get("debuff")]  # SMODS seeing_double_check uses is_suit(k): no debuff bypass
             club = [k for k, c in enumerate(live) if "Wild" in _enh(c) or _suit_matches(c, "C", jnames)]
             other = [k for k, c in enumerate(live) if "Wild" in _enh(c) or any(_suit_matches(c, s_, jnames) for s_ in ("H", "D", "S"))]
             if any(a != b for a in club for b in other):
@@ -1298,14 +1299,15 @@ def advise(d):
     adv = lines[adv_i] if adv_i is not None else ""
     m = re.match(r"ADVICE: (PLAY|DISCARD) -> b (play|disc)((?: [A-Z]+)?)((?: \d+)+)", adv)
     bname = (d.get("blind") or {}).get("name") or ""
-    special = (not m or bname in ("Crimson Heart", "Verdant Leaf") or any(c.get("rank") is None for c in lst(d.get("hand")))
+    reorder = adv.startswith("ADVICE: REORDER")  # keep the solver's lines beside a Chad/Photograph reorder (Main 11:0x)
+    special = ((not m and not reorder) or bname in ("Crimson Heart", "Verdant Leaf") or any(c.get("rank") is None for c in lst(d.get("hand")))
                or "(probe:" in adv)
     plan, mine = [], None
     if d.get("phase") == "SELECTING_HAND" and not special:
         try:
             rs = _round_solver()
             plan = rs.best_round_plan(d, estimate)
-            if plan:
+            if plan and m:
                 mine = rs.evaluate_action(d, m.group(1), [int(x) for x in m.group(4).split()], estimate)
         except Exception as e:  # the rule advice stands on its own
             lines.insert(adv_i, f"  (solver unavailable: {type(e).__name__}: {e})")
@@ -1950,7 +1952,9 @@ def _advise_rules(d):
             rest_d = sorted(rest_d, key=lambda i: _r((_cards_by_idx(d, [i]) or [{}])[0]) in fav_r if (_cards_by_idx(d, [i]) or [{}])[0].get("rank") else False)
         if boss_name != "The Mark":
             # The House/Fish/Wheel face-downs are unknown random cards: they go first (7805 kept a face-down and threw visible ones)
-            fd_set = {c.get("index") for c in hand if c.get("rank") is None}
+            fd_bd = _fd_bounds(hand)
+            # ... unless the rank-sorted hand bounds one to T..A (7807 G2HUKM9D: a sorted hand reveals the high ones)
+            fd_set = {c.get("index") for c in hand if c.get("rank") is None and fd_bd.get(c.get("index"), (2, 14))[0] < 10}
             rest_d = sorted(rest_d, key=lambda i: i not in fd_set)
         if mail_r:
             # Mail-In Rebate pays $5 per discarded card of this round's rank: discard those first (7805 missed ~$40)
@@ -2454,7 +2458,29 @@ def owned_value(d, j, mh):
         return -100
     sc = classify_joker(j.get("name"), 0, mh)[1]
     share = joker_share(d, j, mh)
-    return max(sc, min(140, 60 + int(100 * share))) if share >= 0.15 else sc
+    v = max(sc, min(140, 60 + int(100 * share))) if share >= 0.15 else sc
+    s = _stk(j)
+    if s["perishable"] and s["perish_tally"] is not None:
+        # a joker about to perish is worth its remaining rounds only (7801 QEY21ZAA: the sell choice named a permanent
+        # Joker over a 2-rounds-left Faceless)
+        v -= 35 if s["perish_tally"] <= 1 else 20 if s["perish_tally"] <= 3 else 0
+    return v
+
+
+def _diet_cola_option(d, jokers, money, free):
+    """Diet Cola bought and sold in the same shop = a free Double Tag (the next tag taken is duplicated) for its cost minus
+    its sell value (7802 F64SACWK: rated -80 as a joker). Returns a shop option tuple or None."""
+    for c in lst((d.get("shop") or {}).get("jokers")):
+        if c.get("name") != "Diet Cola" or _stk(c)["eternal"]:
+            continue
+        cost_c = int(c.get("cost") or 0)
+        net = cost_c - max(1, cost_c // 2)
+        if cost_c > money or (free <= 0 and _joker_edition(c) != "negative"):
+            return None
+        thr = any(j.get("name") == "Throwback" and not j.get("debuff") for j in jokers)
+        return ((65 if thr else 50), "FEED", f"buy {c['index']}", f"Diet Cola{stickers(c)} ${cost_c} [DOUBLE TAG FLIP: buy, then sell it at once: the next tag you take "
+                f"(a skip, the boss tag) is doubled, ${net} net]", cost_c, False, True)
+    return None
 
 
 def sticker_adjust(c, cls, base_sc, score, ante, rounds_left, own_rentals, bridge, pack_free=None, core_hint=False):
@@ -2720,7 +2746,7 @@ def shop_advise_sim(d, budget_s=6.0):
     m = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
     adv_cmd = f"{'pack' if m.group(1) == 'pack' else 'buy'} {m.group(2)}" if m else None
     sim_cmds = {r["option"].get("_cmd") for r in feas if r["option"].get("_cmd")}
-    keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING", "CAMPFIRE FEED")) or \
+    keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING", "CAMPFIRE FEED", "DOUBLE TAG FLIP")) or \
         (adv_cmd not in sim_cmds and adv.split("(")[0].strip() not in ("ADVICE: LEAVE -> b endshop", "ADVICE: REROLL -> b reroll") and gain < 0.05)
     mine0 = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
     g_rule = (key(mine0) - key(base)) if mine0 and base else 0.0
@@ -2916,7 +2942,9 @@ def _shop_rules(d):
     # card-trigger xMults (Photograph, Triboulet) fire while cards score, BEFORE joker-main +mult is added, so on a flat
     # +mult build they are worth ~+20%, not x2: they do not count toward the xMult targets
     n_x_now = sum(1 for j in jokers if alive_next(j) and j.get("name") not in CARD_TRIGGER_JOKERS and (_fits_x(classify_joker(j.get("name"), 0, mh)[0]) or _joker_edition(j) == "polychrome"))
-    n_rg = sum(1 for j in jokers if alive_next(j) and j.get("name") not in CARD_TRIGGER_JOKERS and (_rg_x(classify_joker(j.get("name"), 0, mh)[0]) or _joker_edition(j) == "polychrome"))
+    # a type xMult (Trio/Family/Order/Tribe) that carries 20%+ of the round counts too (7801 QEY21ZAA: Trio FH builds read "0 xMult")
+    n_rg = sum(1 for j in jokers if alive_next(j) and j.get("name") not in CARD_TRIGGER_JOKERS and (_rg_x(classify_joker(j.get("name"), 0, mh)[0]) or _joker_edition(j) == "polychrome"
+                                                                                                      or (j.get("name") in TYPE_X_JOKERS and joker_share(d, j, mh) >= 0.2)))
     main_lvl = int(((d.get("hand_levels") or {}).get(mh) or {}).get("level") or 1) if mh != "undecided" else 1
     # SCORE CHECK (survival by the ante's best hand: < boss/3 died 15/15, boss/3..boss/2 died 8/10, >= boss/2 died 16/106)
     best_now = typical_est(d, mh)  # an ordinary hand: the base for marginal joker values
@@ -3375,8 +3403,11 @@ def _shop_rules(d):
         if name in ("Seed Money", "Money Tree", "Clearance Sale", "Liquidation") and (emergency or (ante >= 5 and sc_ratio < 1.0)):
             sc = 5  # money compounding cannot pay back when the next boss already looks lost (7803 CS7C79XX)
         strong_v = False
-        if threat and name in ("Director's Cut", "Retcon"):
-            sc, strong_v = 88, True  # BOSS PREP: rerolls the boss that counters this build
+        thr_plan = any(j.get("name") == "Throwback" and not j.get("debuff") for j in jokers) and 4 <= ante <= 6
+        if (threat or thr_plan) and name in ("Director's Cut", "Retcon"):
+            # BOSS PREP: rerolls the boss that counters this build; on a Throwback skip-to-boss plan the skip-tag cash is
+            # spent at blind select by `rerollboss`, so it is a core buy at antes 4-6 (7807 G2HUKM9D lost The Wall with $50)
+            sc, strong_v = 88, True
         options.append((sc, "VOUCHER", f"vouch {c['index']}", f"{name} ${cost} [voucher{': reroll the boss (BOSS PREP)' if strong_v else ''}]", cost, strong_v, False))
     # Coupon Tag / free items: a $0 pack or joker is never worse than leaving (except a sticker that costs a slot or rent forever)
     options = [(((max(o[0], 89),) + tuple(o[1:5]) + (True,) + tuple(o[6:])) if o[4] == 0 and not o[1].startswith("AVOID") and "ETERNAL on a" not in o[3] and "RENTAL:" not in o[3] else o) for o in options]
@@ -3410,6 +3441,9 @@ def _shop_rules(d):
         options = [(sc + (25 if cls.startswith("PLUS") else 0), cls, cmd, label, cost, True if cls.startswith("PLUS") else strong, ns)
                    for sc, cls, cmd, label, cost, strong, ns in options]
         print("  (ante 6+ with $40+: money is worth nothing unspent; flat +chips/+mult jokers weighted up, sell utility jokers to fit them)")
+    dc_o = _diet_cola_option(d, jokers, money, free)
+    if dc_o:
+        options = [o for o in options if o[2] != dc_o[2]] + [dc_o]
     camp = next((j for j in jokers if j.get("name") == "Campfire" and not j.get("debuff")), None)
     if camp is not None:
         # Campfire: +x0.25 per card SOLD (resets after the boss): a joker bought and sold in the same shop at <= $1 net feeds

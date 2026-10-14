@@ -251,3 +251,18 @@ def test_mr_bones_ranks_above_nothing_when_the_next_blind_is_lost():
                        blinds=2, budget_s=4, min_samples=32))
     assert res["bones"]["p_blinds"][0] > res["base"]["p_blinds"][0] and res["base"]["p_adj"] >= 0
     assert res["bones"]["delta_value"] >= 0
+
+
+def test_blueprint_and_brainstorm_are_placed_to_copy_the_best_joker():
+    # 7810 UIL7HPIQ: a new Blueprint was appended rightmost (copying nothing) and lost to To Do List
+    import balatro_env.scripts.cli as cli_mod
+    owned = [joker("Joker", ability={"mult": 4}), joker("Ramen", ability={"x_mult": 2.0})]
+    st = shop_state(jokers=owned)
+    bp = shop_sim._place_copy(st, {"add_joker": joker("Blueprint")}, cli_mod)
+    assert bp["insert_at"] == 1 and bp["lead"] is None  # Joker | Blueprint | Ramen
+    st2, err, notes = shop_sim.apply_option(st, bp)
+    assert [j["name"] for j in st2["jokers"]] == ["Joker", "Blueprint", "Ramen"] and any("order:" in n for n in notes)
+    egg_first = shop_state(jokers=[joker("Egg"), joker("Ramen", ability={"x_mult": 2.0})])
+    bs = shop_sim._place_copy(egg_first, {"add_joker": joker("Brainstorm")}, cli_mod)
+    st3, err, notes = shop_sim.apply_option(egg_first, bs)
+    assert st3["jokers"][0]["name"] == "Ramen"  # Brainstorm copies the leftmost joker: move Ramen there

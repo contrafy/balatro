@@ -206,7 +206,13 @@ def apply_option(state, opt):
             j["perish_tally"] = j["ability"].get("perish_tally", 5)
         j["debuff"] = False
         j["index"] = len(jokers) + 1
-        jokers.append(j)
+        at = opt.get("insert_at")
+        jokers.insert(min(int(at), len(jokers)) if at is not None else len(jokers), j)
+    lead = opt.get("lead")
+    if lead is not None and 0 <= int(lead) < len(jokers):
+        jokers.insert(0, jokers.pop(int(lead)))  # Brainstorm copies the leftmost joker
+    if opt.get("insert_at") is not None or lead is not None:
+        notes.append("order: " + " | ".join(str(x.get("name")) for x in jokers))
     for i, j in enumerate(jokers):
         j["index"] = i + 1
     if money < 0:
@@ -841,6 +847,7 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
             if w:
                 out.append(dict(o, sell=[w], label=f"{o.get('label')} (sell {names.get(w)})"))
         options = out
+    options = [_place_copy(state, o, cli) for o in options]
     term = terminal_blind(state, len(bl), getattr(cli, "BLIND_BASE", None)) if terminal else None
     res = _run(sv, est, state, options, bl, max(0.1, budget_s - (time.perf_counter() - t0)), seed, min_samples,
                term=term)
@@ -871,6 +878,39 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
 
     res.sort(key=rank, reverse=True)
     return res
+
+
+def _place_copy(state, opt, cli):
+    """For a new Blueprint (copies the joker to its right) or Brainstorm (copies the leftmost joker): the joker order
+    the player would set with `b order`, chosen by cli.typical_est over every insertion slot (Blueprint) or every
+    owned joker moved leftmost (Brainstorm). Returns the option with insert_at / lead set (unchanged otherwise)."""
+    nj = opt.get("add_joker") or {}
+    est_fn = getattr(cli, "typical_est", None)
+    if nj.get("name") not in ("Blueprint", "Brainstorm") or est_fn is None:
+        return opt
+    sold = set(opt.get("sell") or []) if opt.get("sell") != "weakest" else set()
+    owned = [j for j in _lst(state.get("jokers")) if j.get("index") not in sold]
+    hl = state.get("hand_levels") or {}
+    mh = max(hl, key=lambda h: int((hl[h] or {}).get("played") or 0), default="Pair") if hl else "Pair"
+    new = dict(nj, debuff=False)
+    tries = []
+    if nj.get("name") == "Blueprint":
+        tries = [(i, None) for i in range(len(owned) + 1)]
+    else:
+        tries = [(len(owned), None)] + [(len(owned), i) for i in range(len(owned))]
+    best, best_s = None, -1.0
+    for at, lead in tries:
+        js = owned[:at] + [new] + owned[at:]
+        if lead is not None:
+            js.insert(0, js.pop(lead))
+        js = [dict(j, index=k + 1) for k, j in enumerate(js)]
+        try:
+            s = float(est_fn(state, mh, jokers=js))
+        except Exception:  # noqa: BLE001 - placement is a refinement; fall back to rightmost
+            return opt
+        if s > best_s:
+            best, best_s = (at, lead), s
+    return dict(opt, insert_at=best[0], lead=best[1]) if best else opt
 
 
 def terminal_blind(state, n, blind_base):

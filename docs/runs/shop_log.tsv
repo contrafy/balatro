@@ -6814,3 +6814,75 @@
 7803	a3	$16	jokers=5/6	xmult_owned=0	PACK:Jumbo Standard Pack $6 | PACK:Mega Spectral Pack $8 | PLANET:Neptune $3 | VOUCHER:Planet Merchant $10
 7809	a4	$33	jokers=3/6	xmult_owned=0	PACK:Arcana Pack $4 | VOUCHER:Hone $10 | PLANET:Uranus $3 | PACK:Jumbo Standard Pack $6 | AVOID(-10% round est: it fills a slot your Stencil counts):Obelisk{ETERNAL} $8
 7809	a4	$25	jokers=4/6	xmult_owned=0	PACK:Arcana Pack $4 | VOUCHER:Hone $10 | PLANET:Uranus $3 | PACK:Jumbo Standard Pack $6
+7810	a2	$12	jokers=1/6	xmult_owned=1	COPY(2 free Common jokers every blind while slots are free):Riff-raff{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | VOUCHER:Overstock $10 | PLANET:Uranus $3 | PACK:Arcana Pack $4 | PACK:Standard Pack $4
+7805	a2	$14	jokers=2/6	xmult_owned=0	PLUS(bridge: +60% on your Pair now; decays):Popcorn{RENTAL(-$3/round)} $1 | VOUCHER:Overstock $10 | PACK:Jumbo Standard Pack $6 | PACK:Mega Standard Pack $8 | AVOID(destroys one of your jokers every blind):Madness{ETERNAL,RENTAL(-$3/round)} $1
+7808	a1	$5	jokers=1/6	xmult_owned=0	VOUCHER:Crystal Ball $10 | PACK:Celestial Pack $4 | PACK:Jumbo Celestial Pack $6 | TAROT:The Hanged Man $3 | UTIL:Hallucination{RENTAL(-$3/round)} $1
+7804	a3	$6	jokers=4/6	xmult_owned=1	XMULT:Card Sharp{ETERNAL} $6 | UTIL:Pareidolia $5 | PACK:Celestial Pack $4 | PACK:Arcana Pack $4 | VOUCHER:Grabber $10
+7806	a1	$5	jokers=0/6	xmult_owned=0	PLUS:Banner{PERISHABLE(5 rounds left)} $5 | PACK:Buffoon Pack $4 | VOUCHER:Overstock $10 | PACK:Celestial Pack $4 | TAROT:Temperance $3
+7805	a2	$13	jokers=3/6	xmult_owned=0	VOUCHER:Overstock $10 | PACK:Jumbo Standard Pack $6 | PACK:Mega Standard Pack $8 | AVOID(destroys one of your jokers every blind):Madness{ETERNAL,RENTAL(-$3/round)} $1
+7803	a4	$21	jokers=4/6	xmult_owned=0	XMULT(decaying: x2, -0.01 per card discarded; discard less while it carries you):Ramen{PERISHABLE(5 rounds left)} $6 | PACK:Standard Pack $4 | PLUS:Misprint $4 | PACK:Spectral Pack $4 | VOUCHER:Seed Money $10
+7810	a2	$16	jokers=5/6	xmult_owned=1	PLUS:Odd Todd $4 | VOUCHER:Overstock $10 | PACK:Mega Arcana Pack $8 | PACK:Arcana Pack $4 | AVOID(destroys one of your jokers every blind):Madness $7
+7805	a3	$17	jokers=3/6	xmult_owned=0	PACK:Celestial Pack $4 | TAROT:The Tower $3 | VOUCHER:Tarot Merchant $10 | PACK:Standard Pack $4 | UTIL:Delayed Gratification{ETERNAL,RENTAL(-$3/round)} $1
+7802	a1	$6	jokers=0/6	xmult_owned=0	PLUS(common condition):Mad Joker $4 | PACK:Buffoon Pack $4 | VOUCHER:Director's Cut $10 | PLANET:Earth $3 | PACK:Jumbo Celestial Pack $6
+7810	a2	$12	jokers=6/6	xmult_owned=1	VOUCHER:Overstock $10 | PACK:Mega Arcana Pack $8 | PACK:Arcana Pack $4 | AVOID(destroys one of your jokers every blind):Madness $7
+7803	a4	$15	jokers=5/6	xmult_owned=0	PACK:Standard Pack $4 | PLUS:Misprint $4 | PACK:Spectral Pack $4 | VOUCHER:Seed Money $10
+7805	a3	$13	jokers=3/6	xmult_owned=0	TAROT:The Tower $3 | VOUCHER:Tarot Merchant $10 | PACK:Standard Pack $4 | UTIL:Delayed Gratification{ETERNAL,RENTAL(-$3/round)} $1
+7809	a5	$22	jokers=4/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | VOUCHER:Crystal Ball $10 | PACK:Standard Pack $4 | AVOID(-33% round est: it fills a slot your Stencil counts):Superposition{ETERNAL} $4 | AVOID(-25% round est: it fills a slot your Stencil counts):Crazy Joker{ETERNAL,RENTAL(-$3/round)} $1
+7808	a2	$6	jokers=1/6	xmult_owned=0	VOUCHER:Hone $10 | ECON:Satellite{PERISHABLE(5 rounds left)} $6 | PLANET:Mercury $3 | PACK:Celestial Pack $4 | PACK:Jumbo Celestial Pack $6
+7804	a3	$4	jokers=5/6	xmult_owned=2	PLANET:Jupiter $3 | PACK:Mega Celestial Pack $8 | UTIL:8 Ball $5 | VOUCHER:Grabber $10 | PACK:Standard Pack $4
+7802	a1	$8	jokers=1/6	xmult_owned=0	PLUS:Raised Fist $5 | VOUCHER:Director's Cut $10 | PLANET:Neptune $3 | PACK:Arcana Pack $4 | PACK:Celestial Pack $4
+7810	a3	$21	jokers=6/6	xmult_owned=1	XMULT(final hand: x3 every round):Acrobat $6 | PACK:Spectral Pack $4 | VOUCHER:Magic Trick $10 | PACK:Jumbo Standard Pack $6 | AVOID(decays):Turtle Bean{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7806	a1	$5	jokers=1/6	xmult_owned=0	PLUS(bridge: +750% on your Two Pair now; 1-in-6 destroyed each round):Gros Michel $5 | PACK:Buffoon Pack $4 | VOUCHER:Overstock $10 | PACK:Arcana Pack $4 | PLUS(adds ~0 now: grows only with its condition):Wily Joker{ETERNAL,RENTAL(-$3/round)} $1
+7810	a3	$18	jokers=6/6	xmult_owned=1	PACK:Spectral Pack $4 | VOUCHER:Magic Trick $10 | PACK:Jumbo Standard Pack $6 | AVOID(decays):Turtle Bean{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7805	a3	$3	jokers=3/6	xmult_owned=0	PACK:Buffoon Pack $4 | PACK:Celestial Pack $4 | PLUS(retrigger: retrigger first card 2x):Hanging Chad{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | PLANET:Jupiter $3 | VOUCHER:Tarot Merchant $10
+7803	a4	$15	jokers=5/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PACK:Standard Pack $4 | UTIL:Reserved Parking $6 | VOUCHER:Seed Money $10 | PLUS(adds ~0 now: grows only with its condition):Devious Joker{ETERNAL} $4
+7802	a2	$10	jokers=2/6	xmult_owned=0	PLUS(other hand):Wily Joker $4 | PACK:Jumbo Celestial Pack $6 | UTIL:Chaos the Clown $4 | VOUCHER:Paint Brush $10 | PACK:Standard Pack $4
+7802	a2	$6	jokers=3/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | UTIL:Chaos the Clown $4 | VOUCHER:Paint Brush $10 | PACK:Standard Pack $4
+7806	a2	$7	jokers=2/6	xmult_owned=0	PLUS(common condition):NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Scary Face{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | PLUS(one suit):Wrathful Joker{ETERNAL} $5 | VOUCHER:Paint Brush $10 | PACK:Celestial Pack $4 | PACK:Jumbo Standard Pack $6
+7809	a5	$11	jokers=4/6	xmult_owned=0	TAROT:The Empress $3 | VOUCHER:Crystal Ball $10 | PACK:Standard Pack $4 | AVOID(-33% round est: it fills a slot your Stencil counts):To Do List{ETERNAL} $4
+7806	a2	$6	jokers=3/6	xmult_owned=0	PACK:Celestial Pack $4 | PLUS(one suit):Wrathful Joker{ETERNAL} $5 | VOUCHER:Paint Brush $10 | PACK:Jumbo Standard Pack $6
+7810	a3	$23	jokers=6/6	xmult_owned=1	PACK:Celestial Pack $4 | PLUS(+mult = sell value of your other jokers):Swashbuckler{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | VOUCHER:Magic Trick $10 | PACK:Standard Pack $4 | PLUS(other hand):Wily Joker{ETERNAL} $4
+7803	a4	$19	jokers=5/6	xmult_owned=0	PLUS:Blue Joker{ETERNAL} $5 | PACK:Celestial Pack $4 | PLUS(+mult = sell value of your other jokers):Swashbuckler $4 | PACK:Arcana Pack $4 | VOUCHER:Seed Money $10
+7807	a1	$5	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Paint Brush $10 | PLANET:Earth $3 | PACK:Celestial Pack $4 | XMULT(growth: must be fed):Hologram{ETERNAL,RENTAL(-$3/round)} $1
+7804	a4	$9	jokers=4/6	xmult_owned=2	PACK:Buffoon Pack $4 | PLUS(retrigger: retrigger face cards):Sock and Buskin{PERISHABLE(5 rounds left)} $6 | TAROT:The Fool $3 | VOUCHER:Hieroglyph $10 | PACK:Standard Pack $4
+7805	a3	$3	jokers=3/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PACK:Arcana Pack $4 | VOUCHER:Tarot Merchant $10 | TAROT:Temperance $3 | PLUS(adds ~0 now: grows only with its condition):Red Card{RENTAL(-$3/round)} $1
+7806	a2	$5	jokers=3/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | VOUCHER:Paint Brush $10 | PLANET:Pluto $3 | PLANET:Saturn $3 | PACK:Jumbo Arcana Pack $6
+7802	a2	$13	jokers=3/6	xmult_owned=0	UTIL:Credit Card{ETERNAL} $0 | VOUCHER:Paint Brush $10 | PLUS:Banner{ETERNAL,RENTAL(-$3/round)} $1 | PACK:Arcana Pack $4 | PACK:Standard Pack $4
+7803	a4	$14	jokers=6/6	xmult_owned=0	PACK:Celestial Pack $4 | PLUS(+mult = sell value of your other jokers):Swashbuckler $4 | PACK:Arcana Pack $4 | VOUCHER:Seed Money $10
+7809	a5	$14	jokers=4/6	xmult_owned=0	PACK:Arcana Pack $4 | TAROT:Judgement $3 | VOUCHER:Crystal Ball $10 | PACK:Standard Pack $4 | AVOID(-28% round est: it fills a slot your Stencil counts):Joker{ETERNAL} $2
+7802	a2	$13	jokers=4/6	xmult_owned=0	VOUCHER:Paint Brush $10 | PLUS:Banner{ETERNAL,RENTAL(-$3/round)} $1 | PACK:Arcana Pack $4 | PACK:Standard Pack $4
+7805	a3	$5	jokers=3/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PACK:Arcana Pack $4 | VOUCHER:Tarot Merchant $10 | PLUS(adds ~0 now: grows only with its condition):Red Card{RENTAL(-$3/round)} $1
+7804	a4	$5	jokers=5/6	xmult_owned=2	PLUS(retrigger: retrigger face cards):Sock and Buskin{PERISHABLE(5 rounds left)} $6 | TAROT:The Fool $3 | VOUCHER:Hieroglyph $10 | PACK:Standard Pack $4
+7810	a3	$27	jokers=6/6	xmult_owned=1	PACK:Mega Arcana Pack $8 | PACK:Jumbo Arcana Pack $6 | VOUCHER:Magic Trick $10 | PLANET:Earth $3 | PLUS(one suit):Gluttonous Joker{ETERNAL} $5
+7808	a1	$4	jokers=0/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Banner{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | PACK:Buffoon Pack $4 | VOUCHER:Seed Money $10 | PACK:Jumbo Celestial Pack $6 | COPY(copies the joker to its right / your leftmost joker: `order` it beside your best xMult or flat joker):Blueprint{ETERNAL,RENTAL(-$3/round)} $1
+7806	a2	$8	jokers=3/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PACK:Celestial Pack $4 | VOUCHER:Paint Brush $10 | PLANET:Neptune $3 | UTIL:Delayed Gratification{PERISHABLE(5 rounds left)} $4
+7801	a1	$5	jokers=0/6	xmult_owned=0	PLUS(bridge: +1000% on your Pair now; decays):Popcorn{RENTAL(-$3/round)} $1 | PACK:Buffoon Pack $4 | VOUCHER:Crystal Ball $10 | PACK:Jumbo Arcana Pack $6 | TAROT:The Chariot $3
+7802	a3	$22	jokers=4/6	xmult_owned=0	PACK:Jumbo Buffoon Pack $6 | PLUS(main hand):Clever Joker{RENTAL(-$3/round)} $1 | PACK:Arcana Pack $4 | VOUCHER:Overstock $10 | TAROT:The Tower $3
+7801	a1	$4	jokers=1/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Crystal Ball $10 | PACK:Jumbo Arcana Pack $6 | TAROT:The Chariot $3
+7807	a1	$6	jokers=1/6	xmult_owned=0	PACK:Buffoon Pack $4 | UTIL:Delayed Gratification $6 | PLUS(adds ~0 now: grows only with its condition):Droll Joker{ETERNAL} $4 | VOUCHER:Paint Brush $10 | PACK:Arcana Pack $4
+7803	a5	$20	jokers=6/6	xmult_owned=0	PACK:Celestial Pack $4 | PACK:Arcana Pack $4 | PLANET:Uranus $3 | VOUCHER:Hone $10 | UTIL:To Do List{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7802	a3	$16	jokers=5/6	xmult_owned=0	PLUS(main hand):Clever Joker{RENTAL(-$3/round)} $1 | PACK:Arcana Pack $4 | TAROT:The Tower $3 | VOUCHER:Overstock $10
+7810	a3	$33	jokers=6/6	xmult_owned=1	PLUS(<=3 cards: not your main hand):Half Joker{ETERNAL} $5 | PLANET:Saturn $3 | PACK:Jumbo Arcana Pack $6 | VOUCHER:Magic Trick $10
+7806	a3	$15	jokers=1/6	xmult_owned=0	PACK:Celestial Pack $4 | VOUCHER:Wasteful $10 | PACK:Standard Pack $4 | XMULT(conditional, suit: rarely fires outside a Flush build, ~x1 on your deck now):Flower Pot{ETERNAL} $6 | UTIL:Hallucination{ETERNAL,RENTAL(-$3/round)} $1
+7802	a3	$15	jokers=6/6	xmult_owned=0	PACK:Arcana Pack $4 | TAROT:The Tower $3 | VOUCHER:Overstock $10
+7808	a1	$4	jokers=1/6	xmult_owned=0	VOUCHER:Seed Money $10 | PLANET:Pluto $3 | PACK:Celestial Pack $4 | PACK:Jumbo Celestial Pack $6 | TAROT:The Tower $3
+7807	a1	$2	jokers=2/6	xmult_owned=0	UTIL:Delayed Gratification $6 | PACK:Arcana Pack $4 | VOUCHER:Paint Brush $10 | PLUS(adds ~0 now: grows only with its condition):Droll Joker{ETERNAL} $4
+7804	a4	$6	jokers=4/6	xmult_owned=1	PLANET:Saturn $3 | VOUCHER:Hieroglyph $10 | PACK:Jumbo Standard Pack $6 | PACK:Mega Standard Pack $8 | PLUS(other hand):Zany Joker{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7810	a3	$27	jokers=6/6	xmult_owned=1	PACK:Jumbo Arcana Pack $6 | VOUCHER:Magic Trick $10
+7806	a3	$10	jokers=1/6	xmult_owned=0	PLUS:Raised Fist{ETERNAL} $8 | PACK:Celestial Pack $4 | TAROT:The Lovers $3 | VOUCHER:Wasteful $10 | PACK:Standard Pack $4
+7809	a5	$16	jokers=4/6	xmult_owned=0	PACK:Celestial Pack $4 | PACK:Celestial Pack $4 | VOUCHER:Crystal Ball $10 | AVOID(-33% round est: it fills a slot your Stencil counts):Diet Cola $6 | PLUS(adds ~0 now: grows only with its condition):Hanging Chad{RENTAL(-$3/round)} $1
+7801	a1	$7	jokers=2/6	xmult_owned=0	PLUS(<=3 cards: fires on every Pair/Trips play):NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Half Joker{RENTAL(-$3/round)} $1 | VOUCHER:Crystal Ball $10 | PLANET:Uranus $3 | PACK:Celestial Pack $4 | PACK:Jumbo Arcana Pack $6
+7802	a3	$11	jokers=6/6	xmult_owned=0	PACK:Celestial Pack $4 | PLUS(bridge: +60% on your Two Pair now; decays):Popcorn{RENTAL(-$3/round)} $1 | PACK:Arcana Pack $4 | UTIL:Pareidolia $5 | VOUCHER:Overstock $10
+7808	a2	$7	jokers=1/6	xmult_owned=0	VOUCHER:Wasteful $10 | UTIL:Splash $3 | PACK:Arcana Pack $4 | PACK:Celestial Pack $4 | TAROT:The Magician $3
+7805	a4	$7	jokers=3/6	xmult_owned=0	PACK:Arcana Pack $4 | PLANET:Saturn $3 | VOUCHER:Paint Brush $10 | PACK:Standard Pack $4 | PLUS(one suit):Greedy Joker{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7810	a4	$32	jokers=6/6	xmult_owned=1	PACK:Celestial Pack $4 | VOUCHER:Crystal Ball $10 | PACK:Standard Pack $4 | UTIL:Invisible Joker{RENTAL(-$3/round)} $1 | PLUS(adds ~0 now: grows only with its condition):Ride the Bus{ETERNAL,RENTAL(-$3/round)} $1
+7801	a1	$6	jokers=3/6	xmult_owned=0	PACK:Celestial Pack $4 | VOUCHER:Crystal Ball $10 | PLANET:Uranus $3 | PACK:Jumbo Arcana Pack $6
+7803	a5	$20	jokers=6/6	xmult_owned=0	PLUS(common condition):Smiley Face{ETERNAL} $4 | VOUCHER:Hone $10
+7802	a3	$13	jokers=6/6	xmult_owned=0	PACK:Celestial Pack $4 | PACK:Arcana Pack $4 | UTIL:Pareidolia $5 | VOUCHER:Overstock $10
+7807	a2	$7	jokers=2/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Shoot the Moon{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | VOUCHER:Crystal Ball $10 | PACK:Celestial Pack $4 | PACK:Standard Pack $4 | UTIL:Drunkard{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7806	a3	$9	jokers=2/6	xmult_owned=0	PACK:Celestial Pack $4 | PLUS(adds ~0 now: grows only with its condition):Red Card $5 | VOUCHER:Wasteful $10 | TAROT:Temperance $3 | PACK:Jumbo Standard Pack $6
+7801	a2	$11	jokers=3/6	xmult_owned=0	PACK:Celestial Pack $4 | VOUCHER:Wasteful $10 | PLUS(one suit):Lusty Joker $5 | PLANET:Venus $3 | PACK:Standard Pack $4
+7804	a4	$7	jokers=4/6	xmult_owned=1	PACK:Celestial Pack $4 | PACK:Spectral Pack $4 | AVOID(destroys one of your jokers every blind):Madness $9 | PLUS(fires on any pair-family hand):Sly Joker{ETERNAL,RENTAL(-$3/round)} $1 | VOUCHER:Hieroglyph $10
+7806	a3	$6	jokers=2/6	xmult_owned=0	PACK:Celestial Pack $4 | PLANET:Saturn $3 | VOUCHER:Wasteful $10 | PACK:Jumbo Standard Pack $6 | AVOID(-1 hand size):Merry Andy{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7807	a2	$4	jokers=3/6	xmult_owned=0	VOUCHER:Crystal Ball $10 | PLUS(one suit):Wrathful Joker{ETERNAL,RENTAL(-$3/round)} $1 | TAROT:The Tower $3 | PACK:Jumbo Standard Pack $6 | PACK:Jumbo Standard Pack $6
+7805	a4	$4	jokers=3/6	xmult_owned=0	PACK:Celestial Pack $4 | XMULT(conditional, unreliable, ~x1 on your deck now):The Idol $6 | PACK:Jumbo Arcana Pack $6 | VOUCHER:Paint Brush $10 | LEVELS(1/4 chance to level the played hand):Space Joker{ETERNAL,RENTAL(-$3/round)} $1

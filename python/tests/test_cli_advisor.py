@@ -256,9 +256,10 @@ def test_rental_money_joker_penalised():
     assert "net ~$0" in _out(cli.shop_advise, d)
 
 
-def test_debuffed_club_does_not_count_for_suits():
+def test_debuffed_club_still_counts_for_flower_pot_suits():
+    # card.lua Flower Pot: is_suit(suit, true) bypasses the debuff (7805 THD1ZBW7)
     club = dict(_card("King", "Clubs", 1), debuff=True)
-    assert "C" not in cli._suit_cover([club, _card("King", "Hearts", 2)], [])
+    assert "C" in cli._suit_cover([club, _card("King", "Hearts", 2)], [])
 
 
 def test_main_mult_source_is_never_dead_weight():
