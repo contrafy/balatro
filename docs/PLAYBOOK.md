@@ -1,4 +1,4 @@
-# Balatro Agent Playbook (Black Deck, White Stake)
+# Balatro Agent Playbook (Black Deck, Gold Stake)
 
 Curated learnings for agents playing through the RL bridge. Read fully before every run.
 Append your post-mortem to `docs/runs/` (section 9) so the next run improves.
@@ -79,12 +79,26 @@ Ignore `ab={...}` internals: `x_mult: 1` just means "no xMult stored", it does n
    Death direction: `pick N i j` / `use N i j` turns the LEFT card (lower hand position) into a copy of the RIGHT one.
    To duplicate a Glass King at idx 7 onto a junk card at idx 2: targets `2 7`. The CLI prints the resulting copy.
 6. `GAME_OVER`: write the run log (section 9). Do not start another run unless told.
-7. WIN (you beat the ante 8 boss; state shows `won` true / a win screen): write the run log, then immediately continue at the
-   NEXT STAKE with the next seed you were assigned: `start Black Deck <current stake + 1> --seed S` (the state line shows
-   `stake N`). Stakes: 1 White, 2 Red (no Small
-   Blind reward), 3 Green (blinds scale faster), 4 Black (Eternal jokers appear: cannot be sold), 5 Blue (-1 discard),
-   6 Purple (scale faster still), 7 Orange (Perishable jokers), 8 Gold (Rental jokers). Keep the same run-log file and
-   add a new section per stake. Keep going until you lose.
+7. WIN (you beat the ante 8 boss; state shows `won` true / a win screen): write the run log and stop. One run per agent.
+
+## 2a. Gold Stake (8) on Black Deck: the target (rules verified in the game source)
+
+Gold includes every lower stake's modifier. Together with Black Deck (+1 joker slot, -1 hand):
+
+| Source | Effect |
+|---|---|
+| Black Deck | 3 hands per round, 6 joker slots (5 + 1) |
+| Red (2) | Small Blind pays $0 |
+| Green (3) + Purple (6) | blind requirements scale fastest (`scaling = 3`); ante 8 base is far above stake 1-2 numbers in section 7 |
+| Black (4) | 30% of shop and pack jokers are Eternal: they can never be sold (dead weight forever if wrong) |
+| Blue (5) | -1 discard: with Black Deck you have 3 hands and 2 discards per round |
+| Orange (7) | 30% of shop and pack jokers are Perishable: debuffed (scores nothing) after 5 rounds |
+| Gold (8) | 30% of shop and pack jokers are Rental: cost $1 to buy, then -$3 at the end of every round |
+
+The stake 1-3 strategy below was learned on easier stakes; treat its numbers as lower bounds. Gold-specific lessons are
+added here as runs report them. Until then: read the sticker of every joker before buying (`ability.eternal`,
+`perishable` + `perish_tally`, `rental`), count a rental as -$3 per round (about -$15 per ante plus lost interest), and
+only keep a perishable joker as a short-term bridge.
 
 ## 3. Scoring facts (verified in-game)
 

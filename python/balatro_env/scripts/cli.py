@@ -96,6 +96,26 @@ def usable_cons():
     return {i for a in legal_entries(LEGAL, "USE_CONSUMABLE") for i in ((a.get("params") or {}).get("index") or {}).get("one_of", [])}
 
 
+def stickers(c):
+    """Stake stickers on a joker (owned, shop or pack): eternal (never sellable), perishable (debuffed after N rounds),
+    rental (-$3 per round)."""
+    src = dict(c.get("ability") or {})
+    st = c.get("stickers")
+    if isinstance(st, dict):
+        src.update(st)
+    elif isinstance(st, list):
+        src.update({s: True for s in st})
+    src.update({k: c[k] for k in ("eternal", "perishable", "perish_tally", "rental") if k in c})
+    out = []
+    if src.get("eternal"):
+        out.append("ETERNAL")
+    if src.get("perishable"):
+        out.append(f"PERISHABLE({src.get('perish_tally', '?')} rounds left)")
+    if src.get("rental"):
+        out.append("RENTAL(-$3/round)")
+    return f"{{{','.join(out)}}}" if out else ""
+
+
 def show(d):
     ph = d.get("phase")
     b = d.get("blind") or {}
@@ -110,7 +130,7 @@ def show(d):
         print("  suits " + " ".join(f"{k}{v}" for k, v in suits.most_common()) + " | ranks " + " ".join(f"{k}x{v}" for k, v in ranks.most_common() if v > 1))
     jk = lst(d.get("jokers"))
     if jk:
-        print(f"Jokers ({len(jk)}/{d.get('joker_slots')}) cons_slots {d.get('consumable_slots')} hand_size {d.get('hand_size')}: " + " | ".join(f"[{j.get('index', i + 1)}] {j.get('name')} ({JOKER_DESC.get(j.get('name'), 'effect not in table')}) sell${j.get('sell_cost')}"
+        print(f"Jokers ({len(jk)}/{d.get('joker_slots')}) cons_slots {d.get('consumable_slots')} hand_size {d.get('hand_size')}: " + " | ".join(f"[{j.get('index', i + 1)}] {j.get('name')}{stickers(j)} ({JOKER_DESC.get(j.get('name'), 'effect not in table')}) sell${j.get('sell_cost')}"
                                     + (f" {j['edition'].get('type', j['edition']) if isinstance(j.get('edition'), dict) else j['edition']}" if j.get("edition") else "")
                                     + (f" ab={compact_ability(j.get('ability'))}" if compact_ability(j.get('ability')) else "")
                                     for i, j in enumerate(jk)))
@@ -126,7 +146,7 @@ def show(d):
         print("Levels: " + ", ".join(lv))
     sh = d.get("shop")
     if sh and ph == "SHOP":
-        js = " ".join(f"J{c['index']}:{c.get('name')}${c.get('cost')}" + (f"[{c['edition']}]" if c.get("edition") else "") + f"<{c.get('set')}>" for c in lst(sh.get("jokers")))
+        js = " ".join(f"J{c['index']}:{c.get('name')}{stickers(c)}${c.get('cost')}" + (f"[{c['edition']}]" if c.get("edition") else "") + f"<{c.get('set')}>" for c in lst(sh.get("jokers")))
         vs = " ".join(f"V{c['index']}:{c.get('name')}${c.get('cost')}" for c in lst(sh.get("vouchers")))
         bs = " ".join(f"B{c['index']}:{c.get('name')}${c.get('cost')}" for c in lst(sh.get("boosters")))
         print(f"Shop: {js} | {vs} | {bs} | reroll ${sh.get('reroll_cost')}")
@@ -239,7 +259,7 @@ def pack_card(c):
         extra.append(str(c["edition"]))
     if c.get("set"):
         extra.append(str(c["set"]))
-    return n + (f"({','.join(extra)})" if extra else "")
+    return n + stickers(c) + (f"({','.join(extra)})" if extra else "")
 
 
 RANK_VAL = {"2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9, "T": 10, "J": 11, "Q": 12, "K": 13, "A": 14}
