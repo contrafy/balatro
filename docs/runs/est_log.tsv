@@ -14041,3 +14041,42 @@
 7811	a5	-	Two Pair	5H 5D 4S 4D	Devious Joker,Raised Fist,Mad Joker,Campfire(holo),Blackboard,Ice Cream	est=16950	actual=16950	OK
 7812	a4	The Tooth	High Card	AC	Blue Joker,Mystic Summit,Scary Face,Smiley Face,Acrobat,Hanging Chad	est=1632	actual=1632	OK
 7816	a2	-	High Card	3S	Fibonacci,Drunkard,Banner	est=882	actual=882	OK
+7815	a3	-	Pair	AS AH	Odd Todd,Zany Joker,Green Joker,Popcorn	est=2256	actual=2256	OK
+7813	a2	The Wheel	Two Pair	KC KD 5C 5D	Ride the Bus,Raised Fist,Ramen,Wily Joker	est=2200	actual=2200	OK
+7804	a4	The Eye	Straight	KC QH JH TD 9S	Sly Joker(foil),Smiley Face,Popcorn,Swashbuckler,Seeing Double,Raised Fist	est=11352	actual=11352	OK
+7812	a4	The Tooth	High Card	QS	Blue Joker,Mystic Summit,Scary Face,Smiley Face,Acrobat,Hanging Chad	est=17391	actual=17391	OK
+7815	a3	-	Two Pair	9H 9C 8H 8C	Odd Todd,Zany Joker,Green Joker,Popcorn	est=4928	actual=4928	OK
+7817	a3	-	Two Pair	8C 8D 3S 3C	Supernova,Hanging Chad,Banner,Crazy Joker,Scholar	est=354	actual=354	OK
+7804	a4	The Eye	Three of a Kind	4S 4C 4D	Sly Joker(foil),Smiley Face,Popcorn,Swashbuckler,Seeing Double,Raised Fist	est=12312	actual=12312	OK
+7814	a2	-	High Card	AH	Satellite,Raised Fist	est=336	actual=336	OK
+7810	a3	-	Pair	QC QD	Smiley Face,Abstract Joker,Half Joker(foil),Photograph	est=5035	actual=5035	OK
+7816	a2	-	High Card	AS	Fibonacci,Drunkard,Banner	est=954	actual=954	OK
+7818	a3	-	Two Pair	JS JC 9C 9D	Droll Joker,Supernova,Blue Joker,Swashbuckler	est=2324	actual=2324	OK
+7803	a4	-	Two Pair	AC AD JH JD	Popcorn,Mystic Summit	est=2460	actual=2460	OK
+7806	a1	-	Three of a Kind	AH AC AD		est=189	actual=189	OK
+7817	a3	-	Flush	QS JS 7S 5S 2S	Supernova,Hanging Chad,Banner,Crazy Joker,Scholar	est=1192	actual=1192	OK
+7814	a2	-	Two Pair	TS TD 9S 9D	Satellite,Raised Fist	est=1044	actual=1044	OK
+7816	a2	-	High Card	5C	Fibonacci,Drunkard,Banner	est=900	actual=900	OK
+7803	a4	-	Pair	TS TC	Popcorn,Mystic Summit	est=870	actual=870	OK
+7806	a1	-	Flush	KS QS 7S 6S 2S		est=280	actual=280	OK
+7803	a4	-	Three of a Kind	8S 8C 8D	Popcorn,Mystic Summit	est=1620	actual=1620	OK
+7815	a3	-	Pair	7C 7D	Odd Todd,Zany Joker,Green Joker,Popcorn,Sly Joker(foil)	est=4092	actual=4092	OK
+7817	a3	-	Pair	AH AD	Supernova,Hanging Chad,Banner,Crazy Joker,Scholar	est=3880	actual=3880	OK
+7814	a2	-	Pair	KH KC	Satellite,Raised Fist	est=540	actual=540	OK
+7818	a3	-	Straight	7S 6H 5S 4H 3C	Droll Joker,Supernova,Blue Joker,Swashbuckler	est=1476	actual=1476	OK
+7807	a4	-	Flush	QH TH 8H 6H 2H	Blue Joker,Crazy Joker,Smiley Face,The Tribe,Credit Card,The Trio	est=8436	actual=8436	OK
+7815	a3	-	Two Pair	9S 9C 5C 5D	Odd Todd,Zany Joker,Green Joker,Popcorn,Sly Joker(foil)	est=8632	actual=8632	OK
+7818	a3	-	Two Pair	QH QC 5H 5D	Droll Joker,Supernova,Blue Joker,Swashbuckler	est=1920	actual=1920	OK
+7809	a3	-	Three of a Kind	8H(Goldseal) 8H(Goldseal) 8D	Shoot the Moon,Mystic Summit	est=2106	actual=2106	OK
+7807	a4	-	Flush	8C 8C 7C 4C 2C	Blue Joker,Crazy Joker,Smiley Face,The Tribe,Credit Card,The Trio	est=5740	actual=5740	OK
+7810	a3	The Water	Pair	JS JC	Smiley Face,Abstract Joker,Half Joker(foil),Photograph,Scary Face	est=6355	actual=6355	OK
+7808	a4	The Tooth	Two Pair	8H 8D 5H 5C	Smiley Face,Banner,Photograph,Raised Fist,Jolly Joker,Crazy Joker	est=3906	actual=3906	OK
+7809	a3	-	High Card	KD	Shoot the Moon,Mystic Summit	est=630	actual=630	OK
+7802	a4	-	Flush	JH JD 8H 7D 6H	Walkie Talkie,Arrowhead(holo),Ice Cream,Scary Face,Popcorn,Smeared Joker	est=7514	actual=7514	OK
+7810	a3	The Water	High Card	KD	Smiley Face,Abstract Joker,Half Joker(foil),Photograph,Scary Face	est=3515	actual=3515	OK
+7805	a4	-	Straight	AD KS QS JH TH	Wrathful Joker,Devious Joker,Chaos the Clown(foil),Gros Michel,Blue Joker,Half Joker	est=9548	actual=9548	OK
+7809	a3	-	Two Pair	QH QC 2H 2C	Shoot the Moon,Mystic Summit	est=748	actual=748	OK
+7802	a4	-	Straight	AD 5H 4S 3S 2D	Walkie Talkie,Arrowhead(holo),Ice Cream,Scary Face,Popcorn,Smeared Joker	est=9310	actual=9310	OK
+7813	a3	-	Flush	JH 9H 6H 4H 3H	Ride the Bus,Raised Fist,Ramen,Wily Joker,Seltzer	est=2376	actual=2376	OK
+7816	a2	The Wall	Pair	9S 9H	Fibonacci,Drunkard,Banner,Erosion	est=236	actual=236	OK
+7808	a4	The Tooth	Straight	KH QD JS TC 9C	Smiley Face,Banner,Photograph,Raised Fist,Jolly Joker,Crazy Joker	est=8450	actual=8450	OK
