@@ -12161,3 +12161,32 @@
 7811	a1	The Goad	Full House	AS(DEBUFF) AC AD 5C 5D	Smiley Face	est=288	actual=288	OK
 7815	a3	-	Two Pair	6S 6H 4S 4H	Mystic Summit,Photograph,Abstract Joker,Jolly Joker	est=1480	actual=1480	OK
 7817	a3	-	Pair	6H 6D	Credit Card,Wrathful Joker,Acrobat,Marble Joker	est=44	actual=44	OK
+7813	a1	-	Two Pair	AS AC 5H 5C		est=104	actual=104	OK
+7811	a1	The Goad	High Card	KC	Smiley Face	est=90	actual=90	OK
+7807	a3	The Head	Two Pair	AC AD 7C 7D	Blueprint,Odd Todd,Chaos the Clown,Credit Card(holo),Mad Joker	est=6688	actual=6688	OK
+7804	a6	The Manacle	High Card	KD	Sly Joker,Abstract Joker,Burglar,Blueprint,Obelisk,Ramen	est=10240	actual=10240	OK
+7803	a2	The Flint	Straight	7H 6S(mult) 5C 4S(mult) 3H	Wrathful Joker,Blue Joker	est=1984	actual=1984	OK
+7813	a1	-	Straight	8D 7D 6H 5S 4H		est=240	actual=240	OK
+7810	a3	The Psychic	Three of a Kind	8C 8S 8H	Walkie Talkie,Mad Joker,Jolly Joker,Scary Face,Onyx Agate,Hanging Chad	est=2240	actual=2240	OK
+7809	a5	The Mouth	Pair	5S 5C	Spare Trousers,Arrowhead,Scary Face,Misprint,Constellation,Sly Joker	est=0	actual=0	MISS
+7803	a2	The Flint	High Card	5S	Wrathful Joker,Blue Joker	est=324	actual=328	OK
+7809	a5	The Mouth	Pair	JS JD	Spare Trousers,Arrowhead,Scary Face,Misprint,Constellation,Sly Joker	est=0	actual=0	MISS
+7804	a6	The Manacle	High Card	AS	Sly Joker,Abstract Joker,Burglar,Blueprint,Obelisk,Ramen	est=12022	actual=12022	OK
+7805	a5	The Club	Pair	2C(DEBUFF) 2D	Shoot the Moon,Seeing Double,Sly Joker,Turtle Bean,Acrobat(polychrome),Throwback	est=9702	actual=9702	OK
+7808	a3	-	Two Pair	JS JH 6S 6C	Droll Joker,Mad Joker,Sly Joker	est=1586	actual=1586	OK
+7805	a5	The Club	Pair	6H 6D	Shoot the Moon,Seeing Double,Sly Joker,Turtle Bean,Acrobat(polychrome),Throwback	est=10962	actual=10962	OK
+7818	a1	-	Straight	TH 9S 8H 7C 6S		est=280	actual=280	OK
+7801	a1	-	Flush	AC TC 7C 6C 4C		est=292	actual=292	OK
+7814	a1	The Goad	Two Pair	KH KC 9H 9C	Hanging Chad,Mystic Summit	est=1326	actual=1326	OK
+7817	a3	-	High Card	JS QH(stone)	Credit Card,Wrathful Joker,Acrobat,Marble Joker	est=780	actual=780	OK
+7808	a3	-	Two Pair	9H 9C 2C 2D	Droll Joker,Mad Joker,Sly Joker	est=1456	actual=1456	OK
+7818	a1	-	Full House	KS KC KD 8S 8C		est=344	actual=344	OK
+7805	a5	The Club	Two Pair	KS KD 5S 5H	Shoot the Moon,Seeing Double,Sly Joker,Turtle Bean,Acrobat(polychrome),Throwback	est=36900	actual=36900	OK
+7816	a2	-	Straight	8S 7S 6H 5H 4C	Even Steven	est=960	actual=960	OK
+7812	a1	-	Full House	KS KH 7S 7H 7D		est=324	actual=324	OK
+7806	a5	-	High Card	2S	Mystic Summit,Joker(foil),Supernova,Delayed Gratification(foil),Acrobat,Card Sharp	est=2808	actual=2808	OK
+7802	a4	-	Three of a Kind	3S 3H 3C	Scholar,Bloodstone,Popcorn,Sly Joker,Smiley Face(holo),Golden Joker	est=3741	actual=4192	OK
+7801	a1	-	Two Pair	JH JD 3H 3C		est=92	actual=92	OK
+7806	a5	-	High Card	5C	Mystic Summit,Joker(foil),Supernova,Delayed Gratification(foil),Acrobat,Card Sharp	est=9000	actual=9000	OK
+7816	a2	-	Full House	TS TH TD 2S 2D	Even Steven	est=1776	actual=1776	OK
+7813	a1	-	Pair	5S 5H	Shoot the Moon,Lusty Joker	est=620	actual=620	OK

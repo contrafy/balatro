@@ -889,26 +889,31 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
     p_k = max(0, n_h - 2) / n_h if bl_e.get("name") == "The Hook" and not bl_e.get("disabled") and bl_e.get("boss", True) and n_h else 1.0
     if p_k < 1.0:
         notes.append(f"The Hook: 2 random held cards are discarded before scoring; held effects counted at {p_k:.0%}")
+    # held effects repeat once per Red seal and once per Mime (Blueprint/Brainstorm copies of Mime included) (7801
+    # LIH39HVG: a held Steel est 37123 vs 53280)
+    n_mime = jn_h.count("Mime")
     for c in sorted(held_all, key=lambda c: c.get("index") or 0):
         if c.get("debuff"):
             continue
-        if "Steel" in _enh(c):
-            mult *= 1 + 0.5 * p_k
-        if "Stone" in _enh(c):
-            continue  # no rank: Shoot the Moon / Baron / Blackboard-style rank checks never see it
-        # The Mark deals every face card face-down: an unknown held card there is a J/Q/K, each about 1/3 likely
-        # (7805: Shoot the Moon est ignored face-down Queens)
-        fd_face = mark and c.get("rank") is None and c.get("facing") == "back"
-        for n0 in jn_h:
-            if n0 == "Shoot the Moon" and (_r(c) == "Q" if not fd_face else True):
-                mult += (13 if not fd_face else 13 / 3) * p_k
-            elif n0 == "Raised Fist" and c is fist_low:
-                # The Hook: Raised Fist scores the lowest REMAINING held card, never lower than this one: no discount
-                # (7802 LFBTMULM: est 522 vs 1350)
-                lo = RANK_VAL.get(_r(c), 0)
-                mult += 2 * (11 if lo == 14 else min(lo, 10))
-            elif n0 == "Baron" and (_r(c) == "K" if not fd_face else True):
-                mult *= 1 + (0.5 if not fd_face else 0.5 / 3) * p_k
+        reps = 1 + n_mime + (1 if str(c.get("seal") or "") == "Red" else 0)
+        for _rep in range(reps):
+            if "Steel" in _enh(c):
+                mult *= 1 + 0.5 * p_k
+            if "Stone" in _enh(c):
+                continue  # no rank: Shoot the Moon / Baron rank checks never see it
+            # The Mark deals every face card face-down: an unknown held card there is a J/Q/K, each about 1/3 likely
+            # (7805: Shoot the Moon est ignored face-down Queens)
+            fd_face = mark and c.get("rank") is None and c.get("facing") == "back"
+            for n0 in jn_h:
+                if n0 == "Shoot the Moon" and (_r(c) == "Q" if not fd_face else True):
+                    mult += (13 if not fd_face else 13 / 3) * p_k
+                elif n0 == "Raised Fist" and c is fist_low:
+                    # The Hook: Raised Fist scores the lowest REMAINING held card, never lower than this one: no discount
+                    # (7802 LFBTMULM: est 522 vs 1350)
+                    lo = RANK_VAL.get(_r(c), 0)
+                    mult += 2 * (11 if lo == 14 else min(lo, 10))
+                elif n0 == "Baron" and (_r(c) == "K" if not fd_face else True):
+                    mult *= 1 + (0.5 if not fd_face else 0.5 / 3) * p_k
     for j in jokers:
         n = j.get("name")
         ab = j.get("ability") or {}

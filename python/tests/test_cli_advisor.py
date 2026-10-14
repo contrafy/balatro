@@ -960,3 +960,23 @@ def test_baseball_card_ignores_copies_of_uncommons():
     plain = cli.estimate("Pair", cards, [], {"jokers": [joker("Joker", 1, rarity=1)] + base, "hand_levels": lv})[0]
     copied = cli.estimate("Pair", cards, [], {"jokers": [joker("Blueprint", 1, rarity=3)] + base, "hand_levels": lv})[0]
     assert copied <= plain * 1.2  # the copy is x1 here (Ramen x1); a third x1.5 would make it 1.5x
+
+
+def test_stone_card_has_no_rank_for_jokers():
+    # DrawSolver: Walkie Talkie fired on a stoned 4C (est 375 vs 65)
+    lv = {"High Card": {"level": 1, "chips": 5, "mult": 1}}
+    kd = _card("King", "Diamonds", 1)
+    st4 = dict(_card("4", "Clubs", 2), enhancement="m_stone")
+    e = cli.estimate("High Card", [kd, st4], [], {"jokers": [joker("Walkie Talkie", 1)], "hand_levels": lv})[0]
+    assert e == (5 + 10 + 50) * 1
+
+
+def test_mime_and_red_seal_retrigger_held_steel():
+    lv = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
+    kk = [_card("King", "Spades", 1), _card("King", "Hearts", 2)]
+    steel = dict(_card("5", "Clubs", 3), enhancement="m_steel")
+    st = {"jokers": [joker("Joker", 1)], "hand_levels": lv}
+    plain = cli.estimate("Pair", kk, [steel], st)[0]
+    mime = cli.estimate("Pair", kk, [steel], dict(st, jokers=[joker("Joker", 1), joker("Mime", 2)]))[0]
+    red = cli.estimate("Pair", kk, [dict(steel, seal="Red")], st)[0]
+    assert abs(mime / plain - 1.5) < 0.02 and abs(red / plain - 1.5) < 0.02
