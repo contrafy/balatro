@@ -1793,6 +1793,15 @@ def advise(d):
                         adv = (f"ADVICE: USE -> b use {u.get('consumable')} {' '.join(map(str, tg_u))}   (solver: using {u.get('name')} first clears "
                                f"{u.get('p_clear', 0):.0%} vs {plan[0]['p_clear']:.0%}; then re-run advise)")
         lines = lines[:adv_i] + sol + [adv] + lines[adv_i + 1:]
+    jn_dc = {j.get("name") for j in lst(d.get("jokers")) if not j.get("debuff")}
+    for k_dc, ln_dc in enumerate(lines):
+        m_dc = re.match(r"ADVICE: DISCARD -> b disc((?: \d+)+)", ln_dc)
+        if m_dc and jn_dc & {"Ramen", "Banner"}:
+            # the discard's own cost (7804 RYU4JRWY: 5-card discards with Ramen): Ramen -x0.01 per card, Banner -30 chips
+            # per discard left unused
+            n_dc = len(m_dc.group(1).split())
+            cost_dc = ([f"Ramen -x{0.01 * n_dc:.2f}"] if "Ramen" in jn_dc else []) + (["Banner -30 chips on every later hand"] if "Banner" in jn_dc else [])
+            lines[k_dc] = ln_dc + f"  [discard cost: {', '.join(cost_dc)}]"
     tip = _copy_order_tip(d) if d.get("phase") == "SELECTING_HAND" and d.get("hands_played", 0) == 0 else None
     forced = [c.get("index") for c in lst(d.get("hand")) if c.get("forced")]
     if forced:
@@ -2178,7 +2187,13 @@ def _advise_rules(d):
         # not the main one comes first (7801 D9KFK2PH played a 2nd Two Pair while an L1 Full House cleared)
         # Obelisk: a clearing play that keeps Obelisk growing comes first (7809 7C89CEFK advised a resetting Full House)
         ob_safe = lambda t: not _obelisk_resets(d, t[0])
-        pick = max(ok, key=lambda t: (ob_safe(t), (lvl_of(t[0]) <= 1, t[0] != mh_now) if arm else (False, False), t[0] == mh_now, t[0] in PAIR_FAMILY, t[2], -len(t[1])))
+        # the hand you level only breaks near-ties (within 10% of the biggest clearing play): otherwise bank the chips (7805
+        # 455ESHT5: Two Pair 1062 over a Blackboard High Card 1290)
+        top_ok = max(t[2] for t in ok)
+        ok_lv = [t for t in ok if t[2] >= 0.9 * top_ok or (arm and t[2] >= 1.1 * need)]
+        if not any(ob_safe(t) for t in ok_lv) and any(ob_safe(t) for t in ok):
+            ok_lv = ok  # an Obelisk-safe clearing play still comes first
+        pick = max(ok_lv, key=lambda t: (ob_safe(t), (lvl_of(t[0]) <= 1, t[0] != mh_now) if arm else (False, False), t[0] == mh_now, t[0] in PAIR_FAMILY, t[2], -len(t[1])))
         if pick[2] < 1.25 * need and not (arm and pick[2] >= 1.1 * need):
             # a thin margin is est risk (7810 The Eye last hand: Two Pair 5874 vs need 5350 over a Full House 10036): take the biggest
             pick = max(ok, key=lambda t: (ob_safe(t) and t[2] >= 1.1 * need, t[2], -len(t[1])))
@@ -4261,7 +4276,12 @@ def _shop_rules(d):
         options = [(sc + (30 if (cls.startswith("PLUS") or cls == "XMULT") and refused not in label and "ETERNAL on a RENTAL" not in label else 0), cls, cmd, label, cost, strong, ns)
                    for sc, cls, cmd, label, cost, strong, ns in options]
         print("  (fewer than 2 jokers or no scorer alive next ante: scoring jokers weighted up)")
-    if ante >= 6 and money >= 40:
+    bull_o = any(j.get("name") in ("Bull", "Bootstraps") and not j.get("debuff") for j in jokers)
+    if bull_o:
+        # money IS score: Bull +2 chips per $, Bootstraps +2 mult per $5 (4th Gold win 7801 7RFNYICY): every $ spent lowers
+        # every hand; a buy must add more than the money it takes away
+        print(f"  (Bull/Bootstraps owned: money is score; spending ${'{X}'} costs {'2X chips' if any(j.get('name') == 'Bull' for j in jokers) else 'X/5 x2 mult'} on every hand)")
+    if ante >= 6 and money >= 40 and not bull_o:
         options = [(sc + (25 if cls.startswith("PLUS") else 0), cls, cmd, label, cost, True if cls.startswith("PLUS") else strong, ns)
                    for sc, cls, cmd, label, cost, strong, ns in options]
         print("  (ante 6+ with $40+: money is worth nothing unspent; flat +chips/+mult jokers weighted up, sell utility jokers to fit them)")
@@ -4666,6 +4686,8 @@ def pack_advise(d):
               "The Star": (25 if mh == "Flush" else 10, 3, "3 cards to Diamonds"), "The Moon": (25 if mh == "Flush" else 10, 3, "3 cards to Clubs"),
               "The Sun": (25 if mh == "Flush" else 10, 3, "3 cards to Hearts"), "The World": (25 if mh == "Flush" else 10, 3, "3 cards to Spades")}
         ltp = str((d.get("run") or {}).get("last_tarot_planet") or "")
+        if not ltp.startswith("c_") or ltp == "c_fool":
+            TV["The Fool"] = (3, 0, "copies the last tarot/planet used: none yet, so it makes nothing")  # 7804 RYU4JRWY
         if ltp.startswith("c_") and ltp != "c_fool":
             # The Fool creates a copy of the last tarot/planet used (run.last_tarot_planet): rank it as that card (7801 D9KFK2PH)
             words = " ".join(w.capitalize() for w in ltp[2:].split("_")).replace(" Of ", " of ")
