@@ -634,3 +634,33 @@ def test_high_card_always_listed():
     d = _hand_state([("King", "Spades"), ("7", "Hearts"), ("7", "Clubs"), ("5", "Diamonds"), ("4", "Spades")],
                     jokers=[joker("Half Joker", 1), joker("Hanging Chad", 2)], need=5000)
     assert "HIGH CARD" in _out(cli.show_hands, d)
+
+
+def test_amber_acorn_uses_cached_jokers_and_probes(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "CACHE_DIR", str(tmp_path))
+    face_up = [joker("Joker", 1), joker("Cavendish", 2, ability={"extra": 3})]
+    d_shop = shop(jokers=face_up)
+    cli._with_known_jokers(d_shop)  # face-up: cached
+    d = _hand_state([("King", "Spades"), ("King", "Hearts"), ("9", "Clubs"), ("7", "Diamonds"), ("5", "Spades"), ("4", "Hearts"), ("3", "Clubs"), ("2", "Diamonds")],
+                    need=300, hands=4)
+    d["jokers"] = [{"index": 1, "facing": "back"}, {"index": 2, "facing": "back"}]
+    d["blind"] = {"name": "Amber Acorn", "boss": True, "chips_needed": 300, "chips_scored": 0}
+    d2 = cli._with_known_jokers(d)
+    assert d2.get("_jokers_cached") and [j["name"] for j in d2["jokers"]] == ["Joker", "Cavendish"]
+    out = _out(cli._advise_rules, d2)
+    assert "AMBER ACORN" in out
+
+
+def test_summit_valued_with_discards_burned():
+    d = shop(jokers=[joker("Mystic Summit", 1), joker("Joker", 2)], ante=3)
+    d["hand_levels"] = {"Pair": {"level": 2, "chips": 25, "mult": 3, "played": 5}}
+    assert cli.joker_share(d, d["jokers"][0], "Pair") >= 0.4
+
+
+def test_steel_card_never_a_filler():
+    d = _hand_state([("King", "Spades"), ("King", "Hearts"), ("9", "Clubs"), ("7", "Diamonds"), ("5", "Spades"), ("4", "Hearts"), ("3", "Clubs"), ("2", "Diamonds")],
+                    need=50, hands=3)
+    d["hand"][7]["enhancement"] = "Steel Card"
+    a = _advice(_out(cli._advise_rules, d))
+    if "b play" in a:
+        assert "8" not in a.split("b play ")[1].split("   ")[0].split()[1:]

@@ -18,6 +18,7 @@ import requests
 PORT = os.environ.get("BALATRO_RL_PORT", "7777")
 BASE = f"http://127.0.0.1:{PORT}"
 RUNS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "docs", "runs")
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "data", ".cli_cache")
 SUIT = {"Spades": "S", "Hearts": "H", "Clubs": "C", "Diamonds": "D"}
 RANK = {"Ace": "A", "King": "K", "Queen": "Q", "Jack": "J", "10": "T"}
 WHY_MAX = 300
@@ -1020,7 +1021,8 @@ def advise(d):
     adv = lines[adv_i] if adv_i is not None else ""
     m = re.match(r"ADVICE: (PLAY|DISCARD) -> b (play|disc)((?: [A-Z]+)?)((?: \d+)+)", adv)
     bname = (d.get("blind") or {}).get("name") or ""
-    special = (not m or bname in ("Crimson Heart", "Verdant Leaf") or any(c.get("rank") is None for c in lst(d.get("hand"))))
+    special = (not m or bname in ("Crimson Heart", "Verdant Leaf") or any(c.get("rank") is None for c in lst(d.get("hand")))
+               or "(probe:" in adv)
     plan, mine = [], None
     if d.get("phase") == "SELECTING_HAND" and not special:
         try:
@@ -1084,6 +1086,30 @@ def _advise_rules(d):
     hand = lst(d.get("hand"))
     cands = _candidates(d)
     show_hands(d)
+    jc = d.get("_jokers_cached")
+    if jc and cands:
+        names = [str(j.get("name")) for j in lst(d.get("jokers"))]
+        bc = max(cands, key=lambda t: t[2])
+        sc_cards = _cards_by_idx(d, bc[1])
+        held_c = _held(d, bc[1])
+        ests = [estimate(bc[0], sc_cards, held_c, dict(d, jokers=[lst(d.get("jokers"))[i] for i in p]), played_n=len(bc[1]))[0]
+                for p in _order_perms(names)]
+        lo, hi = min(ests), max(ests)
+        print(f"AMBER ACORN: jokers face-down and shuffled; est uses the jokers you last saw ({', '.join(names)})"
+              + (" in the order inferred from your last hand" if jc.get("inferred") else "") + f". Best play {bc[0]} est range over joker orders {lo}..{hi}.")
+        if not jc.get("inferred") and hi > 1.1 * lo and hands_left >= 2 and need > 0 and lo * (hands_left - 1) >= need:
+            low = min((c for c in hand if c.get("rank") is not None and not c.get("debuff")), key=lambda c: CHIP_VAL.get(_r(c), 0), default=None)
+            if low is not None:
+                print(f"ADVICE: PLAY -> b play HIGH {low.get('index')}   (probe: a 1-card High Card's score reveals the joker order (the CLI infers it after the play); "
+                      f"then `b order` +mult jokers left of xMult before the big hands; {hands_left - 1} hands at >= {lo} still clear {need})")
+                return
+        if jc.get("inferred"):
+            perms = _order_perms(names)
+            k_best = max(range(len(perms)), key=lambda k: ests[k])
+            cur = estimate(bc[0], sc_cards, held_c, d, played_n=len(bc[1]))[0]
+            if ests[k_best] > 1.05 * cur:
+                print(f"ADVICE: REORDER -> b order {' '.join(str(i + 1) for i in perms[k_best])}   (inferred order scores {bc[0]} {cur}; this order scores {ests[k_best]}; reordering is free)")
+                return
     if not cands:
         fd_all = [c.get("index") for c in hand if c.get("rank") is None]
         bname = ((d.get("blind") or {}).get("name") or "") if (d.get("blind") or {}).get("boss") else ""
@@ -1254,6 +1280,8 @@ def _advise_rules(d):
             i = c.get("index")
             if i in idxs:
                 continue
+            if "Steel" in _enh(c) or c.get("seal") == "Blue" or "Gold" in _enh(c):
+                continue  # Steel x1.5 / Gold $3 / Blue seal planet pay while HELD: never a filler (7807 played a held Steel)
             if "Stone" in _enh(c):
                 out.append((-100, i, None))
                 continue
@@ -1753,7 +1781,11 @@ def typical_est(d, mh, jokers=None, best=False):
         state = dict(state, discards_remaining=0, hands_remaining=1)
     else:  # an ordinary hand early in the round (the shop obs carries last round's leftovers)
         state = dict(state, discards_remaining=int(d.get("discards_per_round") or 3), hands_remaining=int(d.get("hands_per_round") or 3))
-    return estimate(hn, scoring, held, state, played_n=len(scoring), repeat=True if sharp else None)[0]  # Card Sharp: repeats are the plan
+    e = estimate(hn, scoring, held, state, played_n=len(scoring), repeat=True if sharp else None)[0]  # Card Sharp: repeats are the plan
+    if not best and any(j.get("name") == "Mystic Summit" and not j.get("debuff") for j in lst(state.get("jokers"))):
+        # Summit plan: discards burned before the first play, every hand +15 (PLAYBOOK; 7807 sold Summit for Ice Cream)
+        e = max(e, estimate(hn, scoring, held, dict(state, discards_remaining=0), played_n=len(scoring), repeat=True if sharp else None)[0])
+    return e
 
 
 def round_est(d, mh, jokers=None):
@@ -1800,11 +1832,13 @@ def deck_round_est(d, jokers=None, samples=30, seed=11):
     base = dict(d, phase="SELECTING_HAND", blind={}, jokers=lst(d.get("jokers")) if jokers is None else jokers)
     st_ord = dict(base, hands_remaining=h, discards_remaining=int(d.get("discards_per_round") or 3))
     st_fin = dict(base, hands_remaining=1, discards_remaining=0)
+    # Mystic Summit plan: burn the discards first, then every hand carries +15 (7807 sold Summit for a perishable Ice Cream)
+    st_ord0 = dict(st_ord, discards_remaining=0) if any(j.get("name") == "Mystic Summit" for j in lst(base.get("jokers"))) else None
     rng = random.Random(seed)
     vals = []
     for _ in range(samples):
         deal = [dict(c, index=i + 1, facing="front", debuff=False, highlighted=False) for i, c in enumerate(rng.sample(cards, hs))]
-        o = max((c[2] for c in _candidates(dict(st_ord, hand=deal))), default=0)
+        o = max((c[2] for st in (st_ord, st_ord0) if st is not None for c in _candidates(dict(st, hand=deal))), default=0)
         f = max((c[2] for c in _candidates(dict(st_fin, hand=deal))), default=0)
         vals.append(o * (h - 1) + f)
     vals.sort()
@@ -2165,6 +2199,8 @@ def shop_advise(d):
         name, cost, typ = c.get("name"), int(c.get("cost") or 0), c.get("set")
         if typ == "Joker":
             cls, score = classify_joker(name, cost, mh)
+            if name == "Swashbuckler" and len(jokers) >= 2:
+                cls, score = "PLUS(+mult = sell value of your other jokers)", 45
             if name == "Bull" and money - cost < 10:
                 cls, score = "PLUS(weak/conditional)", 25  # +2 chips per $: worthless for a wallet that is about to be empty
             if name == "Burnt Joker" and ante <= 2 and scoring_now < 2:
@@ -2567,8 +2603,16 @@ def pack_advise(d):
             if c.get("set") != "Joker":
                 continue
             cls, sc = classify_joker(c.get("name"), 0, mh)
+            if c.get("name") == "Swashbuckler" and len(jokers) >= 2:
+                cls, sc = "PLUS(+mult = sell value of your other jokers)", 45  # 7803: "useless as the only joker" with 5 owned
             base = sc
-            gain = marginal_gain(d, mh, c, jokers) if not cls.startswith("AVOID") else 0.0
+            gain = marginal_gain(d, mh, c, jokers)
+            if cls.startswith("AVOID") and free_p > 0 and gain >= 0.1 and "decay" in cls:
+                # a decaying joker into a FREE slot costs nothing: take its points now, sell it when it fades (7803 SKIP
+                # over Popcorn at a TIGHT boss)
+                cls, sc = "PLUS(decaying: free points now, sell when it fades)", 40
+            elif cls.startswith("AVOID"):
+                gain = 0.0
             if bridge and _is_scoring_cls(cls) and (gain >= 0.05 or not (d.get("deck") or {}).get("cards")):
                 sc = max(sc, 90)  # a bridge must score NOW (7809: Erosion 90 on a full 52-card deck added 0)
             BRIDGES = {"Gros Michel": 64, "Popcorn": 62, "Ice Cream": 58}
@@ -2584,6 +2628,10 @@ def pack_advise(d):
             if gain >= 0.2:
                 sc = max(sc, int(55 + min(40, 50 * gain)))
             sc, notes, _ = sticker_adjust(c, cls, base, sc, ante, _rounds_left(d), own_rentals, bridge, pack_free=free_p, core_hint=gain >= 0.3)
+            money_p = int(d.get("money") or 0)
+            if _stk(c)["rental"] and money_p - 3 < 4 and gain < 0.3:
+                sc -= 20  # 7807: rental Scholar NEEDED NOW at $<=5: its rent leaves no $4-5 for the next shop's joker
+                notes.append(f"RENT: -$3 at round end leaves ${money_p - 3}, under a $4-5 joker in the next shop")
             if any("ETERNAL on a" in s_n for s_n in notes) and free_p <= 1:
                 sc = min(sc, 15)
             notes = [f"+{gain:.0%} round est now"] + notes if gain >= 0.01 else notes
@@ -2964,7 +3012,7 @@ def main():
             sys.exit(1)
     if cmd in ("buy", "buyuse", "vouch", "pack", "pick", "sell", "sellc", "use") and not ints:
         print(f"{cmd} needs a slot number (e.g. `{cmd} 2` or `{cmd} J2`)"); sys.exit(1)
-    d = wait_settled()
+    d = _with_known_jokers(wait_settled())
     LEGAL = get("legal")
     if cmd in ("s", "state"):
         show(d); show_legal(LEGAL); return
@@ -3016,14 +3064,113 @@ def main():
               + (f" -> recording {r['trajectory_path']}" if r.get("trajectory_path") else ""))
     else:
         print("ACTION REJECTED:", r.get("error"))
-    d = wait_settled()
+    d_pre = d
+    d = _with_known_jokers(wait_settled())
     LEGAL = get("legal")
     show(d)
     show_legal(LEGAL)
+    if r.get("ok") and typ == "REORDER" and params.get("area") == "jokers" and d_pre.get("_jokers_cached"):
+        _cache_reorder([j.get("name") for j in lst(d_pre.get("jokers"))], params.get("order") or [])
     if cmd == "play" and _EST_CTX and r.get("ok"):
         _log_est(d)
+        if d_pre.get("_jokers_cached") and not d_pre["_jokers_cached"].get("inferred"):
+            _infer_joker_order(d)
     if not r.get("ok"):
         sys.exit(2)
+
+
+def _cache_file():
+    return os.path.join(CACHE_DIR, f"{PORT}_jokers.json")
+
+
+def _cache_load():
+    try:
+        with open(_cache_file(), encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def _cache_save(obj):
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        tmp = _cache_file() + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(obj, f)
+        os.replace(tmp, _cache_file())
+    except Exception:
+        pass
+
+
+def _with_known_jokers(d):
+    """Amber Acorn flips and shuffles the jokers face-down (blind.lua set_blind): the bridge rightly hides them, but the
+    player saw them face-up a moment before. Face-up jokers are cached per port (data/.cli_cache/<port>_jokers.json);
+    while they are face-down, est uses that multiset in the inferred order (after the first hand) or the last seen
+    order, and d['_jokers_cached'] says so."""
+    js = lst(d.get("jokers"))
+    if not js:
+        return d
+    if not any(j.get("facing") == "back" or j.get("name") is None for j in js):
+        _cache_save({"jokers": js, "order": None})
+        return d
+    c = _cache_load()
+    if not c or len(lst(c.get("jokers"))) != len(js):
+        print(f"(jokers face-down and no matching cached list for port {PORT}: est runs without them)")
+        return d
+    known = list(lst(c.get("jokers")))
+    order = c.get("order")
+    if order and sorted(order) == sorted(str(j.get("name")) for j in known):
+        pool, arranged = list(known), []
+        for nm in order:
+            k = next(i for i, j in enumerate(pool) if str(j.get("name")) == nm)
+            arranged.append(pool.pop(k))
+        known = arranged
+    new = [dict(k, index=i + 1, facing="front") for i, k in enumerate(known)]
+    return dict(d, jokers=new, _jokers_cached={"inferred": bool(order)})
+
+
+def _cache_reorder(names_now, new_order):
+    """`order` on face-down jokers whose positions were inferred: keep the cached order in step."""
+    c = _cache_load()
+    if c and c.get("order") and len(new_order) == len(names_now):
+        c["order"] = [names_now[p - 1] for p in new_order]
+        _cache_save(c)
+
+
+def _order_perms(names, cap=720):
+    import itertools
+    import random
+    perms = list(itertools.islice(itertools.permutations(range(len(names))), cap)) if len(names) <= 6 else \
+        [tuple(random.Random(k).sample(range(len(names)), len(names))) for k in range(cap)]
+    return perms
+
+
+def _infer_joker_order(d):
+    """After a hand under Amber Acorn: the score delta tells which orders of the known jokers are possible."""
+    try:
+        expected, idxs, est, before, d0 = _EST_CTX
+        after = (d.get("blind") or {}).get("chips_scored")
+        after = int(after if after is not None else d.get("chips") or 0)
+        actual = after - before if after >= before else after
+        known = lst(d0.get("jokers"))
+        scoring = _cards_by_idx(d0, idxs)
+        held = _held(d0, [c.get("index") for c in scoring])
+        fits = []
+        for p in _order_perms(known):
+            js = [known[i] for i in p]
+            e = estimate(expected, scoring, held, dict(d0, jokers=js), played_n=len(scoring))[0]
+            if abs(e - actual) <= max(2, 0.01 * actual):
+                fits.append(tuple(str(j.get("name")) for j in js))
+        fits = sorted(set(fits))
+        if len(fits) == 1:
+            _cache_save({"jokers": known, "order": list(fits[0])})
+            print(f"JOKER ORDER INFERRED (scored {actual}): {' | '.join(fits[0])}. `advise` now uses it; reorder with `b order ...` (+mult left of xMult).")
+        elif fits:
+            print(f"(score {actual} fits {len(fits)} joker orders; play another cheap hand to narrow it, or reorder blind)")
+        else:
+            print(f"(score {actual} fits no order of the cached jokers: the cache may be stale)")
+    except Exception as e:
+        print(f"(joker order inference skipped: {e})")
 
 
 _EST_CTX = None

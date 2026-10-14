@@ -16,21 +16,21 @@ _Interim, 02:45 (updated as the night goes on)._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 03:07:54 by `balatro-data status` (edits inside this block are overwritten). Player runs: 127 (118 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 03:17:51 by `balatro-data status` (edits inside this block are overwritten). Player runs: 128 (119 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
 
 ### Live runs (9)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | 4UQQD6BE | 8 | SELECTING_HAND | 3 | 5 | 8 | The Head 0/6400 | PLAY_HAND {"card_indices":[1,7,6,5,4]} | Lone AS at High Card L2 est 1014 beats Pair 5 (5H debuffed) est 660; fillers 5H 6C 7C 8D cycle junk… | 18s |
-| 7802 | port-7802 | claude-fable-5-1 | 4J47S7PD | 8 | PACK_OPENING | 4 | 7 | 12 | Small Blind (9000) | SELECT_PACK_CARD {"index":2,"targets":[8]} | Chariot: Steel 7S (x1.5 mult while held, a card I never play in a face engine) = a permanent condit… | 13s |
-| 7803 | port-7803 | claude-opus-5-5 | RHYICWF8 | 8 | BLIND_SELECT | 3 | 7 | 12 | Big Blind (4800) | SELECT_BLIND | Big 4800 never skip | 22s |
-| 7804 | port-7804 | claude-opus-5-5 | A5LJXXMW | 8 | SHOP | 4 | 8 | 18 | Small Blind (9000) | SHOP_BUY_BOOSTER {"slot":1} | Jumbo Arcana (2 left, above floor): pick of 5 tarots for Glass/Steel/Mult on pair cards or Hermit; … | 18s |
-| 7805 | port-7805 | claude-opus-5-5 | E57ZB14D | 8 | SHOP | 6 | 15 | 19 | Big Blind (90000) | SHOP_BUY_BOOSTER {"slot":1} | TIGHT 1.09x for House 120000: Celestial = guaranteed Mercury (Pair L6); 9->5 | 10s |
-| 7806 | port-7806 | claude-opus-5-5 | I9RJP8E5 | 8 | BLIND_SELECT | 1 | 1 | 1 | Big Blind (450) | SKIP_BLIND | override: skip Big for Coupon (free jokers+packs in the shop right before ante 2); now so the post-… | 8s |
-| 7807 | port-7807 | claude-opus-5-5 | 6TC4XVTG | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[5,6,7,8]} | pair 7 est 48 vs 300 need; keep JT97 gutshot to 8, solver p 0.99 | 4s |
-| 7809 | port-7809 | claude-opus-5-5 | 45J81AYQ | 8 | BLIND_SELECT | 2 | 4 | 9 | The Flint (2000) | SELECT_BLIND | boss The Flint 2000 | 7s |
-| 7810 | port-7810 | claude-sonnet-5-5 | 2GRKCB8X | 8 | SELECTING_HAND | 4 | 10 | 1 | The Plant 0/18000 | PLAY_HAND {"card_indices":[6,7,8,1,2]} | Best est 3738 FH of 18000 needed; run cannot clear, maximize score | 12s |
+| 7801 | port-7801 | claude-fable-5-1 | 4UQQD6BE | 8 | BLIND_SELECT | 4 | 6 | -13 | Big Blind (13500) | SELECT_BLIND | Big 13500, never skipped; last Burglar round: 6 hands at mult ~66 | 15s |
+| 7802 | port-7802 | claude-fable-5-1 | 4J47S7PD | 8 | SELECTING_HAND | 4 | 10 | -1 | The Wall 0/36000 | DISCARD {"card_indices":[5,6,7,8]} | Keep glass AH + JD + TT, draw 4: an Ace makes A-T Two Pair with glass x4 (~23000) or a FH with it (… | 24s |
+| 7803 | port-7803 | claude-opus-5-5 | RHYICWF8 | 8 | SELECTING_HAND | 4 | 10 | 5 | Small Blind 3200/9000 | PLAY_HAND {"card_indices":[1,2,3,4,8]} | Two Pair KKQQ est 3800 of 5800; filler 2D draws 5 to find two pair/trips/high pair for last 2000 | 26s |
+| 7804 | port-7804 | claude-opus-5-5 | A5LJXXMW | 8 | BLIND_SELECT | 5 | 10 | 8 | The Wheel (50000) | SELECT_BLIND | boss The Wheel 50000; Pair L3 with Half Joker est ~30k/hand | 19s |
+| 7805 | port-7805 | claude-opus-5-5 | E57ZB14D | 8 | PACK_OPENING | 7 | 17 | 4 | Small Blind (110000) | SELECT_PACK_CARD {"index":1} | Temperance: +$ joker sell values (~6), ->~0 for Celestial packs/rerolls next shops | 12s |
+| 7806 | port-7806 | claude-opus-5-5 | I9RJP8E5 | 8 | PACK_OPENING | 3 | 5 | 23 | Small Blind (3200) | SELECT_PACK_CARD {"index":1} | override Walkie: my engine is face-first (Chad+Photograph), 10/4 rarely score first; Chaos = free r… | 2s |
+| 7807 | port-7807 | claude-opus-5-5 | 6TC4XVTG | 8 | SELECTING_HAND | 2 | 4 | 0 | Big Blind 200/1500 | PLAY_HAND {"card_indices":[1,2,3,8,7]} | trips Q est 360, best remaining line (solver p 0.03): quads-dig caps at ~1125 < 1300, so bank 360 a… | 20s |
+| 7809 | port-7809 | claude-opus-5-5 | 45J81AYQ | 8 | BLIND_SELECT | 4 | 7 | 15 | Small Blind (9000) | SKIP_BLIND | override: skip saves a perish tick so both foil Summits+Scary (3 rounds) survive Wall 36000 AND ant… | 4s |
+| 7810 | port-7810 | claude-sonnet-5-5 | PISY2P91 | 8 | BLIND_SELECT | 2 | 3 | 5 | Small Blind (1000) | SKIP_BLIND | Small 1000 pays /bin/bash; Ethereal tag gives a free Spectral pack now and skips a perishable tick;… | 36s |
 
 ### Results by model x stake x deck
 
@@ -40,7 +40,7 @@ _Generated 2026-10-14 03:07:54 by `balatro-data status` (edits inside this block
 | claude-fable-5-1 | 8 | Black | 14 | 0 | 14 | 0 | 0 | 3.86 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
 | claude-opus-5-5 | 8 | Black | 65 | 0 | 65 | 0 | 0 | 3.66 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 33 | 0 | 32 | 0 | 1 | 3.06 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 34 | 0 | 33 | 0 | 1 | 3.09 | 8 |
 
 ### Deepest runs
 
@@ -59,9 +59,9 @@ _Generated 2026-10-14 03:07:54 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 123 files in manifest; schema_ok 123, schema invalid 0; replay_ok 110, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 4.
-- Player-run replay verdicts by host: headless ok 19 / failed 0; gui (live) ok 93 / failed 0; cross-checked by both 2, disagreeing 0.
-- All files (incl. fuzz + replays): 283; schema_ok 281; replay_ok 116 (headless 19, gui 99); replay failed 0; awaiting replay 153; quarantined 2.
+- Player runs: 128 files in manifest; schema_ok 128, schema invalid 0; replay_ok 114, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 20 / failed 0; gui (live) ok 99 / failed 0; cross-checked by both 5, disagreeing 0.
+- All files (incl. fuzz + replays): 300; schema_ok 298; replay_ok 120 (headless 20, gui 105); replay failed 0; awaiting replay 166; quarantined 2.
 
 ### Rejects per agent
 
@@ -69,18 +69,18 @@ _Generated 2026-10-14 03:07:54 by `balatro-data status` (edits inside this block
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
 | port-7778 | 1 | 1 | 0 |
-| port-7805 | 1 | 1 | 915 |
-| port-7807 | 1 | 1 | 1108 |
+| port-7805 | 1 | 1 | 946 |
+| port-7807 | 1 | 1 | 1137 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 528 |
-| port-7802 | 0 | 0 | 619 |
-| port-7803 | 0 | 0 | 1002 |
-| port-7804 | 0 | 0 | 643 |
-| port-7806 | 0 | 0 | 1058 |
+| port-7801 | 0 | 0 | 551 |
+| port-7802 | 0 | 0 | 638 |
+| port-7803 | 0 | 0 | 1030 |
+| port-7804 | 0 | 0 | 676 |
+| port-7806 | 0 | 0 | 1095 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 917 |
-| port-7810 | 0 | 0 | 1163 |
+| port-7809 | 0 | 0 | 945 |
+| port-7810 | 0 | 0 | 1191 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
