@@ -1387,10 +1387,10 @@ def _round_q(d, **kw):
         fn = getattr(_round_solver(), "round_score_quantiles", None)
         if fn is None:
             return None
-        if "boss" in kw:
+        if "boss" in kw or "debuff_ids" in kw:
             import inspect
-            if "boss" not in inspect.signature(fn).parameters:
-                kw.pop("boss")  # older solver: no boss rules in the fresh round
+            params_ok = inspect.signature(fn).parameters
+            kw = {k: v for k, v in kw.items() if k in params_ok}  # older solver: no boss rules in the fresh round
         r = fn(d, estimate, n=40, seed=7, time_budget_s=1.5, **kw)
         return r if r and r.get("n") and r.get("round") and r["round"][1] > 0 else None
     except Exception:
@@ -1401,6 +1401,15 @@ def _boss_kw(d, boss):
     """round_score_quantiles kwargs for a round against `boss`: its rule (passed as boss=, applied by the solver) and the
     round shape it sets (The Water 0 discards, The Needle 1 + 3 per Burglar hands, The Manacle -1 hand size)."""
     if not boss:
+        return {}
+    burg_n = sum(1 for j in lst(d.get("jokers")) if j.get("name") == "Burglar" and not j.get("debuff"))
+    kw = {"boss": boss}
+    if boss == "The Water":
+        kw["discards"] = 0
+    elif boss == "The Needle":
+        kw["hands"] = 1 + 3 * burg_n
+    elif boss == "The Manacle":
+        kw["hand_size"] = max(1, int(d.get("hand_size") or 8) - 1)
     elif boss == "The Pillar":
         ids = _played_ante_ids(d)
         if ids:
@@ -1432,22 +1441,14 @@ def _note_played(d, idxs):
 
 
 def _played_ante_ids(d):
+    """ids of cards played this ante (this run), from _note_played."""
     try:
         with open(_played_file(), encoding="utf-8") as f:
             rec = json.load(f)
     except Exception:
         return []
     seed = str((d.get("run") or {}).get("seed") or "")
-    return rec.get("ids") or [] if rec.get("ante") == int(d.get("ante") or 1) and rec.get("seed") == seed else []
-    burg_n = sum(1 for j in lst(d.get("jokers")) if j.get("name") == "Burglar" and not j.get("debuff"))
-    kw = {"boss": boss}
-    if boss == "The Water":
-        kw["discards"] = 0
-    elif boss == "The Needle":
-        kw["hands"] = 1 + 3 * burg_n
-    elif boss == "The Manacle":
-        kw["hand_size"] = max(1, int(d.get("hand_size") or 8) - 1)
-    return kw
+    return (rec.get("ids") or []) if rec.get("ante") == int(d.get("ante") or 1) and rec.get("seed") == seed else []
 
 
 def _round_solver():
@@ -3430,7 +3431,11 @@ def _shop_rules(d):
         proj = int(round_est(d, mh) * ((deck_best_est(d, hs_delta=-1) or deck_best) / best_hand))
     # discard-aware projection: DrawSolver's round simulation with the boss's own constraint (Water 0 discards, Needle
     # 1 + 3 per Burglar hands, Manacle -1 hand size); the deal-based numbers above are the fallback
-    rq_b = (rq_t if (nk == "Boss" and rq_t) else rq if (rq and bn_t not in ("The Water", "The Needle", "The Manacle")) else _round_q(d, **_boss_kw(d, bn_t))) if need_next else None
+    # this ante's blinds are played with the jokers alive NOW (9K2PD22N: TIGHT projected 56k without a Baseball Card that
+    # perishes only after the boss, vs 126k with it)
+    rq_b = (rq_t if (nk == "Boss" and rq_t) else
+            (rq if not dying else _round_q(dict(d, _misprint_roll=11.5, _plan_fillers=True))) if (rq and bn_t not in ("The Water", "The Needle", "The Manacle")) else
+            _round_q(dict(d, _misprint_roll=11.5, _plan_fillers=True), **_boss_kw(d, bn_t))) if need_next else None
     if rq_b:
         proj = int(rq_b["round"][1])
     # the last shop before a boss: below 1.25x the floor is off too (dying with money is the worst outcome)

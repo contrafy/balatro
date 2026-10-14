@@ -8766,3 +8766,13 @@
 7816	a4	$15	jokers=3/6	xmult_owned=0	PACK:Jumbo Arcana Pack $6 | PACK:Arcana Pack $4 | PLUS(adds ~0 now: grows only with its condition):Square Joker $4 | VOUCHER:Tarot Merchant $10 | UTIL:8 Ball{ETERNAL} $5
 7818	a1	$1	jokers=1/6	xmult_owned=0	VOUCHER:Hone $10 | PLANET:Mars $3 | PACK:Arcana Pack $4 | TAROT:The High Priestess $3
 7803	a3	$15	jokers=3/6	xmult_owned=0	PLUS(one suit):Gluttonous Joker{PERISHABLE(5 rounds left)} $5 | PACK:Arcana Pack $4 | PACK:Mega Spectral Pack $8 | TAROT:The Sun $3 | VOUCHER:Wasteful $10
+7813	a2	$15	jokers=2/6	xmult_owned=0	PLUS:Misprint{RENTAL(-$3/round)} $1 | PLUS(retrigger: retrigger first card 2x):Hanging Chad{ETERNAL,RENTAL(-$3/round)} $1 | VOUCHER:Crystal Ball $10 | PACK:Arcana Pack $4 | PACK:Standard Pack $4
+7801	a3	$7	jokers=6/6	xmult_owned=1	PLUS(weak/conditional):Bull $6 | TAROT:Temperance $3 | PACK:Arcana Pack $4 | VOUCHER:Grabber $10 | PACK:Standard Pack $4
+7814	a1	$5	jokers=0/6	xmult_owned=0	PLUS(card-phase multiplier: ~+10-25% on a flat build; the SIM measures it):Photograph{PERISHABLE(5 rounds left)} $5 | PLUS(fires on any pair-family hand):Sly Joker{ETERNAL} $3 | PACK:Buffoon Pack $4 | VOUCHER:Reroll Surplus $10 | PACK:Jumbo Celestial Pack $6
+7805	a1	$7	jokers=0/6	xmult_owned=0	PLUS(common condition):Smiley Face $4 | PLUS(retrigger: retrigger first card 2x):NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Hanging Chad{RENTAL(-$3/round)} $1 | VOUCHER:Tarot Merchant $10 | PACK:Arcana Pack $4 | PACK:Jumbo Standard Pack $6
+7777	a7	$55	jokers=6/6	xmult_owned=1	TAROT:Justice $3 | PACK:Arcana Pack $4 | PACK:Jumbo Spectral Pack $6 | UTIL:Drunkard $4 | VOUCHER:Director's Cut $10
+7805	a1	$3	jokers=1/6	xmult_owned=0	PLUS(retrigger: retrigger first card 2x):NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Hanging Chad{RENTAL(-$3/round)} $1 | VOUCHER:Tarot Merchant $10 | PACK:Arcana Pack $4 | PACK:Jumbo Standard Pack $6
+7814	a1	$2	jokers=1/6	xmult_owned=0	PLUS(card-phase multiplier: ~+10-25% on a flat build; the SIM measures it):Photograph{PERISHABLE(5 rounds left)} $5 | PACK:Buffoon Pack $4 | VOUCHER:Reroll Surplus $10 | PACK:Jumbo Celestial Pack $6
+7803	a3	$10	jokers=4/6	xmult_owned=0	PACK:Arcana Pack $4 | PACK:Mega Spectral Pack $8 | TAROT:The Sun $3 | VOUCHER:Wasteful $10
+7806	a1	$5	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | PLUS:Odd Todd{PERISHABLE(5 rounds left)} $4 | UTIL:Burglar{RENTAL(-$3/round)} $1 | VOUCHER:Director's Cut $10 | PACK:Standard Pack $4
+7801	a3	$18	jokers=6/6	xmult_owned=1	PLUS:Bull $6 | PACK:Arcana Pack $4 | VOUCHER:Grabber $10 | PACK:Standard Pack $4
