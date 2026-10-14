@@ -1,2 +1,5 @@
 # Run KGP6GZRV (port 7802, claude-fable-5-1) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (300 Charm / 450 Voucher / The Head 600, $4): Small: Flush H 280 + Pair J 60 (1 disc). Shop $5: override Chad{PERISH} for Buffoon $4 -> Banner{ETERNAL} (over Greedy{ETERNAL}). Big: FH JJJ66 568 one-shot. Shop $7: Onyx Agate{PERISH,RENTAL} $1 (+7/club), passed Hack $6. Head: 1 disc, Trips 555 (5C) 750 one-shot. $10.
+Ante 2 (1000 Orbital(FH) / 1500 Skip / The Mouth 2000): shop: Mad Joker{PERISH} $4 (over The Family{ETERNAL} foil $10). Skipped Small for Orbital -> FH L4. Big: disc 5 keeping QQ+JC, Two Pair QQ99 (9C) 1672 one-shot. Shop $9: Mystic Summit{ETERNAL} $5 (passed Golden Joker{ETERNAL} $6). Mouth: locked Two Pair QQ22 1976 (Banner at 2 disc) then TT99 2242 = 4218/2000.
+Ante 3 (3200 Skip / 4800 Coupon / The Manacle 6400, $7): sold Onyx, Popcorn $5. Skipped Small for Skip Tag (+$10). Big: FH TTT22 L4 8360 one-shot. Shop $21: reroll x2 -> Uranus $3 (Two Pair L2), $7 left. Manacle (7 cards): disc 5 keep JJ -> QQJJ, disc 3 for FH (miss), Two Pair QQJJ 3520 + Straight 2590 + Pair 5 660 = 6770/6400.

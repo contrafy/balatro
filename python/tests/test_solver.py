@@ -147,6 +147,30 @@ def test_misprint_is_sampled_per_hand():
     assert 0.55 < top["p_model"] < 0.8
 
 
+def test_options_near_the_top_never_rest_on_16_samples():
+    # 7810: an n=16 discard printed p=0.63; at n=100 it was 0.23
+    st = state(["AS", "KD", "QH", "7C", "7D", "4S", "3H", "2C"], need=900, hands=3, discards=2, jokers=["Joker"])
+    st["jokers"][0]["ability"] = {"mult": 4}
+    res = plan(st, time_budget_s=0.01)
+    best = max(r["p_model"] for r in res)
+    assert res[0]["n"] >= solver.MIN_N
+    assert all(r["n"] >= solver.MIN_N or r["low_n"] for r in res if r["p_model"] >= best - 0.3)
+    assert any(r["n"] >= solver.MIN_N for r in res[1:4])
+
+
+def test_psychic_pads_to_five_and_half_joker_gets_nothing():
+    st = state(["KS", "KD", "9H", "7C", "5D", "4S", "3H", "2C"], need=600, hands=3, discards=2, blind="The Psychic",
+               boss=True, jokers=["Half Joker"])
+    rs = solver.RoundSolver(st, estimate)
+    kk = rs.slots[:2]
+    padded = rs._pad(kk, rs.slots, 5)
+    s5, _t = rs.score(padded, [c for c in rs.slots if c not in padded], 3, 2, rs.ctx0)
+    st0 = dict(st, jokers=[])
+    s_plain = solver.RoundSolver(st0, estimate).score(padded, [c for c in rs.slots if c not in padded], 3, 2, rs.ctx0)[0]
+    assert len(padded) == 5 and s5 == s_plain  # Half Joker needs <= 3 played cards
+    assert rs.score(kk, rs.slots[2:], 3, 2, rs.ctx0)[0] == 0.0  # a 2-card play does not score under The Psychic
+
+
 def test_jokerless_rounds_report_raw_p_and_broken_pairs_are_named():
     # 7802: ante-1 jokerless options read 0.98-0.99; jokerless rounds are calibrated raw (the joker map inflated them)
     st = state(["AS", "KD", "QH", "7C", "7D", "4S", "3H", "2C"], need=300, hands=3, discards=2)

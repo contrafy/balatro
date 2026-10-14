@@ -33,11 +33,12 @@ GROWTH_JOKERS = {"Square Joker", "Runner", "Spare Trousers", "Ride the Bus", "Gr
                  "Wee Joker"}
 TIE_P = 0.015  # p_clear differences below this are Monte-Carlo noise: rank those options by secondary value
 GROWTH_W = 0.5  # secondary value of one growth-joker trigger, in $ (an unused hand pays $1)
-# Isotonic map of the model p to the realized clear rate of recorded Gold decisions (solver_calib: 2740 decisions,
-# 2026-10-14): (model p, realized) knots, linear in between
-CALIBRATION = ((0.0, 0.0), (0.0271, 0.1176), (0.1515, 0.3861), (0.3503, 0.5455), (0.5859, 0.6974),
-               (0.7791, 0.8323), (0.8577, 0.8833), (0.8906, 0.9634), (0.9282, 0.9844), (0.9593, 0.9912),
-               (0.9981, 1.0), (1.0, 1.0))
+MIN_N = 64  # options within 0.3 of the best p get at least this many samples; fewer are flagged low_n
+# Isotonic map of the model p to the realized clear rate of recorded Gold decisions WITH an active joker (solver_calib:
+# 2757 decisions, 2026-10-14): (model p, realized) knots, linear in between. Jokerless rounds (394 decisions, almost
+# all ante 1) are calibrated as raw (Brier 0.054 raw vs 0.082 mapped out-of-fold), so calibrate() leaves them as is.
+CALIBRATION = ((0.0, 0.0), (0.0276, 0.1053), (0.1509, 0.3611), (0.3465, 0.5521), (0.5901, 0.7512), (0.785, 0.8496),
+               (0.8637, 0.9277), (0.9122, 0.9826), (0.995, 1.0), (1.0, 1.0))
 PILLAR_W = 0.25  # $-equivalent cost per card played when The Pillar is this ante's boss (played cards get debuffed)
 LEVEL_UP = {"High Card": (10, 1), "Pair": (15, 1), "Two Pair": (20, 1), "Three of a Kind": (20, 2),
             "Straight": (30, 3), "Flush": (15, 2), "Full House": (25, 2), "Four of a Kind": (30, 3),
@@ -208,6 +209,7 @@ class RoundSolver:
         self.hd_dep = bool(jn & HD_JOKERS)
         self.final_dep = bool(jn & {"Dusk", "Acrobat"})  # final-hand jokers: holding a hand for the last play pays
         lucky = any("lucky" in str(c.d.get("enhancement") or "").lower() for c in self.pool + [c for c in self.slots if c])
+        self.jokerless = not jn  # calibration segment: no active joker
         self.random_fx = bool(self.n_misprint or self.n_blood or self.n_space or lucky)
         # The Pillar: cards played earlier this ante are debuffed; obs flags them in hand but not in deck.cards, so
         # each sample debuffs a random share of the draw pile equal to the debuffed share of the visible hand
@@ -983,13 +985,20 @@ class RoundSolver:
                 add(PLAY, [idx_of[id(j)]], f"throwaway {j.label()}: hold {ft} {' '.join(c.label() for c in fp)} "
                                            f"for the final hand (est {int(fs)} then, ~{int(tot)} in total)")
         if d > 0:
+            groups = {}
+            for i, c in enumerate(known):
+                if c.known and c.rank:
+                    groups.setdefault(c.rank, []).append(i)
+            made = [g for g in groups.values() if len(g) >= 2]
             chosen = [K for K, _v in top_keeps[:16]] + self._keep_sets(known, bp or [])
             for K in chosen:
                 if K not in keep_rank:
                     continue
                 _u, label = keep_rank[K]
                 kept = " ".join(known[i].label() for i in sorted(K))
-                add(DISCARD, [i for i in range(n) if i not in K], f"keep {kept or 'nothing'} ({self.label(label)})")
+                broken = [g for g in made if any(i not in K for i in g)]
+                warn = "; breaks " + ", ".join(SHORT[known[g[0]].rank] * len(g) for g in broken) if broken else ""
+                add(DISCARD, [i for i in range(n) if i not in K], f"keep {kept or 'nothing'} ({self.label(label)}{warn})")
         elif h >= 2:
             # no discard left: playing junk is the only way to dig (keep pairs/draws, throw the rest as a hand)
             # The Pillar ahead: every played card is debuffed at the boss, so dig with single cards only
@@ -1049,16 +1058,23 @@ class RoundSolver:
                       key=key, reverse=True)[:3]
         for i in chal:
             step(i, full)
+        # nothing within 0.3 of the best p is reported on fewer than MIN_N samples (n=16 estimates swing by +-0.25)
+        best_p = max((st[1] / st[0] for st in stats if st[0]), default=0.0)
+        near = sorted((i for i, st in enumerate(stats) if 0 < st[0] < MIN_N and st[1] / st[0] >= best_p - 0.3),
+                      key=key, reverse=True)[:8]
+        for i in near:
+            step(i, min(MIN_N, samples))
         res = []
         for i, c in enumerate(cands):
             n, cl, tot, hl, du, g, npl = stats[i]
             if not n:
                 continue
             res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]],
-                        "p_clear": calibrate(cl / n), "p_model": cl / n,
+                        "p_clear": calibrate(cl / n, self.jokerless), "p_model": cl / n,
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
-                        "discards_used": du / n, "n": n, "note": c["note"], "hand": c.get("hand")})
+                        "discards_used": du / n, "n": n, "low_n": n < min(MIN_N, samples), "note": c["note"],
+                        "hand": c.get("hand")})
         top_n = max((r["n"] for r in res), default=0)
         full_n = min(top_n, 120)
         top_p = max((r["p_model"] for r in res if r["n"] >= full_n), default=0.0)
@@ -1071,11 +1087,14 @@ class RoundSolver:
         return res
 
 
-def calibrate(p):
+def calibrate(p, jokerless=False):
     """Map the model's p (P(clear) when the rest of the round follows the solver's greedy policy) to the observed
-    clear rate of Gold players taking that action (CALIBRATION knots, linear interpolation). Players' later play
-    beats the greedy policy in hard spots (consumables, chip-and-dig lines), so the raw p is too low in the 0.03-0.9
-    range. Refit with `python -m balatro_env.analysis.solver_calib`."""
+    clear rate of Gold players taking that action (CALIBRATION knots, linear interpolation). With jokers, players'
+    later play beats the greedy policy in hard spots (consumables, chip-and-dig lines), so the raw p is too low in
+    the 0.03-0.9 range; jokerless rounds are already calibrated raw and are returned unchanged.
+    Refit with `python -m balatro_env.analysis.solver_calib`."""
+    if jokerless:
+        return p
     for (x0, y0), (x1, y1) in zip(CALIBRATION, CALIBRATION[1:]):
         if p <= x1:
             return y0 if x1 <= x0 else y0 + (y1 - y0) * (p - x0) / (x1 - x0)

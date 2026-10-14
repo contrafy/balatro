@@ -148,8 +148,20 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   planets are non-core. Plan for the next ante: ante 2 -> 3 is the steepest step (1000 -> 3200).
 - `RIFF-RAFF` owned (and a free slot): never skip a blind, it makes 2 Common jokers when the blind is selected.
 - JOKER ORDER only matters between a +mult joker (or holo edition) and a joker-main xMult; +chips jokers, card-trigger
-  xMults (Photograph, Triboulet...) and xMults among themselves can sit anywhere. `shopadvise` prints an `ORDER FIRST`
-  note only when the order changes the score.
+  xMults (Photograph, Triboulet...) and xMults among themselves can sit anywhere. Brainstorm copies the LEFTMOST joker,
+  Blueprint the one to its right: `shopadvise` prints `ORDER FIRST` only when an est over the whole order (copy targets
+  included) gains 3%+.
+- CARD PHASE BEFORE JOKERS: card enhancements (Glass x2, held Steel x1.5), held-card effects and card-trigger jokers
+  resolve before the joker row, so they multiply only the base hand mult plus card +mult (Fable verified 9504/2646).
+  Justice/Chariot are not xMult sources on a +mult build.
+- JOKER STENCIL: x(empty slots + Stencils), and only while at least one slot is empty; every joker you add costs it x1
+  (x2 with a Brainstorm/Blueprint copy). Shop/pack values come from est with the joker added, so slot-fillers that lower
+  your rounds show `AVOID(-N% round est)`; Negative jokers bring their own slot.
+- AMBER ACORN: the CLI caches your face-up jokers per port; under Acorn `advise` estimates with them, shows the range
+  over joker orders, suggests a 1-card High Card probe (it infers the order from the score) and then a `b order`.
+- THROWBACK owned: skip $0 Small Blinds whenever one hand reaches half the Big Blind (+x0.25 per skip, permanent).
+- SIM (`shopadvise`): each affordable buy is played through the next 3 blinds; use the delta for ranking only. It
+  breaks ties the rules scored within 5 points and prints `SIM disagrees` otherwise.
 - THE MOUTH: the first played hand locks the type for all 3 hands. Open with a type you can repeat (main hand / Pair),
   never a one-off Straight/Flush/Full House unless that one hand clears the whole blind; keep a discard until the lock.
   A locked High Card is any single card. Owning Burglar (0 discards) before The Mouth: sell it or lock High Card.

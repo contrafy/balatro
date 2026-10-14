@@ -55,7 +55,8 @@ def test_stickers_display():
 
 def test_dead_perishable_is_sold_first():
     d = shop(jokers=[joker("Jolly Joker", 1), joker("Sly Joker", 2, perishable=True, perish_tally=0)])
-    assert _advice(_out(cli.shop_advise, d)).startswith("ADVICE: SELL -> b sell 2")
+    out = _out(cli.shop_advise, d)
+    assert _advice(out).startswith("ADVICE: SELL FIRST -> b sell 2") and "Shop advisor:" in out  # ranking no longer hidden
 
 
 def test_eternal_never_sold_for_room():
@@ -137,7 +138,8 @@ def test_order_never_hides_ranking_and_ignores_card_trigger_xmult():
     out = _out(cli.shop_advise, d)
     assert "ORDER" not in out and "buy 1" in out
     # a joker-main xMult left of a +mult joker: order note, ranking still printed
-    d = shop(jokers=[joker("Cavendish", 1), joker("Jolly Joker", 2)], shop_jokers=[{"index": 1, "name": "Joker", "set": "Joker", "cost": 2}])
+    d = shop(jokers=[joker("Cavendish", 1), joker("Jolly Joker", 2, ability={"t_mult": 8, "type": "Pair"})], shop_jokers=[{"index": 1, "name": "Joker", "set": "Joker", "cost": 2}])
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2, "played": 3}}
     out = _out(cli.shop_advise, d)
     assert "ORDER FIRST (free): b order 2 1" in out and _advice(out)
 
@@ -401,7 +403,8 @@ def test_main_hand_pair_over_leveled_two_pair():
 
 def test_order_note_moves_mult_left_of_xmult():
     # `b order` lists old positions in their new order: +mult jokers must come first (left of the xMult)
-    d = shop(jokers=[joker("Cavendish", 1), joker("Joker", 2), joker("Jolly Joker", 3)], shop_jokers=[], money=4)
+    d = shop(jokers=[joker("Cavendish", 1), joker("Joker", 2, ability={"mult": 4}), joker("Jolly Joker", 3, ability={"t_mult": 8, "type": "Pair"})], shop_jokers=[], money=4)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2, "played": 3}}
     line = next(l for l in _out(cli.shop_advise, d).splitlines() if "ORDER FIRST" in l)
     order = [int(x) for x in line.split("b order ")[1].split("   ")[0].split()]
     assert order[-1] == 1 and set(order[:2]) == {2, 3}
