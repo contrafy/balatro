@@ -12857,3 +12857,15 @@
 7807	a2	The Flint	Two Pair	JS JH 8S 8H	Raised Fist,Clever Joker	est=2646	actual=2646	OK
 7811	a2	-	Two Pair	7C 7D 2S 2H	Flower Pot,Ice Cream	est=678	actual=678	OK
 7814	a3	-	Two Pair	QH QC 5C 5D	Raised Fist,Jolly Joker,Wily Joker	est=1200	actual=1200	OK
+7813	a1	The Hook	Two Pair	9H 9C 2S 2D	Banner,Spare Trousers	est=288	actual=288	OK
+7816	a1	-	Full House	8S 8H 8C 7H 7D		est=312	actual=312	OK
+7806	a3	The Pillar	Pair	JH JC	Jolly Joker,Dusk,Shoot the Moon,Ice Cream(foil),Abstract Joker	est=8670	actual=8670	OK
+7811	a2	-	Full House	JH JC 8H 8C 8D	Flower Pot,Ice Cream	est=616	actual=616	OK
+7805	a1	-	Two Pair	QH QC JH JC	Swashbuckler	est=120	actual=120	OK
+7817	a1	-	High Card	KH	Smiley Face,Seltzer	est=275	actual=275	OK
+7814	a3	-	Two Pair	AS AC 7S 7D	Raised Fist,Jolly Joker,Wily Joker	est=1008	actual=1008	OK
+7811	a2	-	Three of a Kind	5S 5H 5C	Flower Pot,Ice Cream	est=330	actual=330	OK
+7805	a1	-	Full House	5H 5C 4S 4H 4C	Swashbuckler	est=248	actual=248	OK
+7817	a1	-	Full House	TS TC 8S 8C 8D	Smiley Face,Seltzer	est=512	actual=512	OK
+7802	a3	-	Full House	9S 9H 9D 4S 4H	Zany Joker,Ride the Bus,Misprint	est=4437	actual=4500	OK
+7805	a1	-	Two Pair	KS KH TS TD	Swashbuckler	est=120	actual=120	OK

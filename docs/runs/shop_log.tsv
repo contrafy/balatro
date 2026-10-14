@@ -8917,3 +8917,9 @@
 7817	a1	$2	jokers=1/6	xmult_owned=0	PLUS(retrigger: retrigger all cards, 10 hands):NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Seltzer{RENTAL(-$3/round)} $1 | VOUCHER:Clearance Sale $10 | PACK:Jumbo Arcana Pack $6 | UTIL:Business Card{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
 7810	a4	$4	jokers=3/6	xmult_owned=0	XMULT(growth: +x0.2 per hand of a type that is not strictly your most played):Obelisk{ETERNAL} $0 | PLUS(main hand):Jolly Joker{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | PACK:Celestial Pack $4 | PACK:Jumbo Celestial Pack $6 | VOUCHER:Hieroglyph $10
 7807	a3	$9	jokers=2/6	xmult_owned=0	PLUS:Arrowhead{PERISHABLE(5 rounds left)} $7 | PACK:Jumbo Arcana Pack $6 | TAROT:Justice $3 | PACK:Standard Pack $4 | VOUCHER:Crystal Ball $10
+7812	a2	$4	jokers=3/6	xmult_owned=0	PLUS(adds ~0 now: grows only with its condition):Erosion $6 | UTIL:To Do List $4 | VOUCHER:Hieroglyph $10 | PACK:Jumbo Arcana Pack $6
+7813	a2	$5	jokers=2/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PLANET:Jupiter $3 | PACK:Standard Pack $4 | VOUCHER:Reroll Surplus $10 | UTIL:To Do List{RENTAL(-$3/round)} $1
+7816	a1	$6	jokers=0/6	xmult_owned=0	PLUS(weak/conditional):Green Joker $4 | PACK:Buffoon Pack $4 | VOUCHER:Tarot Merchant $10 | PLANET:Jupiter $3 | PACK:Arcana Pack $4
+7806	a4	$11	jokers=5/6	xmult_owned=0	XMULT(final hand: x3 every round):Acrobat $6 | PLUS(main hand):Mad Joker{ETERNAL} $4 | PACK:Celestial Pack $4 | PACK:Arcana Pack $4 | VOUCHER:Telescope $10 | VOUCHER:Blank $10
+7803	a4	$10	jokers=6/6	xmult_owned=0	PLANET:Uranus $3 | PACK:Jumbo Arcana Pack $6 | VOUCHER:Magic Trick $10 | PLUS(one suit):Gluttonous Joker{RENTAL(-$3/round)} $1
+7811	a2	$1	jokers=2/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Raised Fist{ETERNAL} $5 | PLANET:Venus $3 | PACK:Arcana Pack $4 | PACK:Jumbo Celestial Pack $6 | VOUCHER:Hieroglyph $10
