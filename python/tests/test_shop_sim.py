@@ -266,3 +266,26 @@ def test_blueprint_and_brainstorm_are_placed_to_copy_the_best_joker():
     bs = shop_sim._place_copy(egg_first, {"add_joker": joker("Brainstorm")}, cli_mod)
     st3, err, notes = shop_sim.apply_option(egg_first, bs)
     assert st3["jokers"][0]["name"] == "Ramen"  # Brainstorm copies the leftmost joker: move Ramen there
+
+
+def test_survival_gain_never_ranks_below_baseline_and_rent_only_hits_the_future():
+    # 7804 SL5MJZY1: a $1 eternal-rental Sly Joker was -0.20 although it cleared The Water; dead runs pay no rent
+    sly = joker("Sly Joker", ability={"t_chips": 50, "type": "Pair"}, eternal=True, rental=True, cost=1)
+    st = shop_state(ante=1, small="Defeated", boss="The Water")
+    res = by_label(run(st, [{"label": "base"}, {"label": "sly", "add_joker": sly, "cost": 1},
+                            {"label": "pluto", "levels": ["High Card"], "cost": 1}], budget_s=6, min_samples=32))
+    s, b = res["sly"], res["base"]
+    assert s["rent_run"] > 0
+    if s["p_next"] >= b["p_next"] + shop_sim.SURVIVE_GAIN:
+        assert s["value"] >= b["value"]
+    assert s["value"] >= s["p_next"] * shop_sim.TERM_A  # rent never discounts the survival part
+    assert res["pluto"]["delta_value"] >= 0  # a level-up is never worse than nothing
+
+
+def test_red_card_buy_and_skip_option():
+    st = shop_state(jokers=[joker("Red Card", ability={"mult": 0})], money=6,
+                    boosters=[{"index": 1, "kind": "Standard", "name": "Standard Pack", "cost": 4}])
+    opt = next(o for o in shop_sim.options_from_state(st) if o.get("red_card"))
+    assert opt["label"] == "buy+skip Standard Pack $4 (Red Card +3)" and opt["booster_index"] == 1
+    st2, err, notes = shop_sim.apply_option(st, opt)
+    assert err is None and st2["money"] == 2 and st2["jokers"][0]["ability"]["mult"] == 3

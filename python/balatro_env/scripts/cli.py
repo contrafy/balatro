@@ -370,6 +370,13 @@ def show(d):
             if nxt_s and nxt_s[3] and b_e < 0.35 * nxt_s[3] / 3:
                 skip_ok = False
                 weak_hand = True
+        if skip_ok and not thr_ok and not poor and ante_n >= 2 and not (tk in cash and cash[tk] >= 5) and tk not in ("tag_buffoon", "tag_top_up", "tag_boss"):
+            # a non-cash tag is worth the Small's shop only when this ante's boss is already beaten on paper (7805 R87RLKF6
+            # skipped at ante 2 into The Wall 4000)
+            boss_c_k = int((ch.get("Boss") or {}).get("chips") or 0)
+            if boss_c_k and (deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * _hands_pr(d) < boss_c_k:
+                skip_ok = False
+                weak_hand = True
         if skip_ok and 3 <= ante_n <= 4 and not thr_ok and not poor:
             # GOLD_ANALYSIS.md: ante 3-4 skippers died 40-46% vs players 25-33%: skip only if one hand reaches boss/2; a broke
             # wallet has no shop to lose (7801 FYPFR6AC played the ante-4 Small at $0 with $6 rent)
@@ -807,8 +814,10 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
             if n0 == "Shoot the Moon" and (_r(c) == "Q" if not fd_face else True):
                 mult += (13 if not fd_face else 13 / 3) * p_k
             elif n0 == "Raised Fist" and c is fist_low:
+                # The Hook: Raised Fist scores the lowest REMAINING held card, never lower than this one: no discount
+                # (7802 LFBTMULM: est 522 vs 1350)
                 lo = RANK_VAL.get(_r(c), 0)
-                mult += 2 * (11 if lo == 14 else min(lo, 10)) * p_k
+                mult += 2 * (11 if lo == 14 else min(lo, 10))
             elif n0 == "Baron" and (_r(c) == "K" if not fd_face else True):
                 mult *= 1 + (0.5 if not fd_face else 0.5 / 3) * p_k
     for j in jokers:
@@ -856,8 +865,16 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Loyalty Card":
             # card.lua: rem = (every-1-hands_since_create) % (every+1) is recomputed DURING scoring and fires when it reaches
             # `every`; the stored value is the previous hand's, so it cycles ..., 1, 0, then fires on the next hand.
-            rem = ab.get("loyalty_remaining")
             every = int((ab.get("extra") or {}).get("every", 5)) if isinstance(ab.get("extra"), dict) else 5
+            hp = (state.get("run") or {}).get("hands_played_total")
+            hpc = ab.get("hands_played_at_create")
+            if hp is not None and hpc is not None:
+                # recompute from the counters (the stored loyalty_remaining is only refreshed when the joker scores; 7802
+                # LFBTMULM read "5" for 4 hands): this hand is hands_played + 1, it fires when the result equals `every`
+                rem_n = (every - 1 - (int(hp) + 1 - int(hpc))) % (every + 1)
+                rem = 0 if rem_n == every else (rem_n + 1) % (every + 1)
+            else:
+                rem = ab.get("loyalty_remaining")
             if rem == 0:
                 mult *= float((ab.get("extra") or {}).get("Xmult", 4) if isinstance(ab.get("extra"), dict) else 4)
                 notes.append("Loyalty Card fires on THIS hand (x4)")
@@ -1737,10 +1754,14 @@ def _advise_rules(d):
         # any of these clears; prefer the hand we are building (main hand, then pair family) so levels and Supernova stay
         # consolidated. The Arm takes a level from the played type: there a clearing L1 hand (no loss) or any hand that is
         # not the main one comes first (7801 D9KFK2PH played a 2nd Two Pair while an L1 Full House cleared)
-        pick = max(ok, key=lambda t: ((lvl_of(t[0]) <= 1, t[0] != mh_now) if arm else (False, False), t[0] == mh_now, t[0] in PAIR_FAMILY, t[2], -len(t[1])))
+        # Obelisk: a clearing play that keeps Obelisk growing comes first (7809 7C89CEFK advised a resetting Full House)
+        ob_safe = lambda t: not _obelisk_resets(d, t[0])
+        pick = max(ok, key=lambda t: (ob_safe(t), (lvl_of(t[0]) <= 1, t[0] != mh_now) if arm else (False, False), t[0] == mh_now, t[0] in PAIR_FAMILY, t[2], -len(t[1])))
         if pick[2] < 1.25 * need and not (arm and pick[2] >= 1.1 * need):
             # a thin margin is est risk (7810 The Eye last hand: Two Pair 5874 vs need 5350 over a Full House 10036): take the biggest
-            pick = max(ok, key=lambda t: (t[2], -len(t[1])))
+            pick = max(ok, key=lambda t: (ob_safe(t) and t[2] >= 1.1 * need, t[2], -len(t[1])))
+        if _obelisk_resets(d, pick[0]):
+            print(f"  OBELISK: {pick[0]} is your strictly most played type: this play RESETS Obelisk to x1 (accepted: no other clearing play keeps it)")
         why = "" if pick[2] == max(c[2] for c in ok) else f"; a bigger {max(ok, key=lambda t: t[2])[0]} also clears but {pick[0]} is the hand you are leveling"
         fl = fillers(pick[1], pick[0]) if len(pick[1]) < 5 else []
         print(f"ADVICE: PLAY -> b play {TYPE_WORD.get(pick[0], 'HIGH')} {' '.join(map(str, pick[1] + fl))}   (est {pick[2]} >= need {need}{why}" + (f"; fillers {fl} just draw cards)" if fl else ")"))
@@ -2209,15 +2230,18 @@ def classify_joker(name, cost, mh):
     if name == "Ride the Bus":
         return "PLUS(growth: +1 mult per faceless hand, resets on a face)", 50
     if name == "Throwback":
-        return "PLUS(x0.25 per skipped blind: useless, we never skip)", 15
+        # the first Gold win's engine: +x0.25 per skipped blind with the skip plan (`s` advises the skips)
+        return "XMULT(growth: +x0.25 per skipped blind; skip Small and Big while your rounds beat the boss)", 80
     if name == "Hit the Road":
         return "PLUS(x0.5 per Jack discarded this round: rarely fires)", 30
     if name == "Obelisk":
         # 7807 WON with a foil Obelisk at x3.6: it grows x0.2 on every hand whose type is not STRICTLY your most played;
         # a flat chips/+mult build makes the type irrelevant, so rotate types and never feed the max type
         return "XMULT(growth: +x0.2 per hand of a type that is not strictly your most played)", 60
-    if name in ("Blackboard", "Flower Pot", "Seeing Double", "Driver's License", "Joker Stencil", "Acrobat", "Loyalty Card", "Bloodstone", "Ancient Joker", "Baseball Card", "The Idol"):
-        return "XMULT(conditional, unreliable)", (40 if name in ("Blackboard", "Flower Pot", "Seeing Double", "Driver's License", "Joker Stencil") else 55)  # the first group almost never fires on a pair-family build
+    if name == "Joker Stencil":
+        return "XMULT(Stencil: x1 per empty slot, each joker you add costs x1)", 60
+    if name in ("Blackboard", "Flower Pot", "Seeing Double", "Driver's License", "Acrobat", "Loyalty Card", "Bloodstone", "Ancient Joker", "Baseball Card", "The Idol"):
+        return "XMULT(conditional, unreliable)", (40 if name in ("Blackboard", "Flower Pot", "Seeing Double", "Driver's License") else 55)  # the first group almost never fires on a pair-family build
     if name in ("Red Card", "Fortune Teller", "Green Joker", "Ice Cream", "Popcorn", "Square Joker", "Runner"):
         return "PLUS(weak/conditional)", 25
     if name in SUIT_JOKERS:
@@ -2407,14 +2431,14 @@ def is_scorer(d, j, mh):
             or joker_share(d, j, mh) >= 0.15)
 
 
-def deck_best_est(d, samples=40, pct=0.75, seed=7):
+def deck_best_est(d, samples=40, pct=0.75, seed=7, hs_delta=0):
     """SCORE CHECK from your real deck: deal `samples` random hands of your hand size from the full deck (ranks, suits,
     enhancements, editions), take each deal's best playable est (current jokers and levels, final-hand conditionals
     active) and return the pct quantile. Replaces the synthetic KK Pair, which ignored Odd Todd/Splash/Shoot the Moon
     held Queens (7804 2.4k shown vs ~5k real; 7802 495 vs 1540). None without deck data."""
     import random
     cards = [c for c in lst((d.get("deck") or {}).get("cards")) if c.get("rank") is not None]
-    hs = int(d.get("hand_size") or 8)
+    hs = max(1, int(d.get("hand_size") or 8) + hs_delta)  # hs_delta: The Manacle -1 hand size
     if len(cards) < hs:
         return None
     rng = random.Random(seed)
@@ -2976,12 +3000,16 @@ def _shop_rules(d):
         # (the best hand after digging: the 90th pct of a deal; 7806 J3REMTSE scored 7952 vs a 0.44x projection)
         per = deck_best_est(d, pct=0.9 if bn_t == "The Needle" else 0.5) or best_hand
         proj = int(per * (1 if bn_t == "The Needle" else _hands_pr(d)))
+    elif bn_t == "The Manacle" and deck_best and best_hand:
+        # -1 hand size: fewer cards to make the hand from, and fewer held Queens/Kings/Steel (7802 F64SACWK: Shoot the Moon
+        # projected 1700-2400 vs 390-426 real)
+        proj = int(round_est(d, mh) * ((deck_best_est(d, hs_delta=-1) or deck_best) / best_hand))
     # the last shop before a boss: below 1.25x the floor is off too (dying with money is the worst outcome)
     tight = bool(need_next) and proj < (1.25 if nk == "Boss" else 1.2) * need_next
     if tight:
         floor = 0
         print(f"  TIGHT: next blind ({(ch_now.get(nk) or {}).get('name') or nk}) needs {need_next}; projected round ~{proj} ({proj / need_next:.2f}x < {'1.25' if nk == 'Boss' else '1.2'}x"
-              + (f", with {bn_t}'s constraint" if bn_t in ("The Water", "The Needle") else "") + "): "
+              + (f", with {bn_t}'s constraint" if bn_t in ("The Water", "The Needle", "The Manacle") else "") + "): "
               f"recorded Gold shops at this ratio lost the next blind {'40' if proj < 0.5 * need_next else '32' if proj < 0.8 * need_next else '13'}% (>= 1.2x: 6% or less). "
               "Money floor OFF - spend on whatever adds main-hand score now (main-hand planet, Celestial/Arcana pack, scorer); sell dead weight (8 Ball, economy jokers) to fund it")
     mh_lv = (d.get("hand_levels") or {}).get(mh) or {}
@@ -3000,7 +3028,8 @@ def _shop_rules(d):
     rg_target = 1 if ante <= 2 else (2 if ante <= 5 else 3)
     if stake >= 6 and n_rg < rg_target:
         print(f"  GOLD CHECK: {n_rg} reliable/growth xMult alive next ante; target {rg_target} by the end of ante {2 if ante <= 2 else (5 if ante <= 5 else 7)}"
-              + (" (incl. a growing one)" if rg_target == 3 else "") + ". Pair builds with 0 xMult top out ~10k/hand at ante 5 (16.7k needed).")
+              + (" (incl. a growing one)" if rg_target == 3 else "")
+              + (". Pair builds with 0 xMult top out ~10k/hand at ante 5 (16.7k needed)." if (surv or 0) < 10000 else f". Your deck already reaches ~{surv}/hand; the xMult is for antes 6-8."))
     if mh in ("Flush", "Straight") and stake >= 6:
         print(f"  BUILD: your main hand is {mh}; at Gold 0 of 6 Flush/Straight-main runs reached ante 4 (17 of 28 pair-family runs did). "
               "Shift to Pair/Two Pair/Trips: their jokers and planets are ranked above Flush/Straight ones.")
@@ -3299,10 +3328,14 @@ def _shop_rules(d):
                             may_replace and ((cls.startswith("XMULT") and not cls.startswith("XMULT(conditional")) or cls == "COUNTER" or core_gain or (_fits_x(cls) and cls.startswith("XMULT(conditional") and n_x_now < 2 and ante >= 4) or (name in ("Blueprint", "Brainstorm") and n_x_now >= 1)),
                             _joker_edition(c) != "negative"))  # a Negative joker brings its own slot
         elif typ == "Planet":
-            good = name == PLANET_FOR.get(mh)
             sh2 = second_hand(d)
+            # Obelisk grown: the hands you PLAY are the non-max types (the max type resets it), so level those (7809 7C89CEFK)
+            ob_g = any(j.get("name") == "Obelisk" and not j.get("debuff") and float((j.get("ability") or {}).get("x_mult") or 1) >= 1.5 for j in jokers)
+            mh_p, sh2 = (sh2, mh) if (ob_g and sh2) else (mh, sh2)
+            good = name == PLANET_FOR.get(mh_p)
             if not good and sh2 and name == PLANET_FOR.get(sh2):
-                options.append((66, "PLANET", f"buy {c['index']}", f"{name} ${cost} [planet for your second-most-played hand {sh2}: boss insurance]", cost, True, False))
+                options.append(((20, "PLANET", f"buy {c['index']}", f"{name} ${cost} [planet for {sh2}, your Obelisk max type: you avoid playing it]", cost, False, False)) if ob_g else
+                               (66, "PLANET", f"buy {c['index']}", f"{name} ${cost} [planet for your second-most-played hand {sh2}: boss insurance]", cost, True, False))
                 continue
             feeds = any(j.get("name") in ("Constellation", "Satellite", "Astronomer") for j in jokers)
             const = any(j.get("name") == "Constellation" and not j.get("debuff") for j in jokers)
@@ -3456,6 +3489,15 @@ def _shop_rules(d):
             if net <= 1 and cost_c <= money and (free > 0 or _joker_edition(c) == "negative"):
                 options.append((72, "FEED", f"buy {c['index']}", f"{c.get('name')}{stickers(c)} ${cost_c} [CAMPFIRE FEED: buy, then sell it at once (`b sell` the new last joker): "
                                 f"+x0.25 Campfire for ${net} net; Campfire resets after the boss]", cost_c, True, True))
+    CHIPS_ONLY = {"Sly Joker", "Wily Joker", "Clever Joker", "Devious Joker", "Crafty Joker", "Scary Face", "Ice Cream", "Stuntman",
+                  "Arrowhead", "Castle", "Runner", "Square Joker", "Blue Joker", "Banner", "Odd Todd", "Wee Joker", "Hiker"}
+    if ante <= 2 and not any(not j.get("debuff") and "mult" in JOKER_DESC.get(j.get("name"), "").lower() for j in jokers):
+        # 0 +mult jokers at ante 1-2: chips multiply by a base mult of 2-4, so a +mult joker or a Buffoon pack comes first
+        # (7808 E686UWCQ)
+        is_chips = lambda o: o[2].startswith("buy") and any(o[3].split(" [")[0].split(" -> ")[-1].startswith(n) for n in CHIPS_ONLY)
+        mult_best = max((o[0] for o in options if (o[2].startswith("buy") and "mult" in o[3].split("]: ")[-1].lower() and not is_chips(o)) or "Buffoon" in o[3]), default=None)
+        if mult_best is not None:
+            options = [((min(o[0], mult_best - 1),) + tuple(o[1:])) if is_chips(o) else o for o in options]
     # the printed ranking is the final one: the ADVICE below walks this exact list top-down (skips are printed)
     options.sort(key=lambda t: -t[0])
     for o in options:
@@ -3485,9 +3527,13 @@ def _shop_rules(d):
             # Credit Card: in a survival spot (EMERGENCY / no scorer / <2 scorers early) the -$20 debt is spendable (7804
             # died at the ante-2 Small with $18 of credit unused)
             credit_e = 20 if any(j.get("name") == "Credit Card" and not j.get("debuff") for j in jokers) and (emergency or scoring_now < 2) else 0
-            if money + credit_e - reroll0 - rent_due >= (5 if scoring_now == 0 else 4):  # 0 scorers: keep $5 for a $5 scorer (7806)
+            # 0 scorers: keep $5 for a $5 scorer (7806); but TIGHT at stake 8 a $1 rental scorer is the out, so reroll down
+            # to $1 (7805 THD1ZBW7 left the ante-1 boss shop with $6 and no scorer)
+            keep_min = 1 if (tight and stake >= 8 and scoring_now == 0) else (5 if scoring_now == 0 else 4)
+            if money + credit_e - reroll0 - rent_due >= keep_min:
                 print(f"ADVICE: REROLL -> b reroll   (no scoring joker in this shop and you own {scoring_now}: at ante {ante} a joker matters more than any pack; ${money - reroll0} left after"
-                      + (", Credit Card debt allowed" if credit_e and money - reroll0 < 4 else "") + ")")
+                      + (", Credit Card debt allowed" if credit_e and money - reroll0 < 4 else "")
+                      + ("; TIGHT: a $1 rental scorer is enough to look for" if keep_min == 1 else "") + ")")
                 return
             if scoring_now == 0 and money >= reroll0:
                 print(f"  (no scorer offered and a reroll would leave under $3: rerolling to $0 has revealed $3 jokers it could no longer buy - keep the ${money} for the next shop)")
@@ -3504,15 +3550,18 @@ def _shop_rules(d):
     for score, cls, cmd, label, cost, strong, needs_slot in options:
         if score < 30:
             break
-        if cost > money + credit and cmd.startswith("buy") and ((_fits_x(cls) and score >= 60 and ante >= 3) or (_is_scoring(cls) and scoring_now == 0 and jokers)):
-            # an xMult (or, with no scorer at all, the first scoring joker) we cannot afford: sell the weakest non-xMult joker if that pays for it, otherwise keep the money
-            sellable = [(int(j.get("sell_cost") or 0), j) for j in sellable_j if not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") and not _is_scoring(classify_joker(j.get("name"), 0, mh)[0]) and j.get("name") not in ENGINE_KEEP and joker_share(d, j, mh) < 0.15]
+        if cost > money + credit and cmd.startswith("buy") and ((_fits_x(cls) and score >= 60 and ante >= 3) or (_is_scoring(cls) and scoring_now == 0 and jokers)
+                                                                or (_is_scoring(cls) and score >= 70 and cost - money <= 3)):
+            # an xMult (or, with no scorer at all, the first scoring joker; or a strong scorer $1-3 short: 7808 E686UWCQ) we
+            # cannot afford: sell the weakest non-xMult joker (a weak scorer that is a rental counts) if that pays for it
+            sellable = [(int(j.get("sell_cost") or 0), j) for j in sellable_j if not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT")
+                        and (not _is_scoring(classify_joker(j.get("name"), 0, mh)[0]) or _stk(j)["rental"]) and j.get("name") not in ENGINE_KEEP and joker_share(d, j, mh) < 0.15]
             sellable.sort(key=lambda t: (owned_value(d, t[1], mh), -t[0]))
             if sellable and money + sellable[0][0] >= cost:
                 say_skipped()
                 print(f"ADVICE: SELL then BUY -> b sell {sellable[0][1].get('index')}  then  b {cmd}   ({label}; selling {sellable[0][1].get('name')} for ${sellable[0][0]} makes it affordable)")
                 return
-            print(f"  {label.split(' [')[0]} is an xMult you cannot afford (${money}): do not spend on packs this shop unless they clear the next blind; it is gone next shop, so only hold cash if a reroll/next shop is likely to show another")
+            print(f"  {label.split(' [')[0]} is {'an xMult' if _fits_x(cls) else 'a scorer'} you cannot afford (${money}): do not spend on packs this shop unless they clear the next blind; it is gone next shop, so only hold cash if a reroll/next shop is likely to show another")
         if cls.startswith("AVOID"):
             continue
         if cost > 0 and cost > money + credit:  # a $0 item (Coupon/tag) is always affordable, even at negative money (7807)

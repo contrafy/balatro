@@ -150,6 +150,15 @@ def test_misprint_is_sampled_per_hand():
     assert 0.55 < top["p_model"] < 0.8
 
 
+def test_a_certain_clear_with_cards_in_hand_beats_tied_discard_lines():
+    # 7805 R87RLKF6 (The Wall): Pair 66 now + held Pair 22 next clears for sure; discards also read p 1.00 (sampled)
+    st = state(["KS", "KD", "QS", "QD", "9C", "7H", "4C", "2D"], need=110, hands=2, discards=2)
+    res = plan(st, samples=100)
+    top = res[0]
+    assert top["action"] == "PLAY" and top["certain"] and "certain" in top["note"]
+    assert not any(r["certain"] for r in res if r["action"] == "DISCARD")
+
+
 def test_blackboard_plays_red_cards_away_as_fillers():
     # 7805 16N52CRZ (The Hook): Blackboard x3 needs every held card black; play the reds as fillers
     st = state(["KS", "KC", "9S", "7C", "5S", "4H", "3D", "2C"], need=200, hands=3, discards=0, jokers=["Blackboard"])
