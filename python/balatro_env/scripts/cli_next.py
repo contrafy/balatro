@@ -217,7 +217,9 @@ def show(d):
         print("  suits " + " ".join(f"{k}{v}" for k, v in suits.most_common()) + " | ranks " + " ".join(f"{k}x{v}" for k, v in ranks.most_common() if v > 1))
     jk = lst(d.get("jokers"))
     if jk:
-        print(f"Jokers ({len(jk)}/{d.get('joker_slots')}) cons_slots {d.get('consumable_slots')} hand_size {d.get('hand_size')}: " + " | ".join(f"[{j.get('index', i + 1)}] {j.get('name')}{stickers(j)} ({JOKER_DESC.get(j.get('name'), 'effect not in table')}) sell${j.get('sell_cost')}"
+        idol = (d.get("run") or {}).get("idol_card") or {}
+        idol_s = f" (this round: {idol.get('rank')} of {idol.get('suit')})" if isinstance(idol, dict) and idol.get("rank") else ""
+        print(f"Jokers ({len(jk)}/{d.get('joker_slots')}) cons_slots {d.get('consumable_slots')} hand_size {d.get('hand_size')}: " + " | ".join(f"[{j.get('index', i + 1)}] {j.get('name')}{stickers(j)} ({JOKER_DESC.get(j.get('name'), 'effect not in table')}{idol_s if j.get('name') == 'The Idol' else ''}) sell${j.get('sell_cost')}"
                                     + (f" {j['edition'].get('type', j['edition']) if isinstance(j.get('edition'), dict) else j['edition']}" if j.get("edition") else "")
                                     + (f" ab={compact_ability(j.get('ability'))}" if compact_ability(j.get('ability')) else "")
                                     for i, j in enumerate(jk)))
@@ -314,6 +316,14 @@ def show(d):
             if thr_ok and bs.get("on_deck") == "Small" and tk:
                 skip_ok = True
                 NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag")
+        if skip_ok and tk not in ("tag_buffoon", "tag_top_up") and not thr_ok and ante_n >= 2:
+            # EMERGENCY (best hand < 0.35 x next boss/3: 84% died) - only a tag that pays a scorer NOW is worth the skip;
+            # the Small's shop is the chance to buy a multiplier (7804 skipped for Ethereal at EMERGENCY 0.13)
+            nxt_s = next_ante_targets(d)
+            b_e = deck_best_est(d) or typical_est(d, main_hand(d), best=True)
+            if nxt_s and nxt_s[3] and b_e < 0.35 * nxt_s[3] / 3:
+                skip_ok = False
+                weak_hand = True
         if skip_ok and 3 <= ante_n <= 4 and not thr_ok:
             # GOLD_ANALYSIS.md: ante 3-4 skippers died 40-46% vs players 25-33%: skip only if one hand reaches boss/2
             boss_c_s = int((ch.get("Boss") or {}).get("chips") or 0)
@@ -839,8 +849,12 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
             if {"S", "H", "C", "D"} <= _suit_cover(scoring, jnames):
                 mult *= 3
         elif n == "Seeing Double":
-            suits = _suit_cover(scoring, jnames)
-            if "C" in suits and len(suits) > 1:
+            # SMODS.seeing_double_check: one scoring card that is a Club (Wild counts) and ANOTHER that is a non-Club suit
+            # (Wild counts too); 7802 est 24790 vs 49580 with a Wild as the club
+            live = [c for c in scoring if not c.get("debuff")]
+            club = [k for k, c in enumerate(live) if "Wild" in _enh(c) or _suit_matches(c, "C", jnames)]
+            other = [k for k, c in enumerate(live) if "Wild" in _enh(c) or any(_suit_matches(c, s_, jnames) for s_ in ("H", "D", "S"))]
+            if any(a != b for a in club for b in other):
                 mult *= 2
         else:
             applied = False
@@ -1082,6 +1096,23 @@ def _candidates(d):
     return cands
 
 
+ORDER_JOKERS = {"Hanging Chad", "Photograph"}  # retrigger / x2 on the FIRST scored (face) card: hand order matters
+
+
+def _order_gain(d, hand_name, idxs):
+    """Best est when one of the played cards is moved to the leftmost played slot (Hanging Chad retriggers the first
+    scored card, Photograph x2 the first face): (est, card index to move) or (current est, None)."""
+    cards = _cards_by_idx(d, idxs)
+    held = _held(d, idxs)
+    cur = estimate(hand_name, cards, held, d, played_n=len(idxs))[0]
+    best = (cur, None)
+    for k, c in enumerate(cards[1:], 1):
+        e = estimate(hand_name, [c] + cards[:k] + cards[k + 1:], held, d, played_n=len(idxs))[0]
+        if e > best[0]:
+            best = (e, c.get("index"))
+    return best
+
+
 TYPE_WORD = {v: k for k, v in HAND_WORDS.items()}
 
 
@@ -1183,6 +1214,15 @@ def _advise_rules(d):
     hand = lst(d.get("hand"))
     cands = _candidates(d)
     show_hands(d)
+    if cands and any(j.get("name") in ORDER_JOKERS and not j.get("debuff") for j in lst(d.get("jokers"))):
+        # 7805: an A-high Straight 2982 was advised over K-Q-J-T-9 with the King first (11704) under Photograph + Chad
+        cur_best = max(c[2] for c in cands)
+        reo = max(((_order_gain(d, h, ix), h, ix) for h, ix, _e in cands), key=lambda t: t[0][0])
+        (e_r, mv), h_r, ix_r = reo
+        if mv is not None and e_r >= 1.1 * cur_best:
+            print(f"ADVICE: REORDER -> b move hand {mv} {min(ix_r)}   (Hanging Chad / Photograph act on the FIRST scored card: with card {mv} first, "
+                  f"{h_r} {ix_r} scores ~{e_r} vs {cur_best} for the best play in this order; moving is free, then re-run advise)")
+            return
     jc = d.get("_jokers_cached")
     if jc and cands:
         names = [str(j.get("name")) for j in lst(d.get("jokers"))]
@@ -1960,6 +2000,14 @@ def joker_share(d, j, mh):
     return sh
 
 
+def _deal_order(cards, state):
+    """With Hanging Chad / Photograph the player reorders so the best card scores first: sampled deals do the same
+    (faces, then high ranks first); otherwise the random deal order is kept (7805: SCORE CHECK 248-1560 vs real 8-12k)."""
+    if any(j.get("name") in ORDER_JOKERS and not j.get("debuff") for j in lst(state.get("jokers"))):
+        return sorted(cards, key=lambda c: (_r(c) not in FACES, -RANK_VAL.get(_r(c), 0)))
+    return cards
+
+
 def deck_round_est(d, jokers=None, samples=30, seed=11):
     """Median round total over deals from YOUR deck with the given jokers (default owned): best ordinary hand at the round
     start x (hands - 1) + best final hand (Summit/Acrobat/Dusk). Unlike the KK synthetic it sees rank/suit-gated jokers
@@ -1978,7 +2026,7 @@ def deck_round_est(d, jokers=None, samples=30, seed=11):
     rng = random.Random(seed)
     vals = []
     for _ in range(samples):
-        deal = [dict(c, index=i + 1, facing="front", debuff=False, highlighted=False) for i, c in enumerate(rng.sample(cards, hs))]
+        deal = [dict(c, index=i + 1, facing="front", debuff=False, highlighted=False) for i, c in enumerate(_deal_order(rng.sample(cards, hs), base))]
         o = max((c[2] for st in (st_ord, st_ord0) if st is not None for c in _candidates(dict(st, hand=deal))), default=0)
         f = max((c[2] for c in _candidates(dict(st_fin, hand=deal))), default=0)
         vals.append(o * (h - 1) + f)
@@ -2014,7 +2062,7 @@ def deck_best_est(d, samples=40, pct=0.75, seed=7):
     keep_disc = dict(base, discards_remaining=int(d.get("discards_per_round") or 3))  # Banner/Delayed Gratification
     vals = []
     for _ in range(samples):
-        deal = [dict(c, index=i + 1, facing="front", debuff=False, highlighted=False) for i, c in enumerate(rng.sample(cards, hs))]
+        deal = [dict(c, index=i + 1, facing="front", debuff=False, highlighted=False) for i, c in enumerate(_deal_order(rng.sample(cards, hs), base))]
         vals.append(max((c[2] for st in (base, keep_disc) for c in _candidates(dict(st, hand=deal))), default=0))
     vals.sort()
     return vals[min(len(vals) - 1, int(pct * len(vals)))]
@@ -2189,7 +2237,7 @@ def shop_advise_sim(d, budget_s=3.5):
                 nm = o.get("label", "").split(" $")[0].replace("buy ", "", 1)
                 item = next((c for c in sh_items if c.get("name") == nm), None)
             o["_cmd"] = f"buy {item.get('index')}" if item is not None and item.get("index") is not None else None
-        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate)
+        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate, seed=0, min_samples=48)  # fixed seed, more samples: stable baseline
     except Exception as e:
         lines.insert(adv_i, f"  (SIM unavailable: {type(e).__name__}: {e})")
         print("\n".join(lines)); return
@@ -2223,9 +2271,16 @@ def shop_advise_sim(d, budget_s=3.5):
             if mm:
                 rank[mm.group(2)] = int(mm.group(1))
         t_cmd = top["option"].get("_cmd")
+        aj = top["option"].get("add_joker") or {}
+        big_gap = key(top) - key(mine) > 0.2 and not all_zero and t_cmd and not (_stk(aj)["eternal"] and _stk(aj)["rental"])
         if t_cmd and adv_cmd and t_cmd in rank and adv_cmd in rank and abs(rank[t_cmd] - rank[adv_cmd]) <= 5 and adv.startswith("ADVICE: BUY"):
             sim.append(f"  (rule advice was: {adv[8:]})")
             adv = f"ADVICE: BUY -> b {t_cmd}   (SIM tie-break: rules scored it {rank[t_cmd]} vs {rank[adv_cmd]}; SIM {top['label']} p_next {key(top):.2f} vs {key(mine):.2f})"
+        elif big_gap:
+            # the rules and the SIM disagree by > 0.2 p_next: the SIM played the next 3 blinds, defer to it (7805: Wily
+            # rated -7 while the SIM gave +0.38)
+            sim.append(f"  (rule advice was: {adv[8:]})")
+            adv = f"ADVICE: BUY -> b {t_cmd}   (SIM: {top['label']} p_next {key(top):.2f} vs {key(mine):.2f} for the rule pick over the next 3 blinds)"
         else:
             sim.append(f"  SIM disagrees: {top['label']} {'score_ratio' if all_zero else 'p_next'} {key(top):.2f} vs {key(mine):.2f} for the ADVICE pick (rules kept; weigh it)")
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
@@ -3303,6 +3358,10 @@ def main():
     if cmd == "hands":
         show_hands(d); return
     if cmd == "advise":
+        t0 = time.time()
+        while d.get("phase") not in ("SELECTING_HAND", "PACK_OPENING") and time.time() - t0 < 6:
+            time.sleep(0.3)  # right after `blind` / a pack pick the phase is still changing (7805)
+            d = _with_known_jokers(wait_settled())
         if d.get("phase") == "PACK_OPENING":
             pack_advise(d)
         else:

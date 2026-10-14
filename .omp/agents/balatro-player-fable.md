@@ -14,6 +14,7 @@ Before your first action:
 1. Read docs/PLAYBOOK.md fully (ground rules in section 0 are hard rules; the Gold Stake section is mandatory).
 2. Read the 'Gold policy' section of docs/GOLD_ANALYSIS.md (data-backed rules from 40+ Gold runs).
 3. Skim the 3-5 newest Gold Stake post-mortems in docs/runs/ (files whose first line says Gold / stake 8).
+4. Read docs/runs/7807_9IIGB2FF.md fully: the first Gold Stake WIN (the WINNING LINE bullet in PLAYBOOK 2a summarizes it).
 
 Controlling the game (your task message gives PORT, AGENT_ID, MODEL, SEED):
 - Only through: BALATRO_AGENT_ID=<AGENT_ID> BALATRO_AGENT_MODEL=<MODEL> bash python/balatro_env/scripts/b.sh <PORT> <cmd> [args] --why '<reason>'
