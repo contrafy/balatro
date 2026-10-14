@@ -73,7 +73,8 @@ def _note_action(d, typ, params=None):
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         with open(_last_action_file(), "w", encoding="utf-8") as f:
-            json.dump({"step_before": d.get("step"), "sig_before": _digest(d), "type": typ, "ts": time.time(), "confirmed": False, "gone": gone}, f)
+            json.dump({"step_before": d.get("step"), "sig_before": _digest(d), "type": typ, "ts": time.time(), "confirmed": False, "gone": gone,
+                       "phase_before": d.get("phase")}, f)
     except Exception:
         pass
 
@@ -94,10 +95,14 @@ def _await_action_effect(d, timeout=5.0):
     # a sort / reorder can legitimately change nothing (already in that order; face-down cards): wait briefly, no warning
     # (7803 C5AF29KG: `sort rank` printed the warning twice)
     noop_ok = la.get("type") in ("SORT_HAND", "REORDER")
-    timeout = 2.0 if noop_ok else timeout
+    # phase transitions (select/skip a blind, leave the shop, cash out, skip a pack) are done only when the phase changes
+    # (UDRRTZQ9: `advise` right after `blind` showed the blind-select screen twice)
+    trans = la.get("type") in ("SELECT_BLIND", "SHOP_END", "CASH_OUT", "SKIP_PACK", "SHOP_BUY_BOOSTER")
+    timeout = 2.0 if noop_ok else (15.0 if trans else timeout)
 
     def pending(x):
-        return _digest(x) == la.get("sig_before") or (gone and any(y.get("id") == gone[1] for y in lst(x.get(gone[0]))))
+        return (_digest(x) == la.get("sig_before") or (gone and any(y.get("id") == gone[1] for y in lst(x.get(gone[0]))))
+                or (trans and x.get("phase") == la.get("phase_before")))
     while pending(d) and time.time() - t0 < timeout:
         time.sleep(0.2)
         d = wait_settled()
@@ -209,6 +214,20 @@ def _dead_perishable(j):
     """A perishable joker whose tally ran out: debuffed for the rest of the run (scores nothing, still sellable)."""
     s = _stk(j)
     return s["perishable"] and s["perish_tally"] == 0
+
+
+def _sells_boss_carrier(d, opt):
+    """True when a SIM option sells a perishable xMult that is still alive for this ante's boss: the SIM horizon runs past
+    its death and undervalues the boss round it is kept for (7803 7MUK4NI9: sell Ramen at its last round before The Plant)."""
+    sold = opt.get("sell") if isinstance(opt.get("sell"), list) else []
+    boss = (((d.get("blind_select") or {}).get("choices") or {}).get("Boss") or {})
+    if not sold or boss.get("state") == "Defeated":
+        return False
+    for j in lst(d.get("jokers")):
+        s = _stk(j)
+        if j.get("index") in sold and s["perishable"] and not _dead_perishable(j) and classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT"):
+            return True
+    return False
 
 
 def _is_scoring_cls(cls):
@@ -340,9 +359,11 @@ def show(d):
             skip_ok = True
             NOW_TAGS[tk] = f"${cash[tk]} right now" + (f", and the skip saves ${3 * n_rent} of rent" if n_rent else "")
         thr = any(j.get("name") == "Throwback" and not j.get("debuff") for j in lst(d.get("jokers")))
-        # a skip has no round end, so perishables do not tick: with a key scorer at <= 2 rounds left, skipping keeps it
-        # alive for the boss (Main 08:xx, ~6 runs lost a perishable carrier the round before the boss)
-        perish_key = any(_stk(j)["perishable"] and (_stk(j)["perish_tally"] or 9) <= 2 and not _dead_perishable(j)
+        # a skip has no round end, so perishables do not tick: a key scorer that would die BEFORE the boss (tally <= the
+        # rounds still played before it: 2 from the Small, 1 from the Big) is kept alive by skipping (Main 08:xx, ~6 runs
+        # lost a perishable carrier the round before the boss; 7803 7MUK4NI9 skipped for a Ramen that reached the boss anyway)
+        rounds_pre_boss = 2 if bs.get("on_deck") == "Small" else 1 if bs.get("on_deck") == "Big" else 0
+        perish_key = any(_stk(j)["perishable"] and (_stk(j)["perish_tally"] or 9) <= rounds_pre_boss and not _dead_perishable(j)
                          and (classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") or joker_share(d, j, main_hand(d)) >= 0.3)
                          for j in lst(d.get("jokers")))  # the KEY scorer only (7809 HCUCE445 skipped for a minor one)
         thr_ok = False
@@ -1367,7 +1388,11 @@ def advise(d):
         better_p = mine and not (top.get("low_n") or top.get("low_confidence")) and top["p_clear"] > mine["p_clear"] + (0.10 if breaks else 0.05)
         better_c = mine and not (top.get("low_n") or top.get("low_confidence")) and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
         if mine and not (better_p or better_c):
-            sol.append("  (rule pick kept: the solver's best does not beat it by more than 0.05 calibrated p)")
+            gap = top["p_clear"] - mine["p_clear"]
+            why_k = (f"breaking your made {made_pf[0]} needs +0.10 (the solver leads by {gap:+.2f})" if breaks and gap > 0.05 else
+                     f"the solver's best is low-confidence (n={top.get('n')})" if (top.get("low_n") or top.get("low_confidence")) and gap > 0.05 else
+                     f"the solver's best leads by only {gap:+.2f} (needs > 0.05 calibrated p)")
+            sol.append(f"  (rule pick kept: {why_k})")
         if better_p or better_c:
             idxs = " ".join(map(str, top["cards"]))
             if top["action"] == "PLAY":
@@ -2742,21 +2767,25 @@ def shop_advise_sim(d, budget_s=6.0):
             # a copier of an owned xMult is an xMult (7810 UIL7HPIQ: Blueprint doubling the only xMult Ramen was barred)
             if not (x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
                 return False
-        # a second PERMANENT rental before ante 6 drains the run; a perishable one is bounded, and a buy the rules already
-        # advised passed their own rental checks (7809: The Duo perishable rental +0.40 was turned into LEAVE); a second
-        # PERMANENT rental needs both to be xMults or the buy to sell the first (7801 FYPFR6AC)
-        if st["rental"] and not st["perishable"] and own_rent and ante_s < 6:
-            owned_r = [j for j in lst(d.get("jokers")) if _stk(j)["rental"]]
+        # ANY second rental before ante 6 (perishable too, NEEDED NOW too) drains the run: allowed only when both are
+        # xMults or the buy sells the first (7801 FYPFR6AC; 7805 Q7MRDCJW: a perishable $1 second rental at SIM +0.25;
+        # PLAYBOOK 2b: the #1 killer, 32 runs)
+        owned_r = [j for j in lst(d.get("jokers")) if _stk(j)["rental"]]
+        sells_r = any(j.get("index") in (r["option"].get("sell") or []) for j in owned_r if isinstance(r["option"].get("sell"), list))
+        if st["rental"] and own_rent and ante_s < 6:
             both_x = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") and \
                 all(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in owned_r)
-            sells_r = any(j.get("index") in (r["option"].get("sell") or []) for j in owned_r if isinstance(r["option"].get("sell"), list))
             if not (both_x or sells_r):
                 return False
+        # a buy whose own money path goes negative before a later shop (rent) is a dead-shop buy, never NEEDED NOW
+        if r.get("shop_money") is not None and r["shop_money"] < 0 <= ((base0 or {}).get("shop_money") if (base0 or {}).get("shop_money") is not None else 0) \
+                and int(r["option"].get("cost") or 0) > 0 and not sells_r:
+            return False
         # the $ floor binds unless TIGHT/EMERGENCY, the rules exempted this very buy, or the SIM gain is large (+0.15)
         if not floor_off and r.get("money_after") is not None and int(r.get("money_after") or 0) < floor_v and int(r["option"].get("cost") or 0) > 0 \
                 and r["option"].get("_cmd") != adv_cmd0 and key(r) - key0 < 0.15:
             return False
-        return not _eternal_bar(d, aj)
+        return not _eternal_bar(d, aj) and not _sells_boss_carrier(d, r["option"])
     base = next((r for r in feas if not r["option"].get("_cmd")), None)
     cands_s = [r for r in feas if r["option"].get("_cmd") and allowed(r)]
     best = None
@@ -2874,8 +2903,8 @@ def pack_advise_sim(d, budget_s=3.5):
         # unless the rent-adjusted SIM (p_adj includes the run-long rent) still gains 0.15+ (7809 D5KV79HL: Blue Joker
         # 0.84 vs 0.00 was skipped)
         big = base_p is not None and not all_zero and key(r) - key(base_p) >= 0.15
-        return ((big or not (st["eternal"] and st["rental"] and ante_s < 7)) and (big or not (st["rental"] and not st["perishable"] and own_rent and ante_s < 6))
-                and not _eternal_bar(d, aj))
+        return ((big or not (st["eternal"] and st["rental"] and ante_s < 7)) and (big or not (st["rental"] and own_rent and ante_s < 6))
+                and not _eternal_bar(d, aj) and not _sells_boss_carrier(d, r["option"]))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
                                     f"P(clear next 3 blinds) {r.get('p_next') or 0:.2f}" + (f", vs {r['terminal']} {r.get('p_term') or 0:.2f}" if r.get("terminal") else "")
@@ -4153,8 +4182,8 @@ def play_type_check(rest, ints, d):
     if pr.get("hidden") or pv is None:
         print("Preview hidden (face-down cards selected): type check skipped, playing as requested.")
         pv = None
-    if pv == "Royal Flush" and expected == "Straight Flush":
-        expected = "Royal Flush"
+    if {pv, expected} == {"Royal Flush", "Straight Flush"}:
+        expected = pv  # the game names an A-high straight flush either way (7809 7C89CEFK: ROYALFLUSH aborted)
     if pv and pv != expected:
         print(f"ABORTED: you asked for {expected} but these cards form {pv}. Re-run `hands` and pick indices again.")
         sys.exit(2)

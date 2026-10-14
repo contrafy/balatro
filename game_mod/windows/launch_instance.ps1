@@ -63,4 +63,6 @@ $env:BALATRO_RL_BRIDGE_DIR = $bridgeDst
 $env:BALATRO_RL_DEBUG = if ($DebugEval) { '1' } else { '' }
 $p = Start-Process -FilePath (Join-Path $GameDir 'Balatro.exe') -WorkingDirectory $GameDir `
     -ArgumentList @('--mod-dir', "`"$modDir`"") -PassThru
+# Many instances run at once: keep them below the desktop so the machine stays responsive.
+try { $p.PriorityClass = 'BelowNormal' } catch { }
 "Balatro PID $($p.Id) on port $Port (save dir $saveDir, data dir $DataDir, git $gitSha)"

@@ -460,6 +460,36 @@ class RoundSolver:
         best = orders[vals.index(max(vals))][0]
         return next((c.d.get("index") for c in sc if c.d.get("id") == best.get("id")), None)
 
+    def _certain(self, cand):
+        """True when this PLAY plus the best plays of the cards already in hand (no draws used) clear the blind for
+        sure: deterministic scoring (no Misprint/Lucky/Bloodstone/Space rolls), no face-down cards, no The Hook."""
+        if cand["kind"] != PLAY or self.random_fx or self.fd_pos or self.hook or self.psychic:
+            return False
+        cards = list(self.slots)
+        sel = [cards[p] for p in cand["pos"]]
+        lock, used, rtypes, ob = self.ctx0
+        h, need = self.h0, self.need0
+        while sel and h > 0:
+            ids = {id(c) for c in sel}
+            rest = [c for c in cards if id(c) not in ids]
+            s, t = self.score(sel, rest, h, self.d0, (lock, used, rtypes, ob))
+            need -= s
+            h -= 1
+            if need <= 0:
+                return True
+            ob = self._obelisk_after(ob, t)
+            if self.boss == "The Mouth" and lock is None:
+                lock = t
+            if self.boss == "The Eye":
+                used = used | {t}
+            if self.card_sharp:
+                rtypes = rtypes | {t}
+            cards = rest
+            if not cards or h <= 0:
+                return False
+            _s, sel, _t = self.best_play(cards, h, self.d0, (lock, used, rtypes, ob))
+        return False
+
     def _first_for(self, cand):
         """best_first for a PLAY candidate of known cards (hand index), else None."""
         if cand["kind"] != PLAY or not self.order_dep:
@@ -1216,12 +1246,14 @@ class RoundSolver:
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
                         "discards_used": du / n, "n": n, "low_n": n < min(MIN_N, samples), "note": c["note"],
-                        "hand": c.get("hand"), "first_card": self._first_for(c)})
+                        "hand": c.get("hand"), "first_card": self._first_for(c), "certain": self._certain(c)})
         # slices where p is less trustworthy: few samples, final-hand jokers (Acrobat/Dusk slice is mis-calibrated on
         # recorded data), face-down cards (their identity is sampled)
         shaky = self.final_dep or bool(self.fd_pos)
         for r in res:
             r["low_confidence"] = r["low_n"] or shaky
+            if r["certain"]:
+                r["note"] += " [certain: the cards in hand clear the blind, no draw needed]"
             if r["first_card"] is not None:
                 lab = next(x.label() for x in self.slots if x is not None and x.d.get("index") == r["first_card"])
                 r["note"] += f" [move {lab} leftmost: scores first]"
@@ -1231,8 +1263,8 @@ class RoundSolver:
 
         def rank(r):
             tied = r["p_model"] >= top_p - TIE_P
-            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_model"], r["p_survive"], r["value"],
-                    -r["discards_used"], r["exp_score"])
+            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_model"], tied and r["certain"], r["p_survive"],
+                    r["value"], -r["discards_used"], r["exp_score"])
 
         res.sort(key=rank, reverse=True)
         return res

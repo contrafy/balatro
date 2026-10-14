@@ -781,8 +781,8 @@ def test_reorder_with_hanging_chad_and_photograph():
 
 
 def test_sim_never_leave_with_big_gain(monkeypatch):
-    # 7809 The Duo +0.41 / 7807 Seeing Double +0.12 were answered with LEAVE
-    d = shop(jokers=[joker("Joker", 1, rental=True)], shop_jokers=[{"index": 1, "name": "The Duo", "set": "Joker", "cost": 1, "rental": True, "perishable": True, "perish_tally": 5}], money=14, ante=3)
+    # 7809 The Duo +0.41 / 7807 Seeing Double +0.12 were answered with LEAVE; a second rental is allowed when both are xMults
+    d = shop(jokers=[joker("The Trio", 1, rental=True)], shop_jokers=[{"index": 1, "name": "The Duo", "set": "Joker", "cost": 1, "rental": True, "perishable": True, "perish_tally": 5}], money=14, ante=3)
     d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
 
     class FakeSim:
@@ -794,6 +794,22 @@ def test_sim_never_leave_with_big_gain(monkeypatch):
                     {"label": opts[1]["label"], "option": opts[1], "feasible": True, "p_next": 0.66, "delta": 0.40, "money_after": 13}]
     monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
     assert "b buy 1" in _advice(_out(cli.shop_advise_sim, d))
+
+
+def test_second_rental_barred_unless_both_xmult(monkeypatch):
+    # 7805 Q7MRDCJW: a perishable $1 second rental at SIM +0.25 (PLAYBOOK 2b: the #1 killer)
+    d = shop(jokers=[joker("Joker", 1, rental=True)], shop_jokers=[{"index": 1, "name": "Jolly Joker", "set": "Joker", "cost": 1, "rental": True, "perishable": True, "perish_tally": 5}], money=14, ante=3)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
+
+    class FakeSim:
+        def options_from_state(self, st, **kw):
+            return [{"label": "baseline (buy nothing)"}, {"label": "buy Jolly $1", "add_joker": st["shop"]["jokers"][0], "cost": 1}]
+
+        def value_options(self, st, opts, **kw):
+            return [{"label": opts[0]["label"], "option": opts[0], "feasible": True, "p_next": 0.26, "delta": 0.0, "money_after": 14},
+                    {"label": opts[1]["label"], "option": opts[1], "feasible": True, "p_next": 0.51, "delta": 0.25, "money_after": 13}]
+    monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
+    assert "b buy 1" not in _advice(_out(cli.shop_advise_sim, d))
 
 
 def test_arcana_pack_has_advice():

@@ -51,22 +51,28 @@ _Updated 07:50._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 11:25:43 by `balatro-data status` (edits inside this block are overwritten). Player runs: 276 (266 finished, 10 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 11:50:42 by `balatro-data status` (edits inside this block are overwritten). Player runs: 291 (275 finished, 16 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (10)
+### Live runs (16)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | 4JA3JTD1 | 8 | ROUND_EVAL | 3 | 6 | 0 | Big Blind (4800) | CASH_OUT | Big cleared ~8400/4800; cash out (+ blind, + hand, + DG, Golden last +) | 11s |
-| 7802 | port-7802 | claude-opus-5-5 | 4EP3BAN9 | 8 | SHOP | 1 | 1 | 1 | Small Blind (300) | SHOP_END | only left, nothing affordable | 8s |
-| 7803 | port-7803 | claude-opus-5-5 | 7MUK4NI9 | 8 | SELECTING_HAND | 6 | 13 | 11 | Big Blind 0/90000 | USE_CONSUMABLE {"index":1} | High Priestess: 2 random planets (Mercury/Venus would level Pair/Trips now) | 4s |
-| 7804 | port-7804 | claude-opus-5-5 | K4GMJRB5 | 8 | SELECTING_HAND | 2 | 5 | 4 | Big Blind 0/1500 | PLAY_HAND {"card_indices":[6,7,8,2,3]} | Full House 444QQ est 2912 >= 1500, one-shot Big | 22s |
-| 7805 | port-7805 | claude-opus-5-5 | Q7MRDCJW | 8 | SELECTING_HAND | 2 | 5 | 3 | The Hook 0/2000 | DISCARD {"card_indices":[1,3,5,6]} | Pair JJ 150 << 2000; keep 4 clubs QC JC 6C 2C for club Flush L2 (~1800 with Gluttonous), solver p 0… | 12s |
-| 7806 | port-7806 | claude-opus-5-5 | UDRRTZQ9 | 8 | SELECTING_HAND | 2 | 4 | 7 | Small Blind 968/1000 | PLAY_HAND {"card_indices":[1,2,3]} | Trips KKK ~180 > 32 needed, clears Small | 4s |
-| 7807 | port-7807 | claude-sonnet-5-5 | DJ5ZWVAG | 8 | SELECTING_HAND | 2 | 6 | 3 | The Flint 0/2000 | PLAY_HAND {"card_indices":[2,3]} | Pair QQ est 945 under Flint, 1055 left for 2 hands with 2 discards; solver p>=0.99 | 25s |
-| 7808 | port-7808 | claude-sonnet-5-5 | PBJP26A2 | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 32/300 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | Flush AH KH QH 9H 8H est 332 vs need 268, clears Small | 15s |
-| 7809 | port-7809 | claude-sonnet-5-5 | 6SGZCHWF | 8 | SELECTING_HAND | 3 | 6 | 8 | Small Blind 0/3200 | PLAY_HAND {"card_indices":[2,3,4,5,8]} | Two Pair 9988 est 2511 vs 3200, solver p>=0.99 with 2 hands + 2 discards left | 39s |
-| 7810 | port-7810 | claude-sonnet-5-5 | 83YPG1WJ | 8 | SELECTING_HAND | 5 | 13 | 10 | The Mouth 0/50000 | DISCARD {"card_indices":[1,2,3,6,7]} | Mouth lock plan = High Card singles; need an Ace for the x3 final hand (~48k); dig 5 cards, keep 5C… | 47s |
+| 7801 | port-7801 | claude-fable-5-1 | 4JA3JTD1 | 8 | SELECTING_HAND | 5 | 10 | 3 | The Water 10413/50000 | PLAY_HAND {"card_indices":[2,4,5]} | Pair 66 x3 (Card Sharp) est 19745-23305 of 39587 left; JH filler draws 3 for a last-hand pair x3 (s… | 32s |
+| 7802 | port-7802 | claude-opus-5-5 | 4EP3BAN9 | 8 | ROUND_EVAL | 5 | 11 | 19 | The Manacle (50000) | CASH_OUT | cash out Manacle | 30s |
+| 7803 | port-7803 | claude-opus-5-5 | 6UYKULXZ | 8 | SELECTING_HAND | 3 | 7 | 1 | The Mouth 0/6400 | USE_CONSUMABLE {"index":1,"targets":[2,3]} | Hierophant +30 chips Bonus on QH QC: Pair QQ chips 80->140, est 2480->~4340 vs Mouth 6400 | 8s |
+| 7805 | port-7805 | claude-opus-5-5 | ZFGUEC54 | 8 | SHOP | 2 | 4 | 3 | Big Blind (1500) | SELL_JOKER {"index":2} | Swashbuckler rental perishes in 3 rounds (- more rent); sell to fund Buffoon pack for an xMult/perm… | 8s |
+| 7806 | port-7806 | claude-opus-5-5 | 3J6IMQB9 | 8 | SHOP | 2 | 3 | 9 | Small Blind (1000) | SHOP_REROLL | EMERGENCY 0.31, no scorer in shop (only eternal Fortune Teller); reroll -> left for a joker, Celest… | 15s |
+| 7807 | port-7807 | claude-sonnet-5-5 | 2WEJC1IS | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 120/450 | DISCARD {"card_indices":[7,8]} | need 330 with 2 hands; keep Two Pair JJ99 floor plus Q T for 8/K straight outs, solver p 0.88 (best… | 1s |
+| 7809 | port-7809 | claude-sonnet-5-5 | S5XFPLXV | 8 | ROUND_EVAL | 1 | 2 | -2 | Big Blind (450) | CASH_OUT | Big cleared | 13s |
+| 7810 | port-7810 | claude-sonnet-5-5 | KYB5RXAB | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[1,2]} | keep made Two Pair 55/22 + 7D 3D (flush draw), margin<0.10 so keep Two Pair floor; need 300 | 8s |
+| 7811 | port-7811 | claude-sonnet-5-5 | SH1F9PV5 | 8 | BLIND_SELECT | 2 | 4 | 1 | Big Blind (1500) | SELECT_BLIND | Big 1500; Riff-raff makes 2 more commons | 5s |
+| 7812 | port-7812 | claude-sonnet-5-5 | 7KW3K58L | 8 | ROUND_EVAL | 2 | 3 | 1 | The Hook (2000) | CASH_OUT | cash out Hook boss | 7s |
+| 7813 | port-7813 | claude-sonnet-5-5 | 7FVPDIEW | 8 | ROUND_EVAL | 2 | 4 | 7 | Small Blind (1000) | CASH_OUT | cash out Small | 9s |
+| 7814 | port-7814 | claude-opus-5-5 | FYTRU4PT | 8 | ROUND_EVAL | 2 | 3 | -3 | The Manacle (2000) | CASH_OUT | cash out Manacle win | 0s |
+| 7815 | port-7815 | (unknown) | 6TJ4X7PU | 8 | PACK_OPENING | 1 | 2 | 4 | Big Blind (450) | SELECT_PACK_CARD {"index":1} | Drunkard +1 discard (3 discards) to dig pairs; free slot, nothing better in pack, SIM +0.03 | 6s |
+| 7816 | port-7816 | claude-sonnet-5-5 | ERVFM4CI | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 0/450 | DISCARD {"card_indices":[4,5,6,7,8]} | Solver p 0.99 vs rule pick 0.90: keep AS KS JS flush draw (Photograph x2 on K/J); Pair 7 est 48 is … | 18s |
+| 7817 | port-7817 | claude-opus-5-5 | JGH4NQBH | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 0/450 | PLAY_HAND {"card_indices":[2,3,5,6,8]} | Two Pair JJ77 est 216 of 450 (Photograph on J), keep discards; p 0.98 | 18s |
+| 7818 | port-7818 | claude-opus-5-5 | L7B2D714 | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 240/450 | PLAY_HAND {"card_indices":[4,5,7,8]} | Two Pair JJ55 est ~260 clears remaining 210 | 10s |
 
 ### Results by model x stake x deck
 
@@ -75,8 +81,8 @@ _Generated 2026-10-14 11:25:43 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 27 | 0 | 27 | 0 | 0 | 4.04 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 180 | 1 | 179 | 0 | 0 | 3.96 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 53 | 0 | 53 | 0 | 0 | 3.51 | 8 |
+| claude-opus-5-5 | 8 | Black | 185 | 1 | 184 | 0 | 0 | 3.94 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 57 | 0 | 57 | 0 | 0 | 3.56 | 8 |
 
 ### Deepest runs
 
@@ -95,28 +101,36 @@ _Generated 2026-10-14 11:25:43 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 276 files in manifest; schema_ok 276, schema invalid 0; replay_ok 262, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 168 / failed 0; gui (live) ok 117 / failed 0; cross-checked by both 23, disagreeing 0.
-- All files (incl. fuzz + replays): 467; schema_ok 465; replay_ok 268 (headless 168, gui 123); replay failed 0; awaiting replay 185; quarantined 2.
+- Player runs: 291 files in manifest; schema_ok 291, schema invalid 0; replay_ok 271, replay failed 0, awaiting replay 3, open/unended 17; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 177 / failed 0; gui (live) ok 118 / failed 0; cross-checked by both 24, disagreeing 0.
+- All files (incl. fuzz + replays): 483; schema_ok 481; replay_ok 277 (headless 177, gui 124); replay failed 0; awaiting replay 186; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 2263 |
+| port-7805 | 2 | 2 | 2308 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1902 |
-| port-7803 | 1 | 1 | 2310 |
-| port-7804 | 1 | 1 | 1954 |
-| port-7807 | 1 | 1 | 2462 |
+| port-7802 | 1 | 1 | 1961 |
+| port-7803 | 1 | 1 | 2361 |
+| port-7804 | 1 | 1 | 2003 |
+| port-7807 | 1 | 1 | 2511 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1401 |
-| port-7806 | 0 | 0 | 2388 |
-| port-7808 | 0 | 0 | 233 |
-| port-7809 | 0 | 0 | 2244 |
-| port-7810 | 0 | 0 | 2633 |
+| port-7801 | 0 | 0 | 1438 |
+| port-7806 | 0 | 0 | 2428 |
+| port-7808 | 0 | 0 | 288 |
+| port-7809 | 0 | 0 | 2290 |
+| port-7810 | 0 | 0 | 2670 |
+| port-7811 | 0 | 0 | 22 |
+| port-7812 | 0 | 0 | 21 |
+| port-7813 | 0 | 0 | 22 |
+| port-7814 | 0 | 0 | 19 |
+| port-7815 | 0 | 0 | 12 |
+| port-7816 | 0 | 0 | 10 |
+| port-7817 | 0 | 0 | 11 |
+| port-7818 | 0 | 0 | 12 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
@@ -163,4 +177,10 @@ _Generated 2026-10-14 11:25:43 by `balatro-data status` (edits inside this block
   7807 and 7809 move back to Sonnet as their runs finish, and idle 7808 restarts as Sonnet (no 429 since 03:30).
   That gives 10 players: 1 Fable (7801), 5 Opus (7802-7806), 4 Sonnet (7807-7810). Sonnet also costs less
   against the account rate limit.
+- 11:40 Scaled up at the user's request (desktop apps closed): 8 new players on 7811-7818 (Sonnet 7811-7813,
+  7815-7816; Opus 7814, 7817-7818). Total is 18 players: 1 Fable, 8 Opus, 9 Sonnet, plus the 7820 replay instance.
+  At 19 instances: GPU 67%, 6.1 GB VRAM, 50 C; ~8.5 GB RAM free; CPU at 100%, with the Balatro instances using
+  about 10 of 16 logical cores. CPU is the binding limit, so the swarm stays at 18. All instances now run at
+  BelowNormal priority (`launch_instance.ps1` sets it) so the desktop stays responsive. Sweeps are capped at 3
+  workers.
 

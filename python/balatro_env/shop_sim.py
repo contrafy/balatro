@@ -41,6 +41,7 @@ TIE_P = 0.02  # p differences below this are sampling noise: ties rank by mean s
 # DEAD_SHOP_P. Multiplicative, so a doomed line (p ~ 0) is not ranked by its rent alone.
 DOLLAR_P = 0.01
 DEAD_SHOP_P = 0.05
+SURVIVE_GAIN = 0.05  # options raising p_next by this much over buying nothing never rank below it
 # Terminal value: after the horizon the end build is played once against the next boss; value = p_adj x (A + B x
 # p_term). Equal weights (heuristic): surviving now matters as much as the build's next-ante strength.
 TERM_A = 0.5
@@ -152,6 +153,14 @@ def options_from_state(state, packs=False):
             if cost <= money and cost - sell <= 2 and not (full and _is_joker(c)):
                 opts.append({"label": f"flip {c.get('name') or c.get('key')} ${cost} (Campfire)", "cost": cost,
                              "flip": sell})
+    if ph == "SHOP" and any(j.get("name") == "Red Card" and not j.get("debuff") for j in _lst(state.get("jokers"))):
+        # Red Card: +3 mult per booster skipped; the cheapest booster bought and skipped at once
+        bs = sorted((b for b in _lst((state.get("shop") or {}).get("boosters")) if int(b.get("cost") or 0) <= money),
+                    key=lambda b: int(b.get("cost") or 0))
+        if bs:
+            b = bs[0]
+            opts.append({"label": f"buy+skip {b.get('name') or 'pack'} ${int(b.get('cost') or 0)} (Red Card +3)",
+                         "cost": int(b.get("cost") or 0), "red_card": 1, "booster_index": b.get("index")})
     if packs and ph == "SHOP":
         for b in _lst((state.get("shop") or {}).get("boosters")):
             cost = int(b.get("cost") or 0)
@@ -195,6 +204,13 @@ def apply_option(state, opt):
                 j["ability"] = dict(j.get("ability") or {}, x_mult=max(1.0, float((j.get("ability") or {}).get("x_mult") or 1))
                                     + 0.25 * flips)
                 notes.append(f"Campfire +x{0.25 * flips:.2f} (resets after the boss)")
+    if opt.get("red_card"):
+        for j in jokers:
+            if j.get("name") == "Red Card" and not j.get("debuff"):
+                ab = dict(j.get("ability") or {})
+                ab["mult"] = float(ab.get("mult") or 0) + 3 * int(opt["red_card"])
+                j["ability"] = ab
+                notes.append(f"Red Card +{3 * int(opt['red_card'])} mult")
     nj = opt.get("add_joker")
     if nj:
         if len(jokers) >= int(state.get("joker_slots") or 5) and _edition(nj) != "negative":
@@ -866,7 +882,21 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
         r["p_adj"] = _p_adj(r) if r.get("p_next") is not None else None
         r["delta_adj"] = (r["p_adj"] - _p_adj(base)) if (r["p_adj"] is not None and base) else None
         r["value"] = _value(r) if r.get("p_next") is not None else None
-        r["delta_value"] = (r["value"] - _value(base)) if (r["value"] is not None and base) else None
+    bv = _value(base) if base else None
+    for r in res:
+        if r["value"] is None or bv is None:
+            r["delta_value"] = None
+            continue
+        o = r["option"]
+        if r["p_next"] >= bp + SURVIVE_GAIN:
+            # invariant: an option that clearly raises survival over the horizon never ranks below buying nothing
+            r["value"] = max(r["value"], bv + TERM_A * (r["p_next"] - bp))
+        elif o.get("levels") and not (o.get("add_joker") or o.get("sell") or o.get("add_cards")) \
+                and r["value"] < bv:
+            # a hand level-up cannot lower the best score of any hand: a lower value is sampling noise
+            r["value"] = bv
+            r["notes"].append("level-up valued at baseline (sim noise below it)")
+        r["delta_value"] = r["value"] - bv
     top = max((r["value"] for r in res if r.get("value") is not None), default=0.0)
 
     def rank(r):
@@ -923,16 +953,24 @@ def terminal_blind(state, n, blind_base):
 
 
 def _value(r):
-    """Ranking value: rent-adjusted P(survive the horizon) x (TERM_A + TERM_B x P(the end-of-horizon build clears the
-    next boss)). Fading jokers (Popcorn, perishables, Gros Michel) and saving money stop looking free once the
-    horizon is survived anyway."""
+    """Ranking value: P(survive the horizon) x (TERM_A + TERM_B x rent factor x P(the end-of-horizon build clears the
+    next boss)). Rent is money the LATER shops lose, and dead runs pay none: it only discounts the post-horizon term,
+    never the survival itself. Fading jokers (Popcorn, perishables, Gros Michel) stop looking free once the horizon is
+    survived anyway. Without a terminal check: p_adj."""
     p_term = r.get("p_term")
-    return _p_adj(r) * (1.0 if p_term is None else TERM_A + TERM_B * p_term)
+    if p_term is None:
+        return _p_adj(r)
+    return r["p_next"] * (TERM_A + TERM_B * p_term * _rent_factor(r))
+
+
+def _rent_factor(r):
+    """1 - DOLLAR_P per $ of rent over the horizon (all rentals) and, for eternal rentals, to the end of the run -
+    DEAD_SHOP_P per later shop entered with negative money; at least 0.1."""
+    rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0)
+    dead = r["dead_shops"] if "dead_shops" in r else sum(1 for m in r.get("money_path") or [] if m < 0)
+    return max(0.1, 1.0 - DOLLAR_P * rent - DEAD_SHOP_P * dead)
 
 
 def _p_adj(r):
-    """p_next discounted for rent: DOLLAR_P per $ of rent over the horizon (all rentals) and, for eternal rentals,
-    per $ of rent for the rest of the run; DEAD_SHOP_P per later shop entered with negative money; at most 90%."""
-    rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0)
-    dead = r["dead_shops"] if "dead_shops" in r else sum(1 for m in r.get("money_path") or [] if m < 0)
-    return r["p_next"] * max(0.1, 1.0 - DOLLAR_P * rent - DEAD_SHOP_P * dead)
+    """p_next times the rent factor (display / no-terminal ranking)."""
+    return r["p_next"] * _rent_factor(r)
