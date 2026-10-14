@@ -454,3 +454,21 @@ def test_classify_and_odds():
     assert rs4.classify(rs4.slots)[0] == "Straight Flush"
     assert solver.p_none(44, 8, 4) == pytest.approx(58905 / 135751)  # OESD (8 outs) missed with 4 draws
     assert solver.p_atleast(44, 9, 4, 1) == pytest.approx(1 - 52360 / 135751)  # 4-flush hit with 4 draws
+
+
+def test_tarot_use_options_change_hand_cards_then_plan():
+    # 7802 4EP3BAN9: Death was held at The Needle, every line read 0.02 without it
+    st = state(["KS", "KH", "KD", "9C", "7H", "4C", "3S", "2D"], need=420, hands=1, discards=0)
+    st["consumables"] = [{"index": 1, "key": "c_death", "name": "Death", "set": "Tarot"}]
+    plain = plan(st, samples=60)[0]
+    res = solver.consumable_options(st, estimate, time_budget_s=3, samples=60)
+    top = res[0]
+    assert top["action"] == "USE" and top["name"] == "Death" and top["p_clear"] > plain["p_clear"]
+    assert hand_rank(st, top["targets"][1]) == "King" and "Four of a Kind" in top["then"]["note"]
+    sun = dict(st, consumables=[{"index": 1, "key": "c_sun", "name": "The Sun", "set": "Tarot"}])
+    assert solver._apply_tarot(st["hand"], "Hearts", (0, 2))[2]["suit"] == "Hearts"
+    assert solver.consumable_options(dict(sun, consumables=[]), estimate) == []
+
+
+def hand_rank(st, index):
+    return next(c["rank"] for c in st["hand"] if c["index"] == index)

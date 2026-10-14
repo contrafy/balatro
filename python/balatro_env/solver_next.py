@@ -1445,3 +1445,106 @@ def evaluate_action(state, action, cards, estimate_fn=None, *, samples=400, seed
     pos = tuple(i for i, ix in enumerate(rs.slot_index) if ix in want)
     r = rs.evaluate([{"kind": action, "pos": pos, "note": "given"}], samples=samples, time_budget_s=1e9)
     return r[0] if r else None
+
+
+# Tarots usable on hand cards mid-round: key -> (effect, max targets). Effects: an enhancement key, a suit name,
+# "rank+1" (Strength), "copy" (Death: the LEFT of 2 selected cards becomes a copy of the right one).
+TAROT_FX = {"c_strength": ("rank+1", 2), "c_death": ("copy", 2), "c_lovers": ("m_wild", 1), "c_empress": ("m_mult", 2),
+            "c_heirophant": ("m_bonus", 2), "c_magician": ("m_lucky", 2), "c_chariot": ("m_steel", 1),
+            "c_justice": ("m_glass", 1), "c_devil": ("m_gold", 1), "c_tower": ("m_stone", 1),
+            "c_star": ("Diamonds", 3), "c_moon": ("Clubs", 3), "c_sun": ("Hearts", 3), "c_world": ("Spades", 3)}
+_RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"]
+
+
+def _apply_tarot(cards, fx, targets):
+    """Hand card dicts after a tarot on targets (positions; for Death (converted, model))."""
+    out = [dict(c) for c in cards]
+    if fx == "copy":
+        a, b = targets
+        out[a] = dict(cards[b], id=cards[a].get("id"), index=cards[a].get("index"))
+    elif fx == "rank+1":
+        for t in targets:
+            r = str(cards[t].get("rank"))
+            if r in _RANKS:
+                out[t]["rank"] = _RANKS[(_RANKS.index(r) + 1) % 13]
+    elif fx.startswith("m_"):
+        for t in targets:
+            out[t]["enhancement"] = fx
+    else:
+        for t in targets:
+            out[t]["suit"] = fx
+    return out
+
+
+def consumable_options(state, estimate_fn=None, *, time_budget_s=3.0, samples=120, seed=0, keep=2):
+    """'Use tarot X on cards, then play the round' options for the held tarots that change hand cards (TAROT_FX:
+    Strength, Death, Lovers, the enhancement tarots, the suit tarots). Every target set (up to the tarot's limit; for
+    Death every ordered pair) is ranked by the best play it makes now; the `keep` best per tarot get the full
+    round evaluation (best_round_plan on the changed hand, the tarot spent). Returns
+    [{action: 'USE', consumable: index, name, targets: [hand indices] (Death: [converted, model] - the converted
+    card must be LEFT of the model in hand), p_clear, p_model, low_confidence, then: the best first action after it
+    (dict from best_round_plan), note}], best p_clear first. Empty when no such tarot is held."""
+    if state.get("phase") not in (None, "SELECTING_HAND") or int(state.get("hands_remaining") or 0) <= 0:
+        return []
+    cons = [(c, TAROT_FX[c.get("key")]) for c in _lst(state.get("consumables")) if c.get("key") in TAROT_FX]
+    hand = _lst(state.get("hand"))
+    if not cons or not hand or any(c.get("facing") == "back" for c in hand):
+        return []
+    est = estimate_fn or default_estimate()
+    t0 = time.perf_counter()
+    rs = RoundSolver(state, est, seed=seed)
+    n = len(hand)
+
+    def static(cards):
+        objs = [rs._mk(cd, cd.get("index"), from_deck=False) for cd in cards]
+        return rs.best_play(objs, rs.h0, rs.d0, rs.ctx0)[0]
+
+    # target pruning (each static check is a best_play search): the cards of the best play now plus the most valuable
+    # ones carry enhancements / ranks / Death's model; the least valuable ones get converted or re-suited
+    _bs, bp, _bt = rs.best_play(rs.slots, rs.h0, rs.d0, rs.ctx0)
+    in_bp = [i for i, x in enumerate(rs.slots) if any(x is y for y in bp)]
+    by_val = sorted(range(n), key=lambda i: -rs.slots[i].val)
+    strong = (in_bp + [i for i in by_val if i not in in_bp])[:5]
+    weak = [i for i in reversed(by_val) if i not in in_bp][:3] or list(reversed(by_val))[:3]
+    plans = []
+    for c, (fx, lim) in cons:
+        if fx == "copy":
+            sets = [(a, b) for a in weak for b in strong if a != b]
+        elif fx in SUITS:
+            off = sorted((i for i in range(n) if hand[i].get("suit") != fx), key=lambda i: rs.slots[i].val)[:5]
+            sets = [s for k in range(1, lim + 1) for s in itertools.combinations(off, k)]
+        elif lim == 1:
+            sets = [(i,) for i in range(n)]
+        else:  # 2 targets (Strength, Empress, Hierophant, Magician): among the strong cards
+            sets = [(i,) for i in strong] + list(itertools.combinations(strong, 2))
+        scored = sorted(((static(_apply_tarot(hand, fx, s)), s) for s in sets), key=lambda t: (-t[0], -len(t[1])))
+        seen, picks = set(), []
+        for sc, s in scored:
+            key = tuple(sorted(s)) if fx != "copy" else s
+            if key not in seen:
+                seen.add(key)
+                picks.append(s)
+            if len(picks) >= keep:
+                break
+        plans += [(r, c, fx, s) for r, s in enumerate(picks)]
+    plans = [p[1:] for p in sorted(plans, key=lambda p: p[0])]  # each tarot's best target set first
+    out = []
+    left = max(0.5, time_budget_s - (time.perf_counter() - t0))
+    for c, fx, s in plans:
+        if out and time.perf_counter() - t0 > time_budget_s:
+            break  # every candidate costs at least 16 samples per first action: stop at the budget
+        st = dict(state, hand=_apply_tarot(hand, fx, s),
+                  consumables=[x for x in _lst(state.get("consumables")) if x is not c])
+        res = best_round_plan(st, est, samples=samples, time_budget_s=left / len(plans), seed=seed)
+        if not res:
+            continue
+        top = res[0]
+        idx = [hand[t].get("index") for t in s]
+        labs = [rs._mk(hand[t], hand[t].get("index"), from_deck=False).label() for t in s]
+        what = (f"{labs[0]} becomes a copy of {labs[1]} ({labs[0]} must be left of {labs[1]})" if fx == "copy"
+                else f"{' '.join(labs)} -> {fx.replace('m_', '') if fx.startswith('m_') else fx}")
+        out.append({"action": "USE", "consumable": c.get("index"), "name": c.get("name"), "targets": idx,
+                    "p_clear": top["p_clear"], "p_model": top["p_model"], "low_confidence": top["low_confidence"],
+                    "then": top, "note": f"use {c.get('name')}: {what}; then {top['action']} {top['note']}"})
+    out.sort(key=lambda r: -r["p_clear"])
+    return out

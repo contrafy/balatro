@@ -1,2 +1,6 @@
 # Run XGDKMP9F (port 7807, claude-sonnet-5-5) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (Uncommon/Boss Tag/The Manacle 600, $4): Small: 2 discards missed, junk dig kept 4 clubs -> Flush 288 (+15) = 303. Shop $5: Buffoon -> Card Sharp (x3 on repeated hand type). Big: Straight 280 + 2P 120 + Straight x3 720. Shop: Supernova{ETERNAL} $5 (+mult per play of the type). Manacle: Pair TT 90, KK 360, 33 240 (Card Sharp x3 on pairs 2 and 3).
+Ante 2 (Coupon/Ethereal/The Needle 1000, $5): skipped Small for Coupon (Small pays $0, nothing buyable). Big 1500: Pair AA 192, KK 630, TT 720 (x3 chain, needed all three pairs). Coupon shop: Ice Cream $0 (+100 chips), free Empress/foil 6S. Needle: Pair JJ 1170 one hand.
+Ante 3 (Voucher/Boss Tag/The Psychic 6400, $10): Mercury (Pair L2), Judgement -> Crazy Joker. Small: Pair 99 1518 + foil 66 x3 6372. Big: AA 1716 + QQ 6750. Psychic: 44 1620 + JJ+3 fillers 5520.
+Ante 4 (Uncommon/Voucher/The Mark 18000, $22): EMERGENCY 0.34; Justice(glass JS), Magician(lucky JC), Empress held, Joker +4 perish $2, Mercury (Pair L3), Grim (+2 enhanced Aces). Skipped Small (Uncommon tag; tag joker was The Idol rental, passed). Big: KK 2310, AA 8346, QQ 8100. Mark: 3 face-downs+2 fillers = Pair 2750 (67% play), foil 66 11466 (x3), AA 9486 = cleared 14216+9486.

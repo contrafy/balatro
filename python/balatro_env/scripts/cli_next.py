@@ -422,6 +422,12 @@ def show(d):
             best_s = deck_best_est(d) or typical_est(d, main_hand(d), best=True)
             weak_hand = boss_c_s > 0 and best_s < boss_c_s / 2
             skip_ok = not weak_hand
+        boss_w = int((ch.get("Boss") or {}).get("chips") or 0)
+        round_w = int((deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * _hands_pr(d))
+        if boss_w and round_w < boss_w:
+            # say it before any skip (7812 AGE5D9GU skipped toward a 50k boss with ~35k rounds and no warning)
+            print(f"BOSS WARNING: your round reaches ~{round_w} vs {(ch.get('Boss') or {}).get('name')} {boss_w}: you need more score before the boss; "
+                  "every shop before it counts, so a skip must pay you score NOW")
         pay = NOW_TAGS.get(tk) or LATER_TAGS.get(tk) or f"the {small.get('tag')} tag"
         if tk == "tag_economy" and cash.get(tk, 0) < 5:
             pay = f"the Economy tag: only ${cash.get(tk, 0)} now (it doubles your ${money_n}, max +$40)"  # 7803 BWSASTCX
