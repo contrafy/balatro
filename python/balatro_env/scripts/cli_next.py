@@ -466,7 +466,10 @@ def show(d):
                     skip_ok = False
                     weak_hand = True
         boss_w = int((ch.get("Boss") or {}).get("chips") or 0)
-        round_w = int((deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * _hands_pr(d))
+        # one number source: the simulated round under the boss's rule, as in SCORE CHECK (7815 KYN4WPD6: 14.7k here vs
+        # 5.9k in shopadvise); the deal-based best hand x hands is the fallback
+        rq_w = _round_q(dict(d, _misprint_roll=11.5, _plan_fillers=True), **_boss_kw(d, (ch.get("Boss") or {}).get("name"))) if boss_w else None
+        round_w = int(rq_w["round"][1]) if rq_w else int((deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * _hands_pr(d))
         if boss_w and round_w < boss_w:
             # say it before any skip (7812 AGE5D9GU skipped toward a 50k boss with ~35k rounds and no warning)
             print(f"BOSS WARNING: your round reaches ~{round_w} vs {(ch.get('Boss') or {}).get('name')} {boss_w}: you need more score before the boss; "
@@ -1411,6 +1414,9 @@ TYPE_WORD = {v: k for k, v in HAND_WORDS.items()}
 _SOLVER = None
 
 
+_RQ_MEMO = {}
+
+
 def _round_q(d, **kw):
     """DrawSolver's solver.round_score_quantiles (a round played with the round policy, discards included) or None when
     the solver is unavailable (crash sweeps stub it)."""
@@ -1422,8 +1428,16 @@ def _round_q(d, **kw):
             import inspect
             params_ok = inspect.signature(fn).parameters
             kw = {k: v for k, v in kw.items() if k in params_ok}  # older solver: no boss rules in the fresh round
+        # memo per process: the blind-select and shop paths ask for the same round several times (skip gates, BOSS WARNING)
+        mk = json.dumps([_digest(d), d.get("ante"), d.get("hand_levels"), [(j.get("id"), j.get("name"), j.get("ability"), j.get("debuff")) for j in lst(d.get("jokers"))],
+                         len(lst((d.get("deck") or {}).get("cards"))), d.get("_plan_fillers"), d.get("_misprint_roll"),
+                         sorted((k, v if not isinstance(v, (list, set, tuple)) else sorted(v)) for k, v in kw.items())], default=str, sort_keys=True)
+        if mk in _RQ_MEMO:
+            return _RQ_MEMO[mk]
         r = fn(d, estimate, n=40, seed=7, time_budget_s=1.5, **kw)
-        return r if r and r.get("n") and r.get("round") and r["round"][1] > 0 else None
+        r = r if r and r.get("n") and r.get("round") and r["round"][1] > 0 else None
+        _RQ_MEMO[mk] = r
+        return r
     except Exception:
         return None
 
@@ -3203,6 +3217,19 @@ def shop_advise_sim(d, budget_s=6.0):
         # ties: a permanent joker beats a perishable/rental one (Main 09:xx), then the rule score, then the SIM value
         best = max(tied, key=lambda r: (-(_stk(r["option"].get("add_joker") or {})["perishable"] + _stk(r["option"].get("add_joker") or {})["rental"]),
                                         rank.get(r["option"]["_cmd"], -999), key(r)))
+        # a planet for a type you do not play (main / most played / second / owned type-xMult) loses to one for a type you do
+        # within 0.10: the SIM policy plays whatever it leveled (Haiku 7818 KC7BI45F: Pluto .98 over Earth)
+        def _pl_hand(r):
+            mm = re.match(r"(?:buy|buyuse) (\d+)$", r["option"].get("_cmd") or "")
+            it = next((x for x in lst((d.get("shop") or {}).get("jokers")) if mm and x.get("index") == int(mm.group(1))), None)
+            return next((h for h, pl in PLANET_FOR.items() if it and pl == it.get("name")), None)
+        hl_p = d.get("hand_levels") or {}
+        played_t = {main_hand(d), second_hand(d), max(hl_p, key=lambda k: int((hl_p[k] or {}).get("played") or 0), default=None)} | \
+            {TYPE_X_JOKERS[j.get("name")][0] for j in lst(d.get("jokers")) if j.get("name") in TYPE_X_JOKERS}
+        if best is not None and _pl_hand(best) and _pl_hand(best) not in played_t:
+            alt_p = [r for r in cands_s if _pl_hand(r) in played_t and key(best) - key(r) <= 0.10]
+            if alt_p:
+                best = max(alt_p, key=key)
     gain = (key(best) - key(base)) if best and base else 0.0
     m = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
     adv_cmd = f"{'pack' if m.group(1) == 'pack' else 'buy'} {m.group(2)}" if m else None
@@ -3563,7 +3590,8 @@ def _shop_rules(d):
               "Money floor OFF - spend on whatever adds main-hand score now (main-hand planet, Celestial/Arcana pack, scorer); sell dead weight (8 Ball, economy jokers) to fund it")
     mh_lv = (d.get("hand_levels") or {}).get(mh) or {}
     mh_why = f" (L{mh_lv.get('level') or 1}, {mh_lv.get('played') or 0} plays" + ("; forced: 2x the plays or +3 levels" if d.get("_mh_forced") else "") + ")" if mh != "undecided" else ""
-    print(f"Shop advisor: ante {ante}, ${money}, jokers {len(jokers)}/{slots}, main hand {mh}{mh_why}, money floor ${floor} (spend below it only for an xMult, your main-hand planet or a Buffoon pack)"
+    print(f"Shop advisor: ante {ante}, ${money}, jokers {len(jokers)}/{slots}, main hand {mh}{mh_why}, "
+          + (f"money floor ${floor} (spend below it only for an xMult, your main-hand planet or a Buffoon pack)" if floor else "money floor OFF")
           + (f", {rounds_left} round-ends left (rent/perish ticks)" if stake >= 7 else ""))
     splash_owned = any(j.get("name") == "Splash" for j in jokers)
     if bl_left == 3 and all((ch_now.get(k) or {}).get("chips") for k in ("Small", "Big", "Boss")):
@@ -3897,8 +3925,9 @@ def _shop_rules(d):
                     and not any("ETERNAL on a" in s_n for s_n in st_notes):
                 score = max(score, 85)  # no scorer at all: a +mult joker that fires on most hands beats a Gold pack gamble (78)
             anti = BOSS_KILLS.get(boss_ahead or "", set()) | ({"Half Joker"} if boss_ahead == "The Psychic" else set()) | \
-                (face_names if boss_ahead == "The Plant" else set())
-            if name in anti and scoring_now <= 1 and not cls.startswith("XMULT"):
+                (face_names if boss_ahead == "The Plant" else set()) | ({"Pareidolia"} if boss_ahead == "The Mark" else set())
+            # Pareidolia makes every card a face: The Mark deals them all face-down, The Plant debuffs them all (7809 2JAKDJCQ)
+            if name in anti and (scoring_now <= 1 or name == "Pareidolia") and not cls.startswith("XMULT"):
                 # the ante's boss is known from its start: a joker it shuts off is no survival buy this ante, in the first
                 # shop too (7815 NBY8F68S: Half Joker NEEDED NOW before The Psychic, lost by 51)
                 score = min(score, 40)
@@ -4338,6 +4367,10 @@ def pack_advise(d):
             # Face +60 chips vs Eternal Hanging Chad ~+10 both scored 90 and the slot order picked Chad; boss lost 534/600)
             if gain >= 0.2:
                 sc = max(sc, int(55 + min(40, 50 * gain)))
+            if under and "growth" in cls and gain < 0.05:
+                # a growth joker starting at x1/+0 adds nothing to the next 1-2 blinds; under-scaled, its CURRENT value counts
+                # (7812 H6YHXLVU: eternal Constellation over a rental scorer before The Needle)
+                sc = min(sc, 30)
             sc, notes, _ = sticker_adjust(c, cls, base, sc, ante, _rounds_left(d), own_rentals, bridge, pack_free=free_p, core_hint=gain >= 0.3)
             money_p = int(d.get("money") or 0)
             if _stk(c)["rental"] and money_p - 3 < 4 and gain < 0.3:
@@ -4348,6 +4381,11 @@ def pack_advise(d):
             if gain <= -0.05:
                 sc = min(sc, 5)  # it lowers your rounds (fills a slot your Joker Stencil counts; 7805)
                 notes.append(f"{gain:.0%} round est: fills a slot your Stencil counts" if any(j.get("name") == "Joker Stencil" for j in jokers) else f"{gain:.0%} round est")
+            boss_pk = (((d.get("blind_select") or {}).get("choices") or {}).get("Boss") or {})
+            if c.get("name") == "Pareidolia" and boss_pk.get("state") != "Defeated" and boss_pk.get("name") in ("The Mark", "The Plant"):
+                # every card becomes a face: The Mark deals them all face-down, The Plant debuffs them all (7809 2JAKDJCQ)
+                sc = min(sc, 5)
+                cls = f"AVOID(before {boss_pk.get('name')}: every card becomes a face it {'turns face-down' if boss_pk.get('name') == 'The Mark' else 'debuffs'})"
             notes = [f"+{gain:.0%} round est now"] + notes if gain >= 0.01 else notes
             ranked.append((sc, i, c, cls, notes, gain))
         if ante <= 2 and scoring_now < 2:
