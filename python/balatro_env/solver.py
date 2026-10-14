@@ -44,6 +44,7 @@ CALIBRATION = ((0.0, 0.0), (0.0263, 0.1905), (0.1368, 0.3269), (0.2822, 0.4778),
                (0.5948, 0.7167), (0.6623, 0.7391), (0.7796, 0.8756), (0.8544, 0.9079), (0.884, 0.961),
                (0.9206, 0.973), (0.9947, 1.0), (1.0, 1.0))
 PILLAR_W = 0.25  # $-equivalent cost per card played when The Pillar is this ante's boss (played cards get debuffed)
+BOSS_RAW_FROM = 0.85  # boss blinds: the map is capped at max(raw p, map(this)) (calibrate)
 OB_FUTURE = 0.5  # Obelisk: weight of each later hand (proxied by this hand's best score) in the play choice
 LEVEL_UP = {"High Card": (10, 1), "Pair": (15, 1), "Two Pair": (20, 1), "Three of a Kind": (20, 2),
             "Straight": (30, 3), "Flush": (15, 2), "Full House": (25, 2), "Four of a Kind": (30, 3),
@@ -1371,7 +1372,8 @@ class RoundSolver:
             if not n:
                 continue
             res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]],
-                        "p_clear": cl / n if self.forced_after(c["kind"]) else calibrate(cl / n, self.jokerless),
+                        "p_clear": cl / n if self.forced_after(c["kind"]) else calibrate(cl / n, self.jokerless,
+                                                                                     bool(self.boss)),
                         "p_model": cl / n, "p_survive": sv / n,
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
@@ -1470,14 +1472,21 @@ def round_score_quantiles(state, estimate_fn, n=40, seed=7, hands=None, discards
     return {"per_hand": q(per), "round": q(totals), "n": len(totals)}
 
 
-def calibrate(p, jokerless=False):
+def calibrate(p, jokerless=False, boss=False):
     """Map the model's p (P(clear) when the rest of the round follows the solver's greedy policy) to the observed
     clear rate of Gold players taking that action (CALIBRATION knots, linear interpolation). With jokers, players'
     later play beats the greedy policy in hard spots (consumables, chip-and-dig lines), so the raw p is too low in
-    the 0.03-0.9 range; jokerless rounds are already calibrated raw and are returned unchanged.
+    the 0.03-0.9 range; jokerless rounds are already calibrated raw and are returned unchanged. Boss blinds: the
+    map is capped at max(raw p, map(BOSS_RAW_FROM)) - it lifted raw 0.85-0.95 into 0.95-0.99, where boss rounds
+    realized 0.895 (86 decisions since 14:00, 2026-10-14; raw was calibrated there); monotone in p.
     Refit with `python -m balatro_env.analysis.solver_calib`."""
     if jokerless:
         return p
+    m = _map(p)
+    return min(m, max(p, _map(BOSS_RAW_FROM))) if boss else m
+
+
+def _map(p):
     for (x0, y0), (x1, y1) in zip(CALIBRATION, CALIBRATION[1:]):
         if p <= x1:
             return y0 if x1 <= x0 else y0 + (y1 - y0) * (p - x0) / (x1 - x0)
@@ -1604,7 +1613,10 @@ def consumable_options(state, estimate_fn=None, *, time_budget_s=3.0, samples=12
     plans = []
     for c, (fx, lim) in cons:
         if fx == "copy":
-            sets = [(a, b) for a in weak for b in strong if a != b]
+            # card.lua 1433-1438: every selected card becomes a copy of the RIGHTMOST one (highest hand index), so
+            # only pairs with the converted card left of the model are playable as given (7805 35N2BV9W)
+            sets = [(a, b) for a in weak for b in strong
+                    if a != b and int(hand[a].get("index") or a) < int(hand[b].get("index") or b)]
         elif fx in SUITS:
             off = sorted((i for i in range(n) if hand[i].get("suit") != fx), key=lambda i: rs.slots[i].val)[:5]
             sets = [s for k in range(1, lim + 1) for s in itertools.combinations(off, k)]

@@ -1239,7 +1239,7 @@ def show_hands(d):
         print(f"Stone cards (no rank/suit, +50 chips when played, ideal fillers): idx {[c.get('index') for c in stones]}")
     hl = d.get("hand_levels") or {}
     by_rank, by_suit = {}, {}
-    jn_all = [j.get("name") for j in lst(d.get("jokers"))]
+    jn_all = [j.get("name") for j in lst(d.get("jokers")) if not j.get("debuff")]  # a perished/debuffed Four Fingers etc. does nothing (7813 M5VQEKU4)
     wilds = [c for c in hand if "Wild" in _enh(c) and not c.get("debuff")]
     for c in sorted(hand, key=lambda c: 1 if c.get("debuff") else 0):
         if c.get("rank") is None:
@@ -1288,7 +1288,7 @@ def show_hands(d):
             if r != t:
                 cs = pairs[t][:3] + pairs[r][:2]
                 out.append(f"FULL HOUSE {t}{t}{t}{r}{r}: idx {idx(cs)} | {base('Full House')} + {card_chips(cs)} card chips")
-    ff = any(j.get("name") == "Four Fingers" for j in lst(d.get("jokers")))
+    ff = "Four Fingers" in jn_all
     run_len = 4 if ff else 5
     for s_, cs in by_suit.items():
         if len(cs) >= run_len:
@@ -1351,7 +1351,7 @@ def show_hands(d):
             hand_name = "Straight Flush"
         idxs = [int(x) for x in line.split("idx ")[1].split("|")[0].split()]
         b_ = d.get("blind") or {}
-        jn_ = [j.get("name") for j in lst(d.get("jokers"))]
+        jn_ = jn_all
         if len(idxs) < 5 and not (b_.get("boss") and b_.get("name") == "The Tooth") and "Splash" not in jn_:
             stones = [c.get("index") for c in lst(d.get("hand")) if "Stone" in _enh(c) and c.get("index") not in idxs and not c.get("debuff")]
             stones = stones[:5 - len(idxs)]
@@ -3667,7 +3667,8 @@ def _shop_rules(d):
     n_x_now = sum(1 for j in jokers if alive_next(j) and j.get("name") not in CARD_TRIGGER_JOKERS and (_fits_x(classify_joker(j.get("name"), 0, mh)[0]) or _joker_edition(j) == "polychrome"))
     # a type xMult (Trio/Family/Order/Tribe) that carries 20%+ of the round counts too (7801 QEY21ZAA: Trio FH builds read "0 xMult")
     n_rg = sum(1 for j in jokers if alive_next(j) and j.get("name") not in CARD_TRIGGER_JOKERS and (_rg_x(classify_joker(j.get("name"), 0, mh)[0]) or _joker_edition(j) == "polychrome"
-                                                                                                      or (j.get("name") in TYPE_X_JOKERS and joker_share(d, j, mh) >= 0.2)))
+                                                                                                      or (j.get("name") in TYPE_X_JOKERS and joker_share(d, j, mh) >= 0.2)
+                                                                                                      or (j.get("name") in GROWTH_X and float((j.get("ability") or {}).get("x_mult") or 1) >= 1.5)))  # a grown Madness x5 (LATY9V82)
     main_lvl = int(((d.get("hand_levels") or {}).get(mh) or {}).get("level") or 1) if mh != "undecided" else 1
     # SCORE CHECK (survival by the ante's best hand: < boss/3 died 15/15, boss/3..boss/2 died 8/10, >= boss/2 died 16/106)
     best_now = typical_est(d, mh)  # an ordinary hand: the base for marginal joker values
@@ -4137,7 +4138,10 @@ def _shop_rules(d):
                 psc = min(psc, 20)  # 0-1 scoring jokers at ante 1-2: a level on a jokerless hand is +10-20 points; buy a scorer
             # planets are used on purchase: `buyuse` needs no consumable slot (full slots never block them: 7817 JGH4NQBH)
             # and feeds Constellation immediately
-            options.append((psc, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
+            hf_p = next((h for h, pl in PLANET_FOR.items() if pl == name), "?")
+            lv_p = int(((d.get("hand_levels") or {}).get(hf_p) or {}).get("level") or 1)
+            # the planet's hand is always named (7815 FPKFX7AQ bought Neptune as a Flush planet)
+            options.append((psc, "PLANET", f"buyuse {c['index']}", f"{name} ({hf_p} L{lv_p}) ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for another hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
         elif name == "Judgement":
             jsc = (75 if scoring_now < 2 else 62) if free > 0 else 5
             if any(j.get("name") == "Joker Stencil" for j in jokers):
