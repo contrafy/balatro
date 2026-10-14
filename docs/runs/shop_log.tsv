@@ -8923,3 +8923,4 @@
 7806	a4	$11	jokers=5/6	xmult_owned=0	XMULT(final hand: x3 every round):Acrobat $6 | PLUS(main hand):Mad Joker{ETERNAL} $4 | PACK:Celestial Pack $4 | PACK:Arcana Pack $4 | VOUCHER:Telescope $10 | VOUCHER:Blank $10
 7803	a4	$10	jokers=6/6	xmult_owned=0	PLANET:Uranus $3 | PACK:Jumbo Arcana Pack $6 | VOUCHER:Magic Trick $10 | PLUS(one suit):Gluttonous Joker{RENTAL(-$3/round)} $1
 7811	a2	$1	jokers=2/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Raised Fist{ETERNAL} $5 | PLANET:Venus $3 | PACK:Arcana Pack $4 | PACK:Jumbo Celestial Pack $6 | VOUCHER:Hieroglyph $10
+7805	a1	$5	jokers=1/6	xmult_owned=0	PLUS(<=3 cards: not your main hand):Half Joker $5 | PACK:Mega Buffoon Pack $8 | UTIL:Mime{ETERNAL} $5 | VOUCHER:Planet Merchant $10 | PACK:Arcana Pack $4

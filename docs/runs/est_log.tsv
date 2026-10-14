@@ -12869,3 +12869,6 @@
 7817	a1	-	Full House	TS TC 8S 8C 8D	Smiley Face,Seltzer	est=512	actual=512	OK
 7802	a3	-	Full House	9S 9H 9D 4S 4H	Zany Joker,Ride the Bus,Misprint	est=4437	actual=4500	OK
 7805	a1	-	Two Pair	KS KH TS TD	Swashbuckler	est=120	actual=120	OK
+7804	a1	-	Flush	AC 8C 7C 5C 2C		est=272	actual=272	OK
+7810	a4	The Eye	Pair	KC(glass) KD	Superposition(holo),Banner,Stuntman,Jolly Joker,Obelisk	est=7480	actual=7480	OK
+7814	a3	-	Pair	TC TD	Raised Fist,Jolly Joker,Wily Joker	est=660	actual=660	OK
