@@ -303,7 +303,9 @@ def test_spectral_pack_advice_with_target():
 
 def test_no_reroll_without_20_dollars_left():
     d = shop(jokers=[joker("Joker", 1), joker("Jolly Joker", 2)], money=15, ante=3)
-    assert "REROLL" not in _advice(_out(cli.shop_advise, d))
+    out = _out(cli.shop_advise, d)
+    # EMERGENCY (this build vs the next boss) never leaves with $4+: a reroll for a scorer is right there (7815 3CR57DK4)
+    assert "REROLL" not in _advice(out) or "EMERGENCY" in _advice(out)
 
 
 def test_arcana_pack_respects_8_dollar_floor():
