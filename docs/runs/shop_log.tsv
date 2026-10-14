@@ -8553,3 +8553,30 @@
 7801	a1	$5	jokers=0/6	xmult_owned=0	PLUS(growth: +1 mult per faceless hand, resets on a face):Ride the Bus{ETERNAL} $6 | PACK:Buffoon Pack $4 | VOUCHER:Magic Trick $10 | PLANET:Mercury $3 | PACK:Jumbo Standard Pack $6
 7816	a2	$11	jokers=1/6	xmult_owned=0	PLANET:Venus $3 | PACK:Jumbo Celestial Pack $6 | PACK:Celestial Pack $4 | TAROT:The Wheel of Fortune $3 | VOUCHER:Seed Money $10
 7818	a1	$1	jokers=1/6	xmult_owned=0	PLUS(weak/conditional):Red Card $8 | UTIL:Seance $6 | VOUCHER:Planet Merchant $10 | PACK:Celestial Pack $4
+7813	a1	$3	jokers=2/6	xmult_owned=0	TAROT:Judgement $3 | PACK:Celestial Pack $4 | PACK:Standard Pack $4 | VOUCHER:Reroll Surplus $10 | UTIL(a tarot per blind: no score at Gold):Cartomancer{RENTAL(-$3/round)} $1
+7816	a2	$6	jokers=1/6	xmult_owned=0	PLUS(bridge: +333% on your Pair now; decays):Ice Cream{PERISHABLE(5 rounds left)} $5 | PLANET:Mercury $3 | PACK:Jumbo Celestial Pack $6 | PACK:Celestial Pack $4 | VOUCHER:Seed Money $10
+7811	a2	$-5	jokers=3/6	xmult_owned=0	LEVELS(first discarded hand type levels up every round: discard your main hand type first):Burnt Joker{ETERNAL} $8 | PLUS(one suit):Wrathful Joker{PERISHABLE(5 rounds left)} $5 | PACK:Arcana Pack $4 | PACK:Standard Pack $4 | VOUCHER:Seed Money $10
+7806	a5	$13	jokers=6/6	xmult_owned=1	PACK:Celestial Pack $4 | PLUS:Odd Todd{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | PLANET:Saturn $3 | VOUCHER:Wasteful $10 | PACK:Buffoon Pack $4
+7814	a2	$10	jokers=2/6	xmult_owned=0	PLUS(adds ~0 now: grows only with its condition):Droll Joker $4 | VOUCHER:Paint Brush $10 | PLANET:Mercury $3 | PACK:Arcana Pack $4 | PACK:Standard Pack $4
+7811	a2	$-5	jokers=3/6	xmult_owned=0	LEVELS(first discarded hand type levels up every round: discard your main hand type first):Burnt Joker{ETERNAL} $8 | PLUS(one suit):Wrathful Joker{PERISHABLE(5 rounds left)} $5 | PACK:Arcana Pack $4 | PACK:Standard Pack $4 | VOUCHER:Seed Money $10
+7804	a7	$16	jokers=6/6	xmult_owned=0	PLUS(main hand):Zany Joker{PERISHABLE(5 rounds left)} $4 | PLUS:Flash Card{RENTAL(-$3/round)} $1 | PACK:Standard Pack $4 | VOUCHER:Hone $10
+7802	a4	$14	jokers=6/6	xmult_owned=0	PACK:Celestial Pack $4 | PACK:Arcana Pack $4 | PLUS(adds ~0 now: grows only with its condition):Crazy Joker $4 | PLANET:Neptune $3 | VOUCHER:Clearance Sale $10
+7809	a1	$5	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | PLUS(bridge: +333% on your Pair now; decays):Ice Cream $5 | VOUCHER:Planet Merchant $10 | PLANET:Mercury $3 | PACK:Standard Pack $4
+7812	a1	$6	jokers=1/6	xmult_owned=0	PLUS(one suit):Greedy Joker{RENTAL(-$3/round)} $1 | VOUCHER:Magic Trick $10 | PACK:Arcana Pack $4 | PACK:Standard Pack $4 | PLUS(adds ~0 now: grows only with its condition):Red Card{ETERNAL,RENTAL(-$3/round)} $1
+7816	a2	$7	jokers=2/6	xmult_owned=0	PLUS:Raised Fist $8 | XMULT(conditional, other hand: needs Straight, your main hand is Three of a Kind):The Order{ETERNAL} $10 | VOUCHER:Seed Money $10 | PACK:Arcana Pack $4 | PACK:Jumbo Standard Pack $6
+7818	a1	$7	jokers=1/6	xmult_owned=0	PLUS:Banner $5 | PACK:Jumbo Buffoon Pack $6 | VOUCHER:Planet Merchant $10 | PACK:Standard Pack $4 | UTIL:Mime{ETERNAL,RENTAL(-$3/round)} $1
+7807	a4	$16	jokers=6/6	xmult_owned=1	PACK:Arcana Pack $4 | PACK:Arcana Pack $4 | VOUCHER:Grabber $10 | TAROT:Judgement $3
+7802	a4	$9	jokers=6/6	xmult_owned=0	PACK:Celestial Pack $4 | PACK:Arcana Pack $4 | TAROT:The Hanged Man $3 | XMULT(conditional, other hand: needs Four of a Kind, your main hand is Three of a Kind, ~x1 on your deck now):The Family{PERISHABLE(5 rounds left)} $8 | VOUCHER:Clearance Sale $10
+7817	a1	$4	jokers=0/6	xmult_owned=0	XMULT(decaying: x2, -0.01 per card discarded; discard less while it carries you):Ramen $6 | PACK:Buffoon Pack $4 | VOUCHER:Magic Trick $10 | UTIL:Splash{PERISHABLE(5 rounds left)} $3 | PACK:Celestial Pack $4
+7813	a2	$3	jokers=3/6	xmult_owned=0	PACK:Celestial Pack $4 | PLUS(one suit):Gluttonous Joker $5 | PACK:Arcana Pack $4 | VOUCHER:Clearance Sale $10 | PLUS(one suit):Greedy Joker{RENTAL(-$3/round)} $1
+7803	a3	$2	jokers=3/6	xmult_owned=0	PACK:Jumbo Arcana Pack $6 | PLUS(common condition):Smiley Face{ETERNAL,RENTAL(-$3/round)} $1 | PACK:Standard Pack $4 | VOUCHER:Paint Brush $10 | UTIL:Drunkard{ETERNAL,RENTAL(-$3/round)} $1
+7816	a3	$14	jokers=2/6	xmult_owned=0	PACK:Buffoon Pack $4 | UTIL:Certificate $6 | UTIL:Four Fingers{PERISHABLE(5 rounds left)} $7 | VOUCHER:Director's Cut $10 | PACK:Standard Pack $4
+7806	a5	$8	jokers=6/6	xmult_owned=1	PLUS:Odd Todd{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | PLANET:Saturn $3 | VOUCHER:Wasteful $10
+7811	a2	$-8	jokers=4/6	xmult_owned=0	UTIL:Mail-In Rebate $4 | PACK:Mega Arcana Pack $8 | TAROT:The Fool $3 | PACK:Standard Pack $4 | VOUCHER:Seed Money $10
+7801	a1	$7	jokers=1/6	xmult_owned=0	XMULT:Card Sharp $6 | PLUS:Raised Fist{ETERNAL,RENTAL(-$3/round)} $1 | VOUCHER:Magic Trick $10 | PACK:Mega Celestial Pack $8 | PACK:Standard Pack $4
+7814	a2	$13	jokers=3/6	xmult_owned=0	PACK:Buffoon Pack $4 | PACK:Celestial Pack $4 | XMULT(growth: must be fed):Vampire $7 | VOUCHER:Paint Brush $10 | UTIL:Superposition{PERISHABLE(5 rounds left)} $4
+7810	a4	$28	jokers=6/6	xmult_owned=0	PACK:Jumbo Buffoon Pack $6 | PACK:Celestial Pack $4 | PLUS(weak/conditional):Green Joker $4 | VOUCHER:Blank $10 | XMULT(conditional, other hand: needs Straight, your main hand is Two Pair, ~x1 on your deck now):The Order{ETERNAL,RENTAL(-$3/round)} $0
+7808	a1	$5	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Wasteful $10 | PLUS:Onyx Agate{ETERNAL,RENTAL(-$3/round)} $1 | PLUS(common condition):Clever Joker{ETERNAL,RENTAL(-$3/round)} $1 | PACK:Arcana Pack $4
+7809	a1	$5	jokers=1/6	xmult_owned=0	VOUCHER:Planet Merchant $10 | PACK:Arcana Pack $4 | PACK:Celestial Pack $4 | TAROT:Justice $3 | TAROT:The Lovers $3
+7812	a2	$8	jokers=2/6	xmult_owned=0	PACK:Spectral Pack $4 | PLANET:Pluto $3 | TAROT:The Fool $3 | PACK:Standard Pack $4 | VOUCHER:Reroll Surplus $10
+7816	a3	$10	jokers=3/6	xmult_owned=0	UTIL:Certificate $6 | UTIL:Four Fingers{PERISHABLE(5 rounds left)} $7 | VOUCHER:Director's Cut $10 | PACK:Standard Pack $4

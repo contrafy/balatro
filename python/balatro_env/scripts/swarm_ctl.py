@@ -48,7 +48,7 @@ def find_pid(port):
 
 
 # Long-lived instances grow (~160 MB fresh, 450+ MB after hours); recycle between runs to keep RAM free.
-RECYCLE_MB = 600
+RECYCLE_MB = 400
 
 
 def working_set_mb(pid):

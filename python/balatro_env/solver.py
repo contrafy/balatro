@@ -225,6 +225,9 @@ class RoundSolver:
         self.pile_n = max(0, min(n_pile, int(dp)) if dp is not None else n_pile)
         steel = any("steel" in str(c.d.get("enhancement") or "").lower() for c in self.pool + [c for c in self.slots if c])
         self.held_dep = bool(jn & HELD_JOKERS) or steel
+        # ranks worth keeping in hand for held-card jokers (Raised Fist: high ranks keep its lowest held card high)
+        self.held_keep = frozenset(({12} if "Shoot the Moon" in jn else set()) | ({13} if "Baron" in jn else set())
+                                   | ({10, 11, 12, 13, 14} if "Raised Fist" in jn else set()))
         self.hd_dep = bool(jn & HD_JOKERS)
         self.final_dep = bool(jn & {"Dusk", "Acrobat"})  # final-hand jokers: holding a hand for the last play pays
         self.keep_discards = bool(jn & {"Banner", "Green Joker"})  # discards tax every later hand
@@ -678,6 +681,14 @@ class RoundSolver:
             stones.sort(key=lambda c: -c.val)
             plays = plays + [p + stones[:lim - len(p)] for p in plays if len(p) < lim]
             plays.append(stones[:lim])
+        if self.held_keep and ranked:
+            # held-card jokers (Shoot the Moon: Queens, Baron: Kings, Raised Fist: the lowest held card's rank): a
+            # single low card keeps the valuable ones held (7810 R5DXHPXU played its Queens as High Card)
+            low = sorted(ranked, key=lambda c: (c.rank in self.held_keep, c.rank, c.val))
+            plays.append([low[0]])
+            spare = [c for c in ranked if c.rank not in self.held_keep]
+            if spare:
+                plays.append([max(spare, key=lambda c: (c.rank, c.val))])
         if self.blackboard:  # variants that play the red cards away so only black ones stay held
             reds = sorted((c for c in cards if not self._black(c)), key=lambda c: c.val)
             extra = []
@@ -1529,6 +1540,17 @@ def consumable_options(state, estimate_fn=None, *, time_budget_s=3.0, samples=12
         objs = [rs._mk(cd, cd.get("index"), from_deck=False) for cd in cards]
         return rs.best_play(objs, rs.h0, rs.d0, rs.ctx0)[0]
 
+    def single(cd):
+        """Score of the card played alone (High Card): what its own rank/suit/enhancement and the jokers that read
+        it (Walkie Talkie, Fibonacci, Scholar, suit jokers...) are worth."""
+        return rs.score([rs._mk(cd, cd.get("index"), from_deck=False)], [], rs.h0, rs.d0, rs.ctx0)[0]
+
+    def gain(fx, s):
+        """Tie-break between target sets that make the same best play now: the single-card value the tarot adds to
+        its targets (The Tower should stone a junk card, not a Walkie Talkie 4: 7817 8KNB2U3T)."""
+        after = _apply_tarot(hand, fx, s)
+        return sum(single(after[t]) - single(hand[t]) for t in set(s))
+
     # target pruning (each static check is a best_play search): the cards of the best play now plus the most valuable
     # ones carry enhancements / ranks / Death's model; the least valuable ones get converted or re-suited
     _bs, bp, _bt = rs.best_play(rs.slots, rs.h0, rs.d0, rs.ctx0)
@@ -1547,7 +1569,9 @@ def consumable_options(state, estimate_fn=None, *, time_budget_s=3.0, samples=12
             sets = [(i,) for i in range(n)]
         else:  # 2 targets (Strength, Empress, Hierophant, Magician): among the strong cards
             sets = [(i,) for i in strong] + list(itertools.combinations(strong, 2))
-        scored = sorted(((static(_apply_tarot(hand, fx, s)), s) for s in sets), key=lambda t: (-t[0], -len(t[1])))
+        scored = sorted(((static(_apply_tarot(hand, fx, s)), gain(fx, s), s) for s in sets),
+                        key=lambda t: (-t[0], -t[1], -len(t[2])))
+        scored = [(sc, s) for sc, _g, s in scored]
         seen, picks = set(), []
         for sc, s in scored:
             key = tuple(sorted(s)) if fx != "copy" else s
