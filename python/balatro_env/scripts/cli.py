@@ -942,8 +942,13 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
                 rem = 0 if rem_n == every else (rem_n + 1) % (every + 1)
             else:
                 rem = ab.get("loyalty_remaining")
-            if rem == 0:
-                mult *= float((ab.get("extra") or {}).get("Xmult", 4) if isinstance(ab.get("extra"), dict) else 4)
+            xl = float((ab.get("extra") or {}).get("Xmult", 4) if isinstance(ab.get("extra"), dict) else 4)
+            if state.get("_plan_fillers"):
+                # a planned round (SCORE CHECK, round est): x4 once per every+1 hands, so its expected factor (7807 BC8S6R97:
+                # SCORE CHECK counted x4 on every hand, 21.5k vs ~6k)
+                mult *= 1 + (xl - 1) / (every + 1)
+            elif rem == 0:
+                mult *= xl
                 notes.append("Loyalty Card fires on THIS hand (x4)")
             elif rem == every:
                 notes.append(f"Loyalty Card fired on the LAST hand: x4 again in {every + 1} hands")
@@ -1310,6 +1315,8 @@ def _hands_pr(d, jokers=None):
 ORDER_JOKERS = {"Hanging Chad", "Photograph"}  # retrigger / x2 on the FIRST scored (face) card: hand order matters
 GROWTH_X = {"Throwback", "Hologram", "Constellation", "Lucky Cat", "Campfire", "Glass Joker", "Vampire", "Madness", "Obelisk",
             "Ramen", "Steel Joker", "Caino", "Canio", "Yorick", "Hit the Road", "Joker Stencil"}  # xMults that grow: never "flat rentals"
+CHIPS_ONLY_J = {"Sly Joker", "Wily Joker", "Clever Joker", "Devious Joker", "Crafty Joker", "Scary Face", "Ice Cream", "Stuntman",
+                "Arrowhead", "Castle", "Runner", "Square Joker", "Blue Joker", "Banner", "Odd Todd", "Wee Joker", "Hiker"}  # +chips only
 
 
 def _order_gain(d, hand_name, idxs):
@@ -1460,6 +1467,8 @@ def advise(d):
         # PLAYBOOK 2b step 5: a DISCARD that breaks a made Pair/Two Pair/Trips needs a 0.10 margin (7805 RTJZMPXF broke
         # QQ66 at +0.07)
         made_pf = max((c for c in _candidates(d) if c[0] in ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")), key=lambda c: c[2], default=None)
+        if made_pf is not None and made_pf[0] == "Pair" and made_pf[2] * max(1, int(d.get("hands_remaining") or 1)) < 0.8 * need_now:
+            made_pf = None  # a Pair far off pace is not a made hand worth shielding (7818 VP4RNVT2: est 36 vs need 300)
         # ... and so does a PLAY that drops cards of the made hand (7810 GLE6W9AC: "play Pair QQ + fillers" over made QQ66)
         breaks = made_pf is not None and ((top["action"] == "DISCARD" and bool(set(top.get("cards") or []) & set(made_pf[1])))
                                           or (top["action"] == "PLAY" and not set(made_pf[1]) <= set(top.get("cards") or [])))
@@ -2315,7 +2324,10 @@ def _main_hand_raw(d):
     fam_v = max((v for t, v in value.items() if t in fam_t), default=0)
     oth_v = max((v for t, v in value.items() if t in ("Flush", "Straight")), default=0)
     # ... unless the few Flush/Straight plays carry far more score (7802 CH39BUCC: Flush cleared most blinds)
-    if fam_n >= 4 and fam_n >= 2 * max(plays.get("Flush", 0), plays.get("Straight", 0)) and fam_v > 0 and fam_v >= 0.6 * oth_v:
+    # ... and never against an owned Flush/Straight engine (7807 36JD65LP: every one-shot was a Droll Flush)
+    eng_fs = any(not j.get("debuff") and j.get("name") in ("Droll Joker", "Crafty Joker", "The Tribe", "Crazy Joker", "Devious Joker", "The Order", "Four Fingers", "Shortcut")
+                 for j in lst(d.get("jokers")))
+    if fam_n >= 4 and fam_n >= 2 * max(plays.get("Flush", 0), plays.get("Straight", 0)) and fam_v > 0 and fam_v >= 0.6 * oth_v and not eng_fs:
         value = {t: v for t, v in value.items() if t in fam_t}
         d["_mh_family"] = True
     # owned jokers that fire only on some types (Half Joker: <=3 cards, Clever: Two Pair, The Order: Straight...) anchor
@@ -2364,6 +2376,12 @@ def classify_joker(name, cost, mh):
         return "XMULT(conditional, suit: rarely fires outside a Flush build)", 35
     if name in AVOID_JOKERS:
         return "AVOID(" + AVOID_JOKERS[name] + ")", 5
+    if name in ("Photograph", "Bloodstone") or (name == "Triboulet"):
+        # card-phase multipliers: they multiply the BASE mult while cards score, before the joker row (+10-25% on a flat
+        # build), never a joker-row xMult (7816 N22YQIEH, 7808 2F196DBH, 7807 GEJ9QVYY: Photograph rated XMULT 81)
+        return "PLUS(card-phase multiplier: ~+10-25% on a flat build; the SIM measures it)", 45
+    if name == "Cartomancer":
+        return "UTIL(a tarot per blind: no score at Gold)", 10
     if name == "Acrobat":
         # x3 on the final hand of EVERY round (`advise` saves the best hand for it): the core xMult of the deepest Gold run
         return "XMULT(final hand: x3 every round)", 85
@@ -2680,7 +2698,8 @@ def sticker_adjust(c, cls, base_sc, score, ante, rounds_left, own_rentals, bridg
     core = (_is_scoring_cls(cls) and base_sc >= 60) or cls.startswith(("LEVELS", "COPY", "COUNTER")) or core_hint
     growth = "growth" in cls
     # ante 1-2 with fewer than 2 scorers: surviving the next blinds beats any sticker cost on a joker that scores
-    survive = bridge and ante <= 2 and _is_scoring_cls(cls) and not growth  # a growth xMult starts at x1: no survival help
+    # ... except a chips-only joker: chips multiply by a base mult of 2-4 (7818 QRYGWYX6: rental Scary Face as NEEDED NOW)
+    survive = bridge and ante <= 2 and _is_scoring_cls(cls) and not growth and c.get("name") not in CHIPS_ONLY_J
     if survive and (s["eternal"] or s["rental"]):
         notes.append("NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2")
     in_pack = pack_free is not None  # a pack pick is already paid for: only future costs (slot, rent) count
@@ -2916,7 +2935,14 @@ def shop_advise_sim(d, budget_s=6.0):
             x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or \
                 (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
             # a copier of an owned xMult is an xMult (7810 UIL7HPIQ: Blueprint doubling the only xMult Ramen was barred)
-            if not (x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
+            # exception: 0 scoring jokers at ante 1-2 and no other scorer on offer: an eternal-rental scorer is the only way
+            # through (7809 S634VB4Y died jokerless at ante 2; mirrors the players' rule)
+            jokerless = ante_s <= 2 and not any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers"))) and \
+                _is_scoring_cls(classify_joker(aj.get("name"), 0, main_hand(d))[0]) and \
+                not any(_is_scoring_cls(classify_joker((x["option"].get("add_joker") or {}).get("name"), 0, main_hand(d))[0])
+                        and not (_stk(x["option"].get("add_joker") or {})["eternal"] and _stk(x["option"].get("add_joker") or {})["rental"])
+                        for x in feas if x["option"].get("add_joker"))
+            if not ((x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15) or jokerless):
                 return False
         # A second rental: before ante 5 only bundled with selling the first (the players' hard rule; 7816 FVPWB9XC ended
         # with five $1 rentals); at ante 5 also when both are xMults or the SIM gains +0.15 with the money path >= 0
@@ -3147,6 +3173,17 @@ def pack_advise_sim(d, budget_s=3.5):
             else:
                 adv = ("ADVICE: SKIP -> b skippack   (SIM: no pick raises survival over the next 3 blinds by more than 0.02"
                        + (f"; {barred[0]['label']} would, but its stickers are barred: an unsellable or 2nd permanent rental drains the run)" if barred else ")"))
+    if any(j.get("name") == "Red Card" and not j.get("debuff") for j in lst(d.get("jokers"))):
+        # Red Card: +3 mult per skipped pack, permanently (7809 ZSI1CNNI / 7817 3UW372XP)
+        m_pk = re.search(r"b pick (\d+)", adv)
+        pk_r = next((r for r in feas if m_pk and r["option"].get("_cmd") == f"pick {m_pk.group(1)}"), None)
+        if adv.startswith("ADVICE: SKIP"):
+            adv += "  [Red Card +3 mult for the skip]"
+        elif pk_r is not None and base is not None and key(pk_r) - key(base) < 0.02 and not pk_r["option"].get("levels"):
+            sim.append(f"  (rule advice was: {adv[8:]})")
+            adv = f"ADVICE: SKIP -> b skippack   (Red Card: the skip is +3 mult forever; the pick adds {key(pk_r) - key(base):+.2f} on the SIM)"
+        else:
+            sim.append("  (alternative: `b skippack` = Red Card +3 mult forever)")
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
     print("\n".join(lines))
 
@@ -3227,13 +3264,18 @@ def _shop_rules(d):
     if rq:
         surv = max(surv, int(rq["round"][1] / max(1, _hands_pr(d))))
     sc_ratio = surv / (boss_next / _hands_pr(d)) if boss_next else 9  # Burglar +3 hands (7805 UH5NGY7A)
-    emergency = ante >= 2 and boss_next and sc_ratio < 0.35
+    # the upcoming boss of THIS ante at its real chips (The Wall 4x, Violet Vessel 6x) binds too: the worse ratio counts
+    # (7815 4798FA1L lost The Wall 32375/36000 while SCORE CHECK compared against a regular 18000 boss)
+    if boss_this:
+        sc_ratio = min(sc_ratio, surv / (boss_this / _hands_pr(d)))
+    emergency = ante >= 2 and bool(boss_next or boss_this) and sc_ratio < 0.35
     if ante >= 2:
         band = "84%" if sc_ratio < 0.35 else "65%" if sc_ratio < 0.7 else "38%" if sc_ratio < 1 else "31%" if sc_ratio < 1.5 else "18%"
         print(f"  SCORE CHECK: " + (f"a simulated round with discards (median of {rq['n']} rounds, jokers alive next ante) ~{int(rq['round'][1])} = ~{surv}/hand"
                                     if rq else f"best hand of a deal from your deck (75th pct of 40 deals, current jokers/levels) ~{deck_best}" if deck_best is not None
                                     else f"best {mh if mh != 'undecided' else 'Pair'} of a round (KK, current jokers/levels) ~{best_hand}")
-              + (f" vs boss/2 {boss_this // 2} this ante" if boss_this else "") + (f", boss/3 {boss_next // 3} next ante (ratio {sc_ratio:.2f}; recorded Gold runs at this ratio died {band} by the next ante)" if boss_next else "")
+              + (f" vs {(ch_now.get('Boss') or {}).get('name') or 'boss'} {boss_this} this ante (/3 = {boss_this // 3})" if boss_this else "")
+              + (f", boss/3 {boss_next // 3} next ante" if boss_next else "") + (f" (ratio {sc_ratio:.2f} vs the harder one; recorded Gold runs at this ratio died {band} by the next ante)" if (boss_next or boss_this) else "")
               + (": EMERGENCY: buy the cheapest multiplier, through the money floor (reliable/growth xMult > conditional xMult > Buffoon pack > main-hand planet)" if emergency else ""))
     # TIGHT: the next blind's projected round (ordinary hands + the final hand, scaled to your deck) under 1.2x its need
     # -> money floor off: interest is worth nothing if the run ends (7805 lost the ante-5 boss by 132 holding $12)
@@ -3719,7 +3761,8 @@ def _shop_rules(d):
             sc = min(sc, 10)  # EMERGENCY or rent-broke: a voucher scores nothing now (7801 H9WSYGXJ: Telescope twice)
         strong_v = False
         thr_plan = any(j.get("name") == "Throwback" and not j.get("debuff") for j in jokers) and 4 <= ante <= 6
-        if (threat or thr_plan) and name in ("Director's Cut", "Retcon"):
+        # ... and only with $10 left for the first reroll (7814 KYCDEPKN: bought at $15, leaving $5)
+        if (threat or thr_plan) and name in ("Director's Cut", "Retcon") and money - cost >= 10:
             # BOSS PREP: rerolls the boss that counters this build; on a Throwback skip-to-boss plan the skip-tag cash is
             # spent at blind select by `rerollboss`, so it is a core buy at antes 4-6 (7807 G2HUKM9D lost The Wall with $50)
             sc, strong_v = 88, True
@@ -3741,6 +3784,8 @@ def _shop_rules(d):
             if o[1] == "PACK" and "Buffoon" not in o[3] and not ("Celestial" in o[3] and "MAIN SCALING" in o[3]):
                 # Arcana/Spectral/Standard/Celestial packs are not joker views: below the jokers and Buffoon packs (7804 N6ILXWVS)
                 return (min(o[0], 55),) + tuple(o[1:])
+            if o[1] == "TAROT":
+                return (min(o[0], 25),) + tuple(o[1:])  # a tarot (The Devil, The Hermit) scores nothing now (7818 QRYGWYX6)
             return (o[0] + bump,) + tuple(o[1:5]) + ((o[5] or bump > 0),) + tuple(o[6:])
         options = [_emerg(o) for o in options]
     if tight:
@@ -3907,7 +3952,8 @@ def _shop_rules(d):
             skip(label, "no free joker slot and every owned joker is worth more" if strong else "no free joker slot (not strong enough to replace a joker)")
             continue
         say_skipped()
-        print(f"ADVICE: BUY -> b {cmd}   ({label})")
+        waived = "  [money floor waived: " + ("an xMult/scorer" if strong else "this buy") + f" (${money - cost} left vs the ${floor} floor)]" if floor and money - cost < floor else ""
+        print(f"ADVICE: BUY -> b {cmd}   ({label}){waived}")  # say why the floor line does not apply (Haiku 7818 AED7CJY5)
         return
     say_skipped()
     # INVARIANT: in an EMERGENCY, or with <2 scorers at ante <= 3, never LEAVE while an affordable scorer is on offer
@@ -4154,6 +4200,10 @@ def pack_advise(d):
             return
         n_t = TV.get(c.get("name"), (0, 0, ""))[1]
         tg_c = tgt_cards[:n_t]
+        if c.get("name") == "The Hanged Man":
+            # destroys its targets: the two least useful cards (singletons, lowest chips), never the pair you build on
+            # (7803 2BPSGE63 / 45TCWCZP destroyed QQ / KK)
+            tg_c = sorted(hand, key=lambda x: (by_rank[_r(x)], CHIP_VAL.get(_r(x), 0)))[:2]
         if c.get("name") == "Death" and len(hand) >= 2:
             # Death: the LEFT card becomes a copy of the RIGHT one: worst card left, best card right (7803 C5AF29KG picked
             # two Aces, a no-op)
@@ -4413,7 +4463,12 @@ def pre_checks(cmd, typ, params, ints, d):
             hand_for = next((h for h, pl in PLANET_FOR.items() if pl == name), None)
             mh_p = main_hand(d)
             if hand_for:
-                print(f"{name} levels {hand_for}" + (f" (NOT your main hand {mh_p}; a level elsewhere is mostly wasted)" if mh_p not in ("undecided", hand_for) else ""))
+                # one source of truth: the hands the pack advisor accepts (main, most played, second, owned type-xMult) are
+                # never called "wasted" (7804 DTU21E47: the pick warning contradicted the advice it followed)
+                hl_w = d.get("hand_levels") or {}
+                most_w = max(hl_w, key=lambda k: int((hl_w[k] or {}).get("played") or 0), default=None) if hl_w else None
+                ok_w = {mh_p, most_w, second_hand(d)} | {TYPE_X_JOKERS[j.get("name")][0] for j in lst(d.get("jokers")) if j.get("name") in TYPE_X_JOKERS}
+                print(f"{name} levels {hand_for}" + (f" (not your main hand {mh_p}: a level there helps less)" if mh_p != "undecided" and hand_for not in ok_w else ""))
         if name in ("Wraith", "Judgement") and n_j >= slots_j:
             print(f"Note: {name} creates a joker but your joker slots are full ({n_j}/{slots_j}): it creates nothing unless you `sell N` a joker first (selling works while a pack is open).")
         if name in ("The Fool", "The High Priestess", "The Emperor") and n_c >= slots_c:
@@ -4526,6 +4581,25 @@ def main():
     # verbs the advice text uses are accepted as commands (7818 VHC4HWPP: Haiku typed `discard`)
     cmd = {"discard": "disc", "redeem": "vouch", "voucher": "vouch", "leave": "endshop", "cashout": "cash", "select": "blind",
            "sellj": "sell", "sellcons": "sellc", "state": "s", "shop": "shopadvise"}.get(cmd.lower(), cmd.lower())
+    # "buy pack 2" / "buy voucher 1" / "sell joker 2" / "sell tarot 1" / "use tarot 1" / "pick card 2": an area word after
+    # the verb picks the command; it never falls through to `buy <first int>` (7814 UGZ2813E: `buy pack 2` bought joker J2)
+    if rest and rest[0].lower() in ("pack", "booster", "voucher", "joker", "tarot", "planet", "spectral", "card", "consumable", "cons"):
+        area_w = rest[0].lower()
+        remap = {("buy", "pack"): "pack", ("buy", "booster"): "pack", ("buy", "voucher"): "vouch", ("buy", "joker"): "buy",
+                 ("buy", "tarot"): "buy", ("buy", "planet"): "buy", ("buy", "spectral"): "buy", ("buy", "card"): "buy",
+                 ("sell", "joker"): "sell", ("sell", "tarot"): "sellc", ("sell", "planet"): "sellc", ("sell", "spectral"): "sellc",
+                 ("sell", "consumable"): "sellc", ("sell", "cons"): "sellc", ("use", "tarot"): "use", ("use", "planet"): "use",
+                 ("use", "spectral"): "use", ("use", "consumable"): "use", ("use", "cons"): "use", ("pick", "card"): "pick",
+                 ("pick", "joker"): "pick", ("pick", "planet"): "pick", ("pick", "tarot"): "pick", ("pick", "spectral"): "pick"}
+        if (cmd, area_w) not in remap:
+            print(f"REFUSED (nothing sent): `{cmd} {area_w} ...` is ambiguous; use `{cmd} N` (see `help`)"); sys.exit(1)
+        cmd, rest = remap[(cmd, area_w)], rest[1:]
+    global _EXPECT
+    words = [x for x in rest if not re.sub(r"^[A-Za-z]{0,2}", "", x).lstrip("-").isdigit()]
+    if cmd in ("buy", "buyuse", "vouch", "pack", "pick", "sell", "sellc", "use") and words and any(re.sub(r"^[A-Za-z]{0,2}", "", x).isdigit() for x in rest):
+        # `buy 2 clever`: a word next to a slot number is a name guard, never ignored
+        _EXPECT = _EXPECT or " ".join(words)
+        rest = [x for x in rest if x not in words]
     ints = [int(re.sub(r"^[A-Za-z]+", "", x)) for x in rest if re.sub(r"^[A-Za-z]+", "", x).lstrip("-").isdigit() and re.sub(r"^[A-Za-z]+", "", x) != ""]
     if cmd == "help":
         print(USAGE); return
