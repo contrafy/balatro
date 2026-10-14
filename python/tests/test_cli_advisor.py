@@ -738,7 +738,7 @@ def test_sim_veto_covers_needed_now(monkeypatch):
     d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
 
     class FakeSim:
-        def options_from_state(self, st):
+        def options_from_state(self, st, **kw):
             return [{"label": "baseline (buy nothing)"}, {"label": "buy Banner $5", "add_joker": st["shop"]["jokers"][0], "cost": 5}]
 
         def value_options(self, st, opts, **kw):
@@ -758,7 +758,7 @@ def test_sim_primary_picks_sim_best_joker(monkeypatch):
     d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
 
     class FakeSim:
-        def options_from_state(self, st):
+        def options_from_state(self, st, **kw):
             sj = st["shop"]["jokers"]
             return [{"label": "baseline (buy nothing)"}, {"label": "buy Mad Joker $4", "add_joker": sj[0], "cost": 4}, {"label": "buy Jolly Joker $3", "add_joker": sj[1], "cost": 3}]
 

@@ -2412,7 +2412,8 @@ def shop_advise_sim(d, budget_s=6.0):
             if new.split("   ")[0] != adv.split("   ")[0]:
                 sim.append(f"  (rule advice was: {adv[8:]})")
                 adv = new
-        elif adv_cmd in sim_cmds:
+        elif adv_cmd in sim_cmds and int(next((r["option"].get("cost") or 0 for r in feas if r["option"].get("_cmd") == adv_cmd), 1)) > 0:
+            # (a $0 item is never vetoed: it costs nothing)
             sim.append(f"  (rule advice was: {adv[8:]})")
             mine = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
             adv = f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes survival by {(key(mine) - key(base)) if mine and base else 0:+.2f}; nothing on offer raises it by more than 0.02)"
