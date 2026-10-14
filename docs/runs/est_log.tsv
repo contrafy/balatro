@@ -9011,3 +9011,62 @@
 7803	a5	The Fish	Pair	NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown)	Zany Joker,Gros Michel,Square Joker(foil),Even Steven,Blue Joker(foil),Seltzer	est=2618	actual=10388	MISS
 7807	a3	-	Flush	AH QH TH 9S(wild) 2H	8 Ball,Lusty Joker,Blue Joker(negative),Droll Joker	est=4205	actual=4205	OK
 7802	a5	The Psychic	Two Pair	JS JH 9S 9C	Wrathful Joker,Arrowhead,Hanging Chad,Misprint,Smiley Face,Seeing Double	est=22240	actual=28912	MISS
+7807	a3	-	Straight	6S 5H 4D 3D 2S	8 Ball,Lusty Joker,Blue Joker(negative),Droll Joker	est=756	actual=756	OK
+7804	a5	-	Two Pair	9S(mult) 9C 5H 5D	Mad Joker,Sly Joker,Ride the Bus(holo),Drunkard(holo),Golden Joker,Card Sharp	est=5382	actual=5382	OK
+7801	a2	The Window	Pair	7C 7D(DEBUFF)	Shoot the Moon,Odd Todd	est=1326	actual=1326	OK
+7810	a4	The Wheel	Three of a Kind	QH QC QD(gold)	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Mr. Bones,Throwback	est=7687	actual=7687	OK
+7802	a5	The Psychic	Full House	8S KC KD 8H 8C	Wrathful Joker,Arrowhead,Hanging Chad,Misprint,Smiley Face,Seeing Double	est=14500	actual=17000	OK
+7801	a2	The Window	Pair	9S 9H	Shoot the Moon,Odd Todd	est=2040	actual=2040	OK
+7810	a4	The Wheel	Two Pair	KS(gold) KH(gold) JC JD(gold)	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Mr. Bones,Throwback	est=10250	actual=10250	OK
+7810	a4	The Wheel	Two Pair	9S 9H 2S 2H	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Mr. Bones,Throwback	est=3177	actual=3177	OK
+7802	a5	The Psychic	Pair	AD(wild) AH	Wrathful Joker,Arrowhead,Hanging Chad,Misprint,Smiley Face,Seeing Double	est=6936	actual=12240	MISS
+7809	a6	-	Full House	KS KH KD 8S 8C	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,The Trio,Turtle Bean	est=25092	actual=25092	OK
+7805	a2	-	High Card	JD	Walkie Talkie,Mad Joker	est=15	actual=15	OK
+7809	a6	-	Full House	AS AH TS TH TD	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,The Trio,Turtle Bean	est=24600	actual=24600	OK
+7805	a2	-	Full House	KH KC QS QH QD	Walkie Talkie,Mad Joker	est=1260	actual=1260	OK
+7809	a6	-	Full House	QS QC 6H 6C 6D	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,The Trio,Turtle Bean	est=21648	actual=21648	OK
+7804	a5	-	Two Pair	AS AH 8H 8D	Mad Joker,Sly Joker,Ride the Bus(holo),Drunkard(holo),Golden Joker,Card Sharp	est=15984	actual=15984	OK
+7805	a2	-	Two Pair	6C 6D 5S 5D	Walkie Talkie,Mad Joker	est=504	actual=504	OK
+7804	a5	-	Two Pair	6S 6C 3S 3H	Mad Joker,Sly Joker,Ride the Bus(holo),Drunkard(holo),Golden Joker,Card Sharp	est=14208	actual=14208	OK
+7806	a5	The House	Full House	3H(lucky) NoneN(facedown) NoneN(facedown) NoneN(facedown) 2D(lucky)	Hallucination(holo),Abstract Joker,Scary Face,The Duo,The Trio,Troubadour	est=27360	actual=28956	OK
+7807	a3	The Wheel	High Card	5S	8 Ball,Lusty Joker,Blue Joker(negative),Droll Joker	est=78	actual=83	OK
+7806	a5	The House	Full House	TH TD 8H 8C 8D	Hallucination(holo),Abstract Joker,Scary Face,The Duo,The Trio,Troubadour	est=36252	actual=36252	OK
+7807	a3	The Wheel	Straight	KH QC JC TH 9H	8 Ball,Lusty Joker,Blue Joker(negative),Droll Joker	est=1781	actual=1781	OK
+7805	a2	The Flint	Full House	AS AH AC 5H 5C	Walkie Talkie,Mad Joker,Photograph	est=756	actual=756	OK
+7809	a6	-	Two Pair	KS KH 7C 7D	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,Turtle Bean,Chaos the Clown	est=4092	actual=4092	OK
+7801	a3	-	Pair	AH AC	Shoot the Moon,Odd Todd,Greedy Joker(holo)	est=1736	actual=1736	OK
+7807	a3	The Wheel	Flush	NoneN(facedown) 8C 6C 5C 2C	8 Ball,Lusty Joker,Blue Joker(negative),Droll Joker	est=1456	actual=1596	OK
+7809	a6	-	Full House	AH AC 6S 6H 6C	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,Turtle Bean,Chaos the Clown	est=7410	actual=7410	OK
+7809	a6	-	Full House	QS QH 5S 5H 5C	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,Turtle Bean,Chaos the Clown	est=6825	actual=6825	OK
+7805	a2	The Flint	Straight	TH AD KC QD JC	Walkie Talkie,Mad Joker,Photograph	est=912	actual=912	OK
+7809	a6	-	Three of a Kind	JH JH JC	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,Turtle Bean,Chaos the Clown	est=2400	actual=2400	OK
+7809	a6	-	Two Pair	4S 4D 3S 3D	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,Turtle Bean,Chaos the Clown	est=2112	actual=2112	OK
+7805	a2	The Flint	Two Pair	7C 7D 4S 4C	Walkie Talkie,Mad Joker,Photograph	est=988	actual=988	OK
+7810	a5	The Mouth	Full House	JS JH JD(gold) 9S 9D	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Mr. Bones,Throwback	est=13083	actual=13083	OK
+7809	a6	-	Straight	AS KC QC JS TS	Swashbuckler(holo),Burglar,Blue Joker,Mad Joker,Turtle Bean,Chaos the Clown	est=2575	actual=2575	OK
+7803	a1	-	Flush	JD 8D 5D 3D 2D		est=252	actual=252	OK
+7803	a1	-	Pair	6S 6C		est=44	actual=44	OK
+7810	a5	The Mouth	Full House	KH(gold) KD(gold) 8S 8H 8D(bonus)	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Mr. Bones,Throwback	est=12789	actual=12789	OK
+7804	a1	-	Two Pair	KS KH 8C 8D		est=112	actual=112	OK
+7801	a3	-	Pair	5S 5D	Shoot the Moon,Odd Todd,Greedy Joker(holo)	est=1904	actual=1904	OK
+7803	a1	-	High Card	2C		est=7	actual=7	OK
+7801	a3	-	Pair	7H 7D	Shoot the Moon,Odd Todd,Greedy Joker(holo)	est=1972	actual=1972	OK
+7810	a5	The Mouth	Full House	QH(gold) QD(gold) 4S 4C 4D	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Mr. Bones,Throwback	est=9702	actual=9702	OK
+7804	a1	-	Flush	JD TD 7D 5D 4D		est=284	actual=284	OK
+7803	a1	-	Pair	KS KH	Popcorn	est=660	actual=660	OK
+7806	a6	-	Full House	AS AH AC KC KD	Hallucination(holo),Abstract Joker,The Duo,The Trio,Troubadour,Stuntman	est=95304	actual=95304	OK
+7810	a6	The Arm	Full House	JS(gold) JC(gold) JD(gold) 9S 9D	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Throwback	est=15619	actual=15619	OK
+7807	a1	-	Flush	AH KH TH 9H 2H		est=308	actual=308	OK
+7805	a3	-	Two Pair	AH AD 9S 9D	Walkie Talkie,Mad Joker,Photograph,Abstract Joker,Odd Todd,Even Steven	est=5520	actual=5520	OK
+7802	a6	The Needle	Flush	KS AD(wild) QS 5S 4S	Wrathful Joker,Arrowhead,Hanging Chad,Misprint,Smiley Face,Seeing Double	est=48760	actual=62560	MISS
+7810	a6	The Arm	Two Pair	QH(gold) QC(gold) TC(gold) TD	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Throwback	est=11970	actual=11970	OK
+7803	a1	The Pillar	Two Pair	QS QD JS JD(DEBUFF)	Popcorn	est=900	actual=900	OK
+7804	a1	-	Two Pair	AS AH 9S 9C	Card Sharp	est=120	actual=120	OK
+7810	a6	The Arm	High Card	KS(gold)	Midas Mask(holo),Faceless Joker(holo),Abstract Joker,Scary Face,Throwback	est=3645	actual=3645	OK
+7809	a1	-	Two Pair	9S 9C 8S 8H		est=108	actual=108	OK
+7804	a1	-	Pair	8H 8C	Card Sharp	est=52	actual=52	OK
+7809	a1	-	Two Pair	TH TC 3H 3C		est=92	actual=92	OK
+7804	a1	-	Pair	QH QD	Card Sharp	est=180	actual=180	OK
+7803	a2	-	Two Pair	AH AC JS JD	Popcorn	est=2074	actual=2074	OK
+7809	a1	-	Flush	QH JH 9H 7H 5H		est=304	actual=304	OK
+7801	a3	The Psychic	Pair	7H 7D	Shoot the Moon,Odd Todd,Greedy Joker(holo),Joker	est=2436	actual=2436	OK

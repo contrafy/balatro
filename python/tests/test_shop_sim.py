@@ -215,3 +215,12 @@ def test_terminal_boss_values_the_end_of_horizon_build():
     assert res["keep"]["p_term"] > res["dies"]["p_term"] + 0.05
     assert res["keep"]["value"] > res["dies"]["value"]
     assert all(r["terminal"] == "a2 boss 2000" for r in res.values())
+
+
+def test_weakest_sell_is_judged_with_the_new_joker_in_place():
+    # 7803 C5AF29KG: the sell pick ignored that the incoming joker makes an owned one strong
+    owned = [joker("Scary Face"), joker("Joker", ability={"mult": 4})]
+    st = shop_state(jokers=owned, slots=2, ante=1, small="Defeated")
+    w = shop_sim._resolve_weakest(shop_sim._solver(), estimate, st, shop_sim.upcoming_blinds(st, 2, BLIND_BASE), 3, 0,
+                                  add=joker("Pareidolia"))
+    assert w == 2  # every card is a face with Pareidolia: keep Scary Face (+30 chips per card), sell the Joker
