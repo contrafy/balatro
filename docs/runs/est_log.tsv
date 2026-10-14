@@ -5339,3 +5339,17 @@
 7810	a1	-	Flush	AH KH JH TH 9H		est=340	actual=340	OK
 7805	a2	The Wheel	Pair	QC QD	Abstract Joker,Mad Joker,Onyx Agate,Sly Joker	est=1680	actual=1680	OK
 7806	a1	-	Straight	AS 5H 4C 3S 2C		est=220	actual=220	OK
+7806	a1	-	Pair	8C 8D		est=52	actual=52	OK
+7806	a1	-	Pair	QS QH		est=60	actual=60	OK
+7809	a1	-	Flush	AC KC TC 7C 6C	Hiker	est=316	actual=316	OK
+7803	a1	-	Two Pair	AC AD 6H 6D		est=108	actual=108	OK
+7807	a1	-	Full House	QS QH JS JC JD		est=360	actual=360	OK
+7810	a1	-	Flush	AC QC 9C 7C 4C	Square Joker,Crazy Joker	est=304	actual=304	OK
+7802	a3	-	Pair	JS JD	Shoot the Moon,Crafty Joker,Clever Joker	est=450	actual=450	OK
+7809	a1	-	High Card	KD	Hiker	est=15	actual=15	OK
+7805	a3	-	Three of a Kind	JS JC JD	Abstract Joker,Mad Joker,Onyx Agate,Sly Joker,Loyalty Card	est=2750	actual=2750	OK
+7806	a1	-	Pair	2S 2C	Ice Cream	est=228	actual=228	OK
+7809	a1	-	Flush	QH TH 8H 6H 3H	Hiker	est=288	actual=288	OK
+7802	a3	-	Flush	AD TD 9D 8D 4D	Shoot the Moon,Crafty Joker,Clever Joker	est=3268	actual=3268	OK
+7805	a3	-	Three of a Kind	AH AC AD	Abstract Joker,Mad Joker,Onyx Agate,Sly Joker,Loyalty Card	est=2825	actual=2825	OK
+7806	a1	-	Two Pair	6S 6D 4S 4D	Ice Cream	est=270	actual=270	OK

@@ -4194,3 +4194,7 @@
 7810	a1	$6	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | XMULT(growth: must be fed):Constellation{RENTAL(-$3/round)} $1 | VOUCHER:Planet Merchant $10 | PACK:Standard Pack $4 | PLUS(rare condition):Crazy Joker{RENTAL(-$3/round)} $1
 7805	a3	$7	jokers=4/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PACK:Buffoon Pack $4 | VOUCHER:Tarot Merchant $10 | PLUS(other hand):Devious Joker{PERISHABLE(5 rounds left)} $4 | PLUS(other hand):Zany Joker{RENTAL(-$3/round)} $1
 7810	a1	$2	jokers=1/6	xmult_owned=0	XMULT(growth: must be fed):Constellation{RENTAL(-$3/round)} $1 | VOUCHER:Planet Merchant $10 | PACK:Standard Pack $4 | PLUS(rare condition):Crazy Joker{RENTAL(-$3/round)} $1
+7806	a1	$4	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | UTIL:Faceless Joker $4 | PACK:Spectral Pack $4 | VOUCHER:Magic Trick $10 | XMULT(conditional, suit: rarely fires outside a Flush build):Bloodstone{RENTAL(-$3/round)} $1
+7807	a1	$6	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | PACK:Buffoon Pack $4 | PLUS(fires on any pair-family hand):Sly Joker $3 | VOUCHER:Wasteful $10 | PLUS(weak/conditional):Red Card $5
+7801	a3	$8	jokers=3/6	xmult_owned=0	XMULT(growth: must be fed):Vampire $7 | VOUCHER:Tarot Merchant $10 | XMULT(conditional, suit: rarely fires outside a Flush build):Bloodstone{ETERNAL,RENTAL(-$3/round)} $1
+7809	a1	$4	jokers=1/6	xmult_owned=0	PLUS(growth: +1 mult per faceless hand, resets on a face):Ride the Bus $6 | PACK:Jumbo Celestial Pack $6 | PACK:Celestial Pack $4 | VOUCHER:Planet Merchant $10 | AVOID(decays each round):Popcorn{PERISHABLE(5 rounds left)} $5

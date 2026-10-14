@@ -41,6 +41,7 @@ every recorded `obs`) and the way to regenerate observations if the observation 
 - Expose a batched step API to Python (subprocess pool over pipes first; LuaJIT FFI or a shared library later).
 - Acceptance: replays 100% of the swarm's `replay_ok` trajectories with identical observations, and reaches
   at least 300 steps/s per core (to be measured; a run is about 300-600 decisions).
+- Implementation, setup and current fidelity/throughput numbers: `docs/HEADLESS.md`.
 
 ## 3. Observation encoding
 

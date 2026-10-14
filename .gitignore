@@ -61,3 +61,6 @@ artifacts/
 
 # Claude Code session-local files (backups, worktrees)
 .claude/
+
+# Headless engine: game source extracted from the user's Balatro.exe (never commit)
+headless/.cache/

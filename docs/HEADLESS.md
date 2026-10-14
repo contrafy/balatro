@@ -58,6 +58,7 @@ obs, legal, done, info = env.step({"type": "SELECT_BLIND", "params": {}})
 with HeadlessPool(4) as pool:                         # one engine per process
     out = pool.reset([{"seed": s, "deck": "b_red", "stake": 1} for s in seeds])
     out = pool.step(actions)                          # [(obs, legal, done, info)] stepped in parallel
+    # asynchronous: pool.send(i, "step", action); for i in pool.ready(): result = pool.recv(i)
 ```
 
 - `obs` is the bridge's `/state` without the envelope keys (`settled`, `settle_reason`, `timestamp_ms`, `step`,
@@ -134,6 +135,40 @@ HeadlessEnv / HeadlessPool             headless/lua/runtime.lua
 - `love.timer.getTime` is a virtual clock (used only by `nuGC`'s per-frame GC budget and perf checkpoints).
   Garbage collection has no effect on game state (no weak tables or finalizers in the game).
 
-## Validation status and performance
+## Results (2026-10-14, game 1.0.1o-FULL, bridge_hash cd4ee1e6…)
 
-See the final section of this file (`Results`), updated whenever the engine changes.
+Fidelity:
+
+- `balatro-headless replay --manifest`: **31/31** `replay_ok` trajectories (1996 steps; fuzzer, rule agent and
+  swarm runs) match at every step (obs, `/legal`, final obs, and the replay's own recording incl. `hidden`/`refs`).
+- All 123 manifest rows (`--manifest-all`, including runs never live-replayed): 121/123 match. The two misses are
+  `tainted` bridge test runs that used `/debug/eval` state surgery (`schema_ok=false`, non-replayable by design).
+- Reverse direction: runs recorded headless (`host:"headless"`) pass `balatro-data validate` and replay with
+  `REPLAY_OK` on a live GUI instance through `balatro-data replay` (3/3, 25-81 steps, shops and packs).
+- Root-caused divergence found during bring-up: Brainstorm's `ability.blueprint_compat` after a joker
+  `REORDER` (computed in `Card:update`). Fix: every settle runs at least one frame (see Determinism).
+
+Throughput (`balatro-headless bench`, random legal policy incl. resets, `dt=0.1`, Ryzen 7 9700X with the
+10-instance GUI swarm running on the same machine):
+
+| workers | steps/s total | steps/s per worker | frames/step | frames/s |
+|---|---|---|---|---|
+| 1 | 55 | 55 | 24.0 | 1320 |
+| 4 | 177 | 44 | 23.4 | 4130 |
+
+This is below the plan's 300 steps/s per core target. Where the time goes (sampling profile, one worker):
+
+- ~24 frames per decision is close to the floor. The event manager completes at most one blocking event per
+  queue per frame, and a played hand is a chain of ~20 blocking events. Extra event passes per frame halve the
+  frame count but double the cost per frame (no net gain), and they change `final_obs` timing, so they are not
+  used. Larger `dt` does not help (24 frames at 0.1 vs 22 at 0.25, and 0.25 does not settle).
+- Each frame costs ~0.75 ms and is interpreter-bound (LuaJIT 2.0 does not compile `pairs` loops, and
+  `jit.off()` makes no measurable difference). `Moveable:move` over all ~430 moveables accounts for 55%
+  (52 deck cards with 3 glued sprites each, ~145 UI elements), UI layout (`UIBox:recalculate`,
+  `UIElement:update`) for ~20%, and the event queue (the game logic proper) for ~11%.
+- Request overhead (bridge JSON encode + `json.loads`) is ~1.5 ms per step.
+
+Next levers, each to be gated on the same 100% replay check: a bit-exact fast path that skips `Moveable:move`
+for objects whose update would be a no-op (stationary, no juice/pinch/velocity: most deck cards and HUD
+elements), and skipping per-frame UI work that has no game-state side effects (`UIElement` button funcs need
+an audit first).

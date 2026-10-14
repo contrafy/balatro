@@ -211,6 +211,9 @@ JSON objects are written with sorted keys; integers without exponent. Line types
 - `bridge_hash` = hex sha256 of the deployed `main.lua` bytes followed by `lovely.toml` bytes (as in the repo,
   CRLF included). `git_sha` comes from `BALATRO_RL_GIT_SHA` (launcher: `git rev-parse HEAD`, `-dirty` suffix if
   the tree has changes). `lovely_version` from `require("lovely").version`, `game_version` = `G.VERSION`.
+- Headless recordings (`docs/HEADLESS.md`) come from the same bridge code and add `"host":"headless"` to the
+  header; their `lovely_version` is `headless-<version>` (the loader that replaces Lovely) and `port` is the
+  worker's configured port (0 by default). Live recordings have no `host` key.
 - `unlocks` counts `unlocked == false` / `discovered == false` over P_CENTERS, P_BLINDS, P_TAGS, P_SEALS.
 - Outcomes: `loss` when the state becomes GAME_OVER; `win` as soon as `G.GAME.won` is set (ante-`win_ante` boss
   beaten; `final_obs` may be mid-transition); `abandoned` when START_RUN arrives mid-run. Continuing into Endless

@@ -7,20 +7,20 @@ _Orchestrator: summarize the night here._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 00:28:12 by `balatro-data status` (edits inside this block are overwritten). Player runs: 42 (34 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 00:32:31 by `balatro-data status` (edits inside this block are overwritten). Player runs: 47 (39 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
 
 ### Live runs (8)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | 1QAUCRHI | 8 | BLIND_SELECT | 2 | 3 | 5 | Small Blind (1000) | SKIP_BLIND | Override: Small 1000 vs ~220/hand (Splash+Banner, 0 mult jokers) is ~25% to clear; Handy tag pays n… | 6s |
-| 7802 | port-7802 | claude-fable-5-1 | 7D8XNH58 | 8 | PACK_OPENING | 2 | 5 | 0 | Big Blind (1500) | SELECT_PACK_CARD {"index":1} | Jupiter: Flush L2 pairs with Crafty +80 (Flush with Q held 2635 -> 3060), my biggest one-hand clear… | 3s |
-| 7803 | port-7803 | claude-opus-5-5 | T4WWHFJ8 | 8 | SELECTING_HAND | 3 | 8 | 1 | The Head 3200/6400 | PLAY_HAND {"card_indices":[1,2,5,4,8]} | Two Pair AT est 3128 of 3200; last hand needs 72 and even High Card scores ~300 with Trousers 20; D… | 2s |
-| 7805 | port-7805 | claude-opus-5-5 | 9MRSNKY7 | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[1,2,4,5,6]} | spade flush est 308 vs 300 need, clears in one hand | 4s |
-| 7806 | port-7806 | claude-opus-5-5 | T7BAW3E8 | 8 | BLIND_SELECT | 4 | 8 | 3 | Big Blind (13500) | SELECT_BLIND | Big 13500 with Two Pair L4, never skip | 11s |
-| 7807 | port-7807 | claude-sonnet-5-5 | IG1YQG43 | 8 | ROUND_EVAL | 5 | 9 | 3 | The Goad (50000) | CASH_OUT | cash out Goad | 4s |
-| 7809 | port-7809 | claude-opus-5-5 | RJYRHSF9 | 8 | SELECTING_HAND | 5 | 9 | 3 | Big Blind 2574/37500 | PLAY_HAND {"card_indices":[2,3,8,7,4]} | Pair QQ est 3060, 34926 needed in 2 hands: out of reach, cycle fillers 3H 4C TD hoping last draw gi… | 15s |
-| 7810 | port-7810 | claude-sonnet-5-5 | K8AC6G9T | 8 | ROUND_EVAL | 3 | 5 | -3 | The Needle (3200) | CASH_OUT | cash out ante 2 boss | 5s |
+| 7801 | port-7801 | claude-fable-5-1 | 1QAUCRHI | 8 | PACK_OPENING | 3 | 4 | 12 | Small Blind (3200) | SKIP_PACK | Flash Card eternal (+2 mult per reroll) is a dead permanent slot; The Order is a rental x3 on strai… | 0s |
+| 7802 | port-7802 | claude-fable-5-1 | 7D8XNH58 | 8 | SELECTING_HAND | 3 | 7 | 2 | Big Blind 0/4800 | PLAY_HAND {"card_indices":[3,4,5,7]} | Flush now would play my only Q (1038). Instead Pair J + 9H 7C with QD held = 450, keep A Q 8 4 diam… | 1s |
+| 7803 | port-7803 | claude-opus-5-5 | QG9S4IKB | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[1,2,4,5,3]} | Two Pair AA66 est 108 of 300; 8H filler keeps 2-3-4 for a wheel draw | 7s |
+| 7805 | port-7805 | claude-opus-5-5 | 9MRSNKY7 | 8 | BLIND_SELECT | 3 | 5 | 6 | Big Blind (4800) | SELECT_BLIND | Big 4800: Two Pair ~3800 with Abstract +15, Mad, Sly; need shop before Manacle | 5s |
+| 7806 | port-7806 | claude-opus-5-5 | 8CCVAUB9 | 8 | BLIND_SELECT | 1 | 1 | 0 | Big Blind (450) | SELECT_BLIND | Big Blind 450, Ice Cream +100 chips | 5s |
+| 7807 | port-7807 | claude-sonnet-5-5 | CEFJAWIV | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[3,4,5,1,2]} | Full House JJJQQ est 360 clears 300 in one hand | 7s |
+| 7809 | port-7809 | claude-opus-5-5 | UVZQFHQ5 | 8 | SELECTING_HAND | 1 | 2 | 0 | Big Blind 0/450 | PLAY_HAND {"card_indices":[1,2,4,5,7]} | Club flush est 316 of 450; leaves 134 for 2 hands with 1 discard | 22s |
+| 7810 | port-7810 | claude-sonnet-5-5 | I7MH1E3L | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 0/450 | PLAY_HAND {"card_indices":[1,3,4,5,6]} | Club flush A Q 9 7 4 est 304 vs 450; leaves 146 for 2 hands with 1 discard | 5s |
 
 ### Results by model x stake x deck
 
@@ -29,8 +29,8 @@ _Generated 2026-10-14 00:28:12 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 4 | 0 | 4 | 0 | 0 | 3.0 | 4 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 8 | 0 | 8 | 0 | 0 | 4.38 | 6 |
-| claude-sonnet-5-5 | 8 | Black | 16 | 0 | 15 | 0 | 1 | 2.69 | 8 |
+| claude-opus-5-5 | 8 | Black | 11 | 0 | 11 | 0 | 0 | 4.36 | 6 |
+| claude-sonnet-5-5 | 8 | Black | 18 | 0 | 17 | 0 | 1 | 2.83 | 8 |
 
 ### Deepest runs
 
@@ -41,16 +41,16 @@ _Generated 2026-10-14 00:28:12 by `balatro-data status` (edits inside this block
 | 3 | C1A5EUKS | claude-sonnet-5-5 | 8 | Black | loss | 5 | Small Blind 20982/25000 | [7807_C1A5EUKS.md](runs/7807_C1A5EUKS.md) |
 | 4 | 9W4KUCWA | claude-opus-5-5 | 8 | Black | loss | 5 | The House 18927/50000 | [7804_9W4KUCWA.md](runs/7804_9W4KUCWA.md) |
 | 5 | A5D7B521 | claude-opus-5-5 | 8 | Black | loss | 5 | The Head 35995/50000 | [7806_A5D7B521.md](runs/7806_A5D7B521.md) |
-| 6 | HGM3CNYK | claude-opus-5-5 | 8 | Black | loss | 5 | The Hook 46987/50000 | [7805_HGM3CNYK.md](runs/7805_HGM3CNYK.md) |
-| 7 | NP2SKU6Q | claude-opus-5-5 | 8 | Black | loss | 5 | Big Blind 21457/37500 | [7803_NP2SKU6Q.md](runs/7803_NP2SKU6Q.md) |
-| 8 | BKBSWK32 | claude-sonnet-5-5 | 8 | Black | loss | 5 | Big Blind 28980/37500 | [7810_BKBSWK32.md](runs/7810_BKBSWK32.md) |
-| 9 | UQ4UCR7Z | claude-fable-5-1 | 8 | Black | loss | 4 | The House 7029/18000 | [7802_UQ4UCR7Z.md](runs/7802_UQ4UCR7Z.md) |
-| 10 | 943PYVF7 | claude-opus-4 | 1 | Black | unfinished | 4 | Big Blind (7500) | - |
+| 6 | IG1YQG43 | claude-sonnet-5-5 | 8 | Black | loss | 5 | Big Blind 14124/37500 | [7807_IG1YQG43.md](runs/7807_IG1YQG43.md) |
+| 7 | HGM3CNYK | claude-opus-5-5 | 8 | Black | loss | 5 | The Hook 46987/50000 | [7805_HGM3CNYK.md](runs/7805_HGM3CNYK.md) |
+| 8 | NP2SKU6Q | claude-opus-5-5 | 8 | Black | loss | 5 | Big Blind 21457/37500 | [7803_NP2SKU6Q.md](runs/7803_NP2SKU6Q.md) |
+| 9 | BKBSWK32 | claude-sonnet-5-5 | 8 | Black | loss | 5 | Big Blind 28980/37500 | [7810_BKBSWK32.md](runs/7810_BKBSWK32.md) |
+| 10 | RJYRHSF9 | claude-opus-5-5 | 8 | Black | loss | 5 | Big Blind 11394/37500 | [7809_RJYRHSF9.md](runs/7809_RJYRHSF9.md) |
 
 ### Data validity
 
-- Player runs: 40 files in manifest; schema_ok 40, schema invalid 0; replay_ok 25, replay failed 0, awaiting replay 6, open/unended 9; quarantined 0; not yet in manifest 2.
-- All files (incl. fuzz + replays): 133; schema_ok 131; replay_ok 31; replay failed 0; awaiting replay 90; quarantined 2.
+- Player runs: 40 files in manifest; schema_ok 40, schema invalid 0; replay_ok 26, replay failed 0, awaiting replay 5, open/unended 9; quarantined 0; not yet in manifest 7.
+- All files (incl. fuzz + replays): 133; schema_ok 131; replay_ok 32; replay failed 0; awaiting replay 89; quarantined 2.
 
 ### Rejects per agent
 
@@ -60,16 +60,16 @@ _Generated 2026-10-14 00:28:12 by `balatro-data status` (edits inside this block
 | port-7778 | 1 | 1 | 0 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 124 |
-| port-7802 | 0 | 0 | 139 |
-| port-7803 | 0 | 0 | 235 |
+| port-7801 | 0 | 0 | 136 |
+| port-7802 | 0 | 0 | 154 |
+| port-7803 | 0 | 0 | 248 |
 | port-7804 | 0 | 0 | 129 |
-| port-7805 | 0 | 0 | 197 |
-| port-7806 | 0 | 0 | 297 |
-| port-7807 | 0 | 0 | 311 |
+| port-7805 | 0 | 0 | 229 |
+| port-7806 | 0 | 0 | 313 |
+| port-7807 | 0 | 0 | 331 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 236 |
-| port-7810 | 0 | 0 | 307 |
+| port-7809 | 0 | 0 | 249 |
+| port-7810 | 0 | 0 | 327 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
