@@ -41,11 +41,29 @@ TIE_P = 0.02  # p differences below this are sampling noise: ties rank by mean s
 # DEAD_SHOP_P. Multiplicative, so a doomed line (p ~ 0) is not ranked by its rent alone.
 DOLLAR_P = 0.01
 DEAD_SHOP_P = 0.05
-SURVIVE_GAIN = 0.05  # options raising p_next by this much over buying nothing never rank below it
-# Terminal value: after the horizon the end build is played once against the next boss; value = p_adj x (A + B x
-# p_term). Equal weights (heuristic): surviving now matters as much as the build's next-ante strength.
+SURVIVE_GAIN = 0.05  # options raising the survival depth by this much over buying nothing never rank below it
+RENT_KEEP = 6  # blinds a (sellable) rental is assumed kept: its rent counts at least this long
+INCOME_MAX = 1.5  # income jokers can raise the post-horizon rent factor up to this
+# Terminal value: after the horizon the end build is played once against the next boss; value = A x survival depth +
+# B x p_next x rent factor x p_term (_value). Equal weights (heuristic): surviving now matters as much as the build's
+# next-ante strength.
 TERM_A = 0.5
 TERM_B = 0.5
+# Spectral cards that destroy 1 random card in hand and add random enhanced cards (card.lua; Stone excluded)
+SPECTRAL_ADDS = {"Grim": (["Ace"], 2), "Familiar": (["Jack", "Queen", "King"], 3),
+                 "Incantation": (["2", "3", "4", "5", "6", "7", "8", "9", "10"], 4)}
+_ADD_ENH = ("m_bonus", "m_mult", "m_wild", "m_glass", "m_steel", "m_gold", "m_lucky")
+
+
+def _spectral_adds(state, name):
+    """Option fields for Grim / Familiar / Incantation: one random hand card destroyed, random enhanced cards added
+    (a fixed draw per state and card name, so every call values the same outcome)."""
+    ranks, k = SPECTRAL_ADDS[name]
+    rng = random.Random(f"{name}:{len(_lst((state.get('deck') or {}).get('cards')))}")
+    hand = [c.get("id") for c in _lst(state.get("hand")) if c.get("id") is not None]
+    adds = [{"rank": rng.choice(ranks), "suit": rng.choice(("Spades", "Hearts", "Clubs", "Diamonds")),
+             "enhancement": rng.choice(_ADD_ENH)} for _ in range(k)]
+    return {"add_cards": adds, "remove_cards": [rng.choice(hand)] if hand else []}
 
 
 def _lst(v):
@@ -144,6 +162,8 @@ def options_from_state(state, packs=False):
             opts.append({"label": tag, "levels": ["*"] if name == "Black Hole" else [PLANET_HAND[name]], "cost": cost})
         elif c.get("set") == "Spectral" and name == "Black Hole":
             opts.append({"label": tag, "levels": ["*"], "cost": cost})
+        elif c.get("set") == "Spectral" and name in SPECTRAL_ADDS:
+            opts.append(dict(_spectral_adds(state, name), label=tag, cost=cost))
         elif _is_playing_card(c):
             opts.append({"label": tag, "add_cards": [c], "cost": cost})
     if ph == "SHOP" and any(j.get("name") == "Campfire" and not j.get("debuff") for j in _lst(state.get("jokers"))):
@@ -371,6 +391,17 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss
         fed = k * sum(feeders.count(n) for n in ("Certificate", "Marble Joker", "DNA"))
         now = [dict(j) for j in now]
         _feed_hologram(now, fed)
+        # sell values grow at round end: Gift Card +$1 to every joker, Egg +$3 to itself (Swashbuckler reads them)
+        gifts = feeders.count("Gift Card")
+        for j in now:
+            grow = gifts + (3 if j.get("name") == "Egg" and _active(j) else 0)
+            if grow:
+                j["sell_cost"] = int(j.get("sell_cost") or 0) + grow * k
+    if any(j.get("name") == "Swashbuckler" for j in now):
+        # card.lua update(): +mult = the sell values of every other joker (the set changes with buys/sells/growth)
+        now = [dict(j, ability=dict(j.get("ability") or {}, mult=sum(int(x.get("sell_cost") or 0) for x in now
+                                                                       if x is not j)))
+               if j.get("name") == "Swashbuckler" else j for j in now]
     if boss_passed:
         now = [dict(j, ability=dict(j.get("ability") or {}, x_mult=1.0)) if j.get("name") == "Campfire" else j
                for j in now]
@@ -592,9 +623,15 @@ def _resolve_weakest(sv, est, state, blinds, budget_s, seed, add=None):
     extra = {"add_joker": add} if add is not None else {}
     res = _run(sv, est, state, [dict(extra, label=f"sell {j.get('name')}", sell=[j.get("index")]) for j in cands],
                blinds, budget_s, seed, min_samples=16)
-    best = max((r for r in res if r.get("p_next") is not None),
-               key=lambda r: (r["p_next"], r["score_ratio"] or 0, r["money_after"] or 0), default=None)
-    return best["option"]["sell"][0] if best else None
+    ok = [r for r in res if r.get("p_next") is not None]
+    if not ok:
+        return None
+    # p_next differences below TIE_P are sampling noise (7802 4EP3BAN9 sold Half Joker over Misprint): among the
+    # near-best sales keep the build that scores the most (mean score ratio), then money
+    top = max(r["p_next"] for r in ok)
+    best = max((r for r in ok if r["p_next"] >= top - TIE_P),
+               key=lambda r: (r["score_ratio"] or 0, r["p_next"], r["money_after"] or 0))
+    return best["option"]["sell"][0]
 
 
 def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_samples=400, term=None):
@@ -617,6 +654,8 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
             stuck = [j for j in _lst(st.get("jokers")) if j.get("rental")
                      and (j.get("eternal") or (j.get("ability") or {}).get("eternal"))]
             r["rent_run"] = RENT * len(stuck) * _rounds_left(state)
+            # sellable rentals are kept a while (RENT_KEEP blinds at least); eternal ones are in rent_run
+            r["rent_horizon"] = RENT * (rentals - len(stuck)) * max(len(blinds), RENT_KEEP)
             new = opt.get("add_joker")
             if new is not None and any(j.get("name") == new.get("name") for j in stuck):
                 r["notes"].append(f"ETERNAL RENTAL: {new.get('name')} costs ${RENT} every round for the rest of the run "
@@ -656,6 +695,7 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         r["p_next"] = 1.0
         for p in r["p_blinds"]:
             r["p_next"] *= p
+        r["depth"] = _depth(r)
         r["score_ratio"] = sum(st[2] / max(1, st[0]) for st in sim.stats[:nb]) / max(1, nb)
         r["dollars"] = sum(st[3] / max(1, st[0]) for st in sim.stats[:nb])
         if term:
@@ -671,7 +711,9 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         r["money_path"] = _money_path(state, sim.state, blinds, sim.stats, r["money_after"])
         r["shop_money"] = min(r["money_path"]) if r["money_path"] else r["money_after"]
         r["dead_shops"] = sum(1 for m in r["money_path"] if m < 0)
-        r["rent_horizon"] = r["rent_per_round"] * len(blinds)
+        r["income"] = sum(_income(sim.state, blinds))
+        if r["income"]:
+            r["notes"].append(f"income jokers: +${r['income']:.0f} over these blinds")
         if r["shop_money"] < 0:
             r["notes"].append(f"rent drives money to ${r['shop_money']} before a later shop: that shop is dead")
         elif r["rent_per_round"] >= 2 * RENT:
@@ -683,18 +725,51 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
 
 def _money_path(base, st, blinds, stats, money):
     """Expected money entering the shop after each simulated blind (Gold cash-out order): rent of every rental is
-    charged at round end, then the blind reward, $1 per unused hand (simulated mean) and interest ($1 per $5 held,
-    capped; none below $0 or with no_interest)."""
+    charged at round end, then the blind reward, $1 per unused hand (simulated mean), income jokers (_income) and
+    interest ($1 per $5 held plus To the Moon's extra, capped; none below $0 or with no_interest)."""
     rentals = sum(1 for j in _lst(st.get("jokers")) if j.get("rental"))
     cap = int(base.get("interest_cap") or 25)
-    amt = int(base.get("interest_amount") or 1)
+    amt = int(base.get("interest_amount") or 1) + sum(
+        int(_num((j.get("ability") or {}).get("extra"), 1)) for j in _lst(st.get("jokers"))
+        if j.get("name") == "To the Moon" and _active(j))
     out = []
     m = float(money)
-    for b, s in zip(blinds, stats):
+    for b, s, inc in zip(blinds, stats, _income(st, blinds)):
         m -= RENT * rentals
         interest = 0 if base.get("no_interest") or m < 5 else amt * (min(m, cap) // 5)
-        m += int(b.get("dollars") or 0) + s[3] / max(1, s[0]) + interest
+        m += int(b.get("dollars") or 0) + s[3] / max(1, s[0]) + interest + inc
         out.append(int(round(m)))
+    return out
+
+
+def _num(v, default):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _income(st, blinds):
+    """End-of-round $ from income jokers per simulated blind: Golden Joker (+extra), Rocket (extra.dollars, +increase
+    after each boss), Cloud 9 (+extra per 9 in the deck)."""
+    out = [0.0] * len(blinds)
+    nines = sum(1 for c in _lst((st.get("deck") or {}).get("cards")) if str(c.get("rank")) == "9")
+    for j in _lst(st.get("jokers")):
+        if not _active(j):
+            continue
+        ab = j.get("ability") or {}
+        ex = ab.get("extra")
+        if j.get("name") == "Golden Joker":
+            out = [o + _num(ex, 4) for o in out]
+        elif j.get("name") == "Cloud 9":
+            out = [o + _num(ex, 1) * nines for o in out]
+        elif j.get("name") == "Rocket":
+            ex = ex if isinstance(ex, dict) else {}
+            pay, inc = _num(ex.get("dollars"), 1), _num(ex.get("increase"), 2)
+            for i, b in enumerate(blinds):
+                if b.get("kind") == "Boss":
+                    pay += inc
+                out[i] += pay
     return out
 
 
@@ -768,9 +843,24 @@ def _expand_packs(state, options, seed):
                 tele = "v_telescope" in [str(v.get("key") if isinstance(v, dict) else v)
                                          for v in _lst(state.get("used_vouchers"))]
                 main = next((n for n, h in PLANET_HAND.items() if top and h == top[0]), None)
-                reps[kind] = {"names": names, "weights": [planets[n] for n in names], "telescope": main if tele else None}
+                reps[kind] = {"names": names, "weights": [planets[n] for n in names], "telescope": main if tele else None,
+                              "main": main}
         plans[oi] = dict(reps[kind], kind=kind, size=int(pk.get("size") or 2), choose=int(pk.get("choose") or 1))
     return subs, plans
+
+
+PLANET_TIE = 0.05  # simulated planet values closer than this are noise: the main hand's planet wins
+
+
+def _pick_value(c, base, plan):
+    """Value of one pack card for choosing the pick: a planet never ranks below skipping (a level-up cannot lower a
+    score: anything lower is sampling noise), and the planet of the most played hand gets PLANET_TIE on top
+    (7804: Jupiter beat Saturn, the hand being made, on noise)."""
+    v = _value(c)
+    if c is base or plan.get("kind") != "Celestial":
+        return v
+    v = max(v, _value(base))
+    return v + (PLANET_TIE if plan.get("main") and c["label"] == f"_pack Celestial: {plan['main']}" else 0.0)
 
 
 def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
@@ -783,7 +873,7 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
     rng = random.Random(f"{seed}:virtual:{r['label']}")
     keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money",
-            "p_term", "score_ratio_term")
+            "p_term", "score_ratio_term", "income", "depth")
     cost = int(o.get("cost") or 0)
     dead = 0.0
     acc = dict.fromkeys(keys, 0.0)
@@ -802,9 +892,9 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
                     names.append(n)
             cards = [by_label.get(f"_pack Celestial: {n}") for n in names]
         cands = [c for c in cards if c is not None and c.get("p_next") is not None] + [base]
-        best = max(cands, key=lambda c: (_value(c) - DEAD_SHOP_P * sum(1 for m in c.get("money_path") or []
-                                                                       if 0 <= m < cost), c.get("score_ratio_term") or 0,
-                                         c["score_ratio"], c.get("money_after") or 0))
+        best = max(cands, key=lambda c: (_pick_value(c, base, plan) - DEAD_SHOP_P * sum(
+            1 for m in c.get("money_path") or [] if 0 <= m < cost), c.get("score_ratio_term") or 0,
+            c["score_ratio"], c.get("money_after") or 0))
         dead += sum(1 for m in best.get("money_path") or [] if m - cost < 0)
         picks[best["label"]] += 1
         for k in keys:
@@ -907,9 +997,9 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
             r["delta_value"] = None
             continue
         o = r["option"]
-        if r["p_next"] >= bp + SURVIVE_GAIN:
+        if _depth(r) >= _depth(base) + SURVIVE_GAIN:
             # invariant: an option that clearly raises survival over the horizon never ranks below buying nothing
-            r["value"] = max(r["value"], bv + TERM_A * (r["p_next"] - bp))
+            r["value"] = max(r["value"], bv + TERM_A * (_depth(r) - _depth(base)))
         elif o.get("levels") and not (o.get("add_joker") or o.get("sell") or o.get("add_cards")) \
                 and r["value"] < bv:
             # a hand level-up cannot lower the best score of any hand: a lower value is sampling noise
@@ -917,36 +1007,46 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
             r["notes"].append("level-up valued at baseline (sim noise below it)")
         r["delta_value"] = r["value"] - bv
     top = max((r["value"] for r in res if r.get("value") is not None), default=0.0)
+    hl = state.get("hand_levels") or {}
+    main = max(hl, key=lambda h: int((hl[h] or {}).get("played") or 0)) if hl else None
+
+    def pure_lv(r):
+        o = r["option"]
+        return bool(o.get("levels")) and not (o.get("add_joker") or o.get("sell") or o.get("add_cards"))
+
+    top_planet = any(pure_lv(r) and r["value"] >= top - 1e-12 for r in res if r.get("value") is not None)
 
     def rank(r):
         if r.get("value") is None:
-            return (0, 0, 0.0, 0.0, 0.0, 0)
-        tied = r["value"] >= top - TIE_P
-        return (1, tied, 1.0 if tied else r["value"], r.get("score_ratio_term") or 0.0, r["score_ratio"],
-                r.get("shop_money", r["money_after"]))
+            return (0, 0, 0.0, 0, 0.0, 0.0, 0)
+        # planets closer than PLANET_TIE to the best planet are noise apart: the most played hand's planet wins
+        main_lv = pure_lv(r) and r["option"]["levels"] == [main]
+        tied = r["value"] >= top - TIE_P or (top_planet and main_lv and r["value"] >= top - PLANET_TIE)
+        return (1, tied, 1.0 if tied else r["value"], tied and main_lv, r.get("score_ratio_term") or 0.0,
+                r["score_ratio"], r.get("shop_money", r["money_after"]))
 
     res.sort(key=rank, reverse=True)
     return res
 
 
 def _place_copy(state, opt, cli):
-    """For a new Blueprint (copies the joker to its right) or Brainstorm (copies the leftmost joker): the joker order
-    the player would set with `b order`, chosen by cli.typical_est over every insertion slot (Blueprint) or every
-    owned joker moved leftmost (Brainstorm). Returns the option with insert_at / lead set (unchanged otherwise)."""
+    """Joker order the player would set with `b order` when copy jokers are involved, chosen by cli.typical_est: a
+    new Blueprint (copies the joker to its right) or any new joker while a Blueprint / Brainstorm (copies the leftmost
+    joker) is kept tries every insertion slot; a new Brainstorm also tries every owned joker moved leftmost. Ties keep
+    the new joker rightmost. Returns the option with insert_at / lead set (unchanged otherwise)."""
     nj = opt.get("add_joker") or {}
     est_fn = getattr(cli, "typical_est", None)
-    if nj.get("name") not in ("Blueprint", "Brainstorm") or est_fn is None:
-        return opt
     sold = set(opt.get("sell") or []) if opt.get("sell") != "weakest" else set()
     owned = [j for j in _lst(state.get("jokers")) if j.get("index") not in sold]
+    copiers = ("Blueprint", "Brainstorm")
+    if not nj or est_fn is None or not (nj.get("name") in copiers or any(j.get("name") in copiers for j in owned)):
+        return opt
     hl = state.get("hand_levels") or {}
     mh = max(hl, key=lambda h: int((hl[h] or {}).get("played") or 0), default="Pair") if hl else "Pair"
     new = dict(nj, debuff=False)
-    tries = []
-    if nj.get("name") == "Blueprint":
-        tries = [(i, None) for i in range(len(owned) + 1)]
-    else:
-        tries = [(len(owned), None)] + [(len(owned), i) for i in range(len(owned))]
+    tries = [(len(owned), None)] + [(i, None) for i in range(len(owned))]
+    if nj.get("name") == "Brainstorm":
+        tries += [(len(owned), i) for i in range(len(owned))]
     best, best_s = None, -1.0
     for at, lead in tries:
         js = owned[:at] + [new] + owned[at:]
@@ -959,7 +1059,9 @@ def _place_copy(state, opt, cli):
             return opt
         if s > best_s:
             best, best_s = (at, lead), s
-    return dict(opt, insert_at=best[0], lead=best[1]) if best else opt
+    if not best or best == (len(owned), None):
+        return opt
+    return dict(opt, insert_at=best[0], lead=best[1])
 
 
 def terminal_blind(state, n, blind_base):
@@ -972,24 +1074,40 @@ def terminal_blind(state, n, blind_base):
 
 
 def _value(r):
-    """Ranking value: P(survive the horizon) x (TERM_A + TERM_B x rent factor x P(the end-of-horizon build clears the
-    next boss)). Rent is money the LATER shops lose, and dead runs pay none: it only discounts the post-horizon term,
-    never the survival itself. Fading jokers (Popcorn, perishables, Gros Michel) stop looking free once the horizon is
-    survived anyway. Without a terminal check: p_adj."""
+    """Ranking value: TERM_A x depth + TERM_B x P(survive the horizon) x rent factor x P(the end-of-horizon build
+    clears the next boss). depth = mean over the horizon of P(alive after blind k) (= (p1 + p1p2 + p1p2p3) / 3): it
+    keeps a signal when a far blind is hopeless for every option (7806 FYEJZFFU: The Wall made P(all 3) 0 everywhere,
+    hiding the Mad Joker that cleared the next blind); it equals p_next when every blind is sure. Rent is money the
+    LATER shops lose, and dead runs pay none: it only discounts the post-horizon term, never the survival itself.
+    Fading jokers stop looking free once the horizon is survived anyway. Without a terminal check: p_adj."""
     p_term = r.get("p_term")
     if p_term is None:
         return _p_adj(r)
-    return r["p_next"] * (TERM_A + TERM_B * p_term * _rent_factor(r))
+    return TERM_A * _depth(r) + TERM_B * r["p_next"] * p_term * _rent_factor(r)
+
+
+def _depth(r):
+    """Mean over the simulated blinds of P(still alive after blind k), from the calibrated per-blind p (pack results
+    carry their averaged depth)."""
+    if r.get("depth") is not None:
+        return r["depth"]
+    pb = r.get("p_blinds") or [r["p_next"]]
+    alive, tot = 1.0, 0.0
+    for p in pb:
+        alive *= p
+        tot += alive
+    return tot / len(pb)
 
 
 def _rent_factor(r):
-    """1 - DOLLAR_P per $ of rent over the horizon (all rentals) and, for eternal rentals, to the end of the run -
-    DEAD_SHOP_P per later shop entered with negative money; at least 0.1."""
-    rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0)
+    """1 - DOLLAR_P per $ of rent (sellable rentals over max(horizon, RENT_KEEP) blinds, eternal rentals to the end of
+    the run) + DOLLAR_P per $ of income-joker money over the horizon - DEAD_SHOP_P per later shop entered with
+    negative money; within [0.1, INCOME_MAX]."""
+    rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0) - (r.get("income") or 0)
     dead = r["dead_shops"] if "dead_shops" in r else sum(1 for m in r.get("money_path") or [] if m < 0)
-    return max(0.1, 1.0 - DOLLAR_P * rent - DEAD_SHOP_P * dead)
+    return min(INCOME_MAX, max(0.1, 1.0 - DOLLAR_P * rent - DEAD_SHOP_P * dead))
 
 
 def _p_adj(r):
-    """p_next times the rent factor (display / no-terminal ranking)."""
-    return r["p_next"] * _rent_factor(r)
+    """p_next times the rent factor, at most p_next (display / no-terminal ranking)."""
+    return r["p_next"] * min(1.0, _rent_factor(r))

@@ -414,7 +414,7 @@ def test_misprint_planning_uses_mean_roll_not_est_floor():
     rs = solver.RoundSolver(st, estimate)
     play = [rs.slots[i] for i in (1, 2, 5, 6, 7)]
     held = [c for c in rs.slots if c not in play]
-    est6 = estimate("Two Pair", [c.d for c in play], [c.d for c in held], st, played_n=5)[0]
+    est6 = estimate("Two Pair", [c.d for c in play], [c.d for c in held], dict(st, _misprint_roll=6), played_n=5)[0]
     plan_v, _t = rs.score(play, held, 3, 2, rs.ctx0)
     base, slope = rs._components("Two Pair", play, play, held, 3, 2, None)[:2]
     assert base + 6 * slope == pytest.approx(est6, abs=1)

@@ -1,0 +1,9 @@
+# Run ME9AMTUQ (port 7812, claude-sonnet-5-5) - Black Deck Gold Stake - IN PROGRESS (ante 7 Small cleared)
+
+Ante 1 (Charm/Juggle/The Hook 600, $4): Small FH 333KK 276 + 2P 124. Shop $5: Odd Todd $4 (SIM 0.56 vs Buffoon 0.38). Big: Straight 632 one-shot. Shop $7: Card Sharp $6 (x3 on a repeated hand type). Hook: disc 3 for a straight draw, Straight 5-9 632.
+Ante 2 (Holo/Garbage/The Pillar 2000, $8): EMERGENCY 0.19 -> foil Turtle Bean{RENTAL} $1 (+5 hand size decaying). Skipped Small (Holo tag = free holo Gift Card). Big 1500: Flush clubs 764 then disjoint Flush diamonds x3 1788. Shop: free holo Gift Card, Photograph{P} $5. Pillar: FH 77755 3864.
+Ante 3 (Rare/Orbital/The Mouth 6400, $8): Skipped Small (Rare tag): Rare tag gave Brainstorm{RENTAL} $0. Big: Straight 3348 + Two Pair 1896. Shop: sold Turtle Bean (swap rental), Swashbuckler $4 (+mult = sell value of other jokers), Brainstorm copying leftmost Swashbuckler. Mouth: Two Pair 8944 one-shot.
+Ante 4 (Rare/Juggle/The Plant 18000, $15): sold Photograph -> Blueprint $10 left of Card Sharp (x9 on repeats). Skipped Small (Rare tag -> Obelisk, passed: repeat-type play resets it). Big/Plant: High Card spam: 1st High Card, 2nd High Card x9 (22-27k) clears.
+Ante 5 (Coupon/D6/The Head 50000): High Card chain every blind (3 hands: 3.5k, x9 ~34-43k, x9 ~37k). Planet Uranus (Two Pair L2). Never skipped (no Throwback).
+Ante 6 (Meteor/Voucher/The Wall 240000): Small HC chain 96k. Big: Pair 55 + Pair AA x9 103k. Arcana pack -> Temperance +$50. Sold Gift Card for Blue Joker ($5, +2 chips/deck card: chips x2.9). Wall: HC chain caps ~230k, so Pair chain: H1 Pair 22 + 2 fillers (draw 4), disc for odd singles AH 7S 5H 3C, got AA + 77: 9k + 137.6k + 127k = 273k. CLEARED.
+Ante 7 (Rare/Boss/The Tooth 220000, $21): Small: Pair 66 12k + Pair 77 x9 165k.

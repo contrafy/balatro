@@ -3023,7 +3023,8 @@ def shop_advise_sim(d, budget_s=6.0):
         if weak_r is not None:
             adv += f"  [or swap: b sell {weak_r.get('index')} ({weak_r.get('name')})  then  b {adv_cmd} - the one-rental rule allows a swap]"
     reroll_c = int((d.get("shop") or {}).get("reroll_cost") or 5)
-    if adv.startswith("ADVICE: LEAVE") and "EMERGENCY" in out_all and int(d.get("money") or 0) - reroll_c >= 1:
+    # ... keeping $6 for the next shop's scorer (7815 4HCI6MJA: rerolls drained the money for a $7 scorer)
+    if adv.startswith("ADVICE: LEAVE") and "EMERGENCY" in out_all and int(d.get("money") or 0) - reroll_c >= 6:
         # the printed SCORE CHECK band says EMERGENCY: leaving with money contradicts it (7818 K9XMU63Y, Haiku); hunt a multiplier
         sim.append(f"  (rule advice was: {adv[8:]})")
         adv = f"ADVICE: REROLL -> b reroll   (EMERGENCY in SCORE CHECK: leaving with ${d.get('money')} does not fix the next boss; reroll for a multiplier (xMult > +mult scorer > Buffoon pack))"
@@ -3105,6 +3106,11 @@ def pack_advise_sim(d, budget_s=3.5):
         if "the type your owned xMult joker needs" in adv and any(r["option"].get("_cmd") == rule_pick for r in feas):
             # a level for the type an owned type-xMult needs is worth more than the 3-blind SIM sees (7812 AGE5D9GU)
             best = next(r for r in feas if r["option"].get("_cmd") == rule_pick)
+        rule_r = next((r for r in feas if r["option"].get("_cmd") == rule_pick), None)
+        if rule_r is not None and rule_r["option"].get("levels") and best is not rule_r and key(best) - key(rule_r) < 0.10:
+            # planets: the main-hand / most-played / type-xMult rule wins unless the SIM leads by 0.10 (7804 AHWUSK5M:
+            # Saturn over Earth on a 0.04 gap)
+            best = rule_r
         if key(best) - key(base) > 0.02:
             sell_ix = best["option"].get("sell")
             sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
@@ -4502,6 +4508,9 @@ def main():
     global LEGAL
     args, why, seed = parse_flags(sys.argv[1:])
     cmd, rest = (args[0], args[1:]) if args else ("s", [])
+    # verbs the advice text uses are accepted as commands (7818 VHC4HWPP: Haiku typed `discard`)
+    cmd = {"discard": "disc", "redeem": "vouch", "voucher": "vouch", "leave": "endshop", "cashout": "cash", "select": "blind",
+           "sellj": "sell", "sellcons": "sellc", "state": "s", "shop": "shopadvise"}.get(cmd.lower(), cmd.lower())
     ints = [int(re.sub(r"^[A-Za-z]+", "", x)) for x in rest if re.sub(r"^[A-Za-z]+", "", x).lstrip("-").isdigit() and re.sub(r"^[A-Za-z]+", "", x) != ""]
     if cmd == "help":
         print(USAGE); return
