@@ -922,3 +922,12 @@ def test_second_rental_pack_pick_barred_before_ante_5(monkeypatch):
          "pack": {"kind": "Buffoon", "choices_remaining": 1, "cards": [{"index": 1, "name": "Sly Joker", "set": "Joker", "rental": True}]}}
     monkeypatch.setattr(cli, "_SHOP_SIM", _rental_sim(0.45))
     assert "b pick 1" not in _advice(_out(cli.pack_advise_sim, d))
+
+
+def test_copy_chain_blueprint_brainstorm_acrobat():
+    # 7802 IFYMR9UX (third Gold win): Acrobat | Blueprint | Brainstorm = x27 on the final hand (one-step resolution gave x9)
+    cards = [_card("King", "Spades", 1), _card("King", "Hearts", 2)]
+    st = lambda js: {"jokers": js, "hand_levels": {"Pair": {"level": 1, "chips": 10, "mult": 2}}, "hands_remaining": 1}
+    one = cli.estimate("Pair", cards, [], st([joker("Acrobat", 1)]))[0]
+    chain = cli.estimate("Pair", cards, [], st([joker("Acrobat", 1), joker("Blueprint", 2), joker("Brainstorm", 3)]))[0]
+    assert chain == 9 * one

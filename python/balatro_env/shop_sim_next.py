@@ -41,11 +41,12 @@ TIE_P = 0.02  # p differences below this are sampling noise: ties rank by mean s
 # DEAD_SHOP_P. Multiplicative, so a doomed line (p ~ 0) is not ranked by its rent alone.
 DOLLAR_P = 0.01
 DEAD_SHOP_P = 0.05
-SURVIVE_GAIN = 0.05  # options raising p_next by this much over buying nothing never rank below it
+SURVIVE_GAIN = 0.05  # options raising the survival depth by this much over buying nothing never rank below it
 RENT_KEEP = 6  # blinds a (sellable) rental is assumed kept: its rent counts at least this long
 INCOME_MAX = 1.5  # income jokers can raise the post-horizon rent factor up to this
-# Terminal value: after the horizon the end build is played once against the next boss; value = p_adj x (A + B x
-# p_term). Equal weights (heuristic): surviving now matters as much as the build's next-ante strength.
+# Terminal value: after the horizon the end build is played once against the next boss; value = A x survival depth +
+# B x p_next x rent factor x p_term (_value). Equal weights (heuristic): surviving now matters as much as the build's
+# next-ante strength.
 TERM_A = 0.5
 TERM_B = 0.5
 # Spectral cards that destroy 1 random card in hand and add random enhanced cards (card.lua; Stone excluded)
@@ -694,6 +695,7 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         r["p_next"] = 1.0
         for p in r["p_blinds"]:
             r["p_next"] *= p
+        r["depth"] = _depth(r)
         r["score_ratio"] = sum(st[2] / max(1, st[0]) for st in sim.stats[:nb]) / max(1, nb)
         r["dollars"] = sum(st[3] / max(1, st[0]) for st in sim.stats[:nb])
         if term:
@@ -871,7 +873,7 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
     rng = random.Random(f"{seed}:virtual:{r['label']}")
     keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money",
-            "p_term", "score_ratio_term", "income")
+            "p_term", "score_ratio_term", "income", "depth")
     cost = int(o.get("cost") or 0)
     dead = 0.0
     acc = dict.fromkeys(keys, 0.0)
@@ -995,9 +997,9 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
             r["delta_value"] = None
             continue
         o = r["option"]
-        if r["p_next"] >= bp + SURVIVE_GAIN:
+        if _depth(r) >= _depth(base) + SURVIVE_GAIN:
             # invariant: an option that clearly raises survival over the horizon never ranks below buying nothing
-            r["value"] = max(r["value"], bv + TERM_A * (r["p_next"] - bp))
+            r["value"] = max(r["value"], bv + TERM_A * (_depth(r) - _depth(base)))
         elif o.get("levels") and not (o.get("add_joker") or o.get("sell") or o.get("add_cards")) \
                 and r["value"] < bv:
             # a hand level-up cannot lower the best score of any hand: a lower value is sampling noise
@@ -1072,14 +1074,29 @@ def terminal_blind(state, n, blind_base):
 
 
 def _value(r):
-    """Ranking value: P(survive the horizon) x (TERM_A + TERM_B x rent factor x P(the end-of-horizon build clears the
-    next boss)). Rent is money the LATER shops lose, and dead runs pay none: it only discounts the post-horizon term,
-    never the survival itself. Fading jokers (Popcorn, perishables, Gros Michel) stop looking free once the horizon is
-    survived anyway. Without a terminal check: p_adj."""
+    """Ranking value: TERM_A x depth + TERM_B x P(survive the horizon) x rent factor x P(the end-of-horizon build
+    clears the next boss). depth = mean over the horizon of P(alive after blind k) (= (p1 + p1p2 + p1p2p3) / 3): it
+    keeps a signal when a far blind is hopeless for every option (7806 FYEJZFFU: The Wall made P(all 3) 0 everywhere,
+    hiding the Mad Joker that cleared the next blind); it equals p_next when every blind is sure. Rent is money the
+    LATER shops lose, and dead runs pay none: it only discounts the post-horizon term, never the survival itself.
+    Fading jokers stop looking free once the horizon is survived anyway. Without a terminal check: p_adj."""
     p_term = r.get("p_term")
     if p_term is None:
         return _p_adj(r)
-    return r["p_next"] * (TERM_A + TERM_B * p_term * _rent_factor(r))
+    return TERM_A * _depth(r) + TERM_B * r["p_next"] * p_term * _rent_factor(r)
+
+
+def _depth(r):
+    """Mean over the simulated blinds of P(still alive after blind k), from the calibrated per-blind p (pack results
+    carry their averaged depth)."""
+    if r.get("depth") is not None:
+        return r["depth"]
+    pb = r.get("p_blinds") or [r["p_next"]]
+    alive, tot = 1.0, 0.0
+    for p in pb:
+        alive *= p
+        tot += alive
+    return tot / len(pb)
 
 
 def _rent_factor(r):

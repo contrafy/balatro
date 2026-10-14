@@ -145,6 +145,7 @@ class RoundSolver:
         self.smeared = "Smeared Joker" in jn
         self.pareidolia = "Pareidolia" in jn
         self.photograph = "Photograph" in jn
+        self.held_down = bool(jn & {"Blackboard", "Raised Fist"})  # held-card jokers a drawn card can weaken
         self.card_sharp = "Card Sharp" in jn
         self.growth_j = jn & GROWTH_JOKERS
         active = [j.get("name") for j in _lst(state.get("jokers")) if not j.get("debuff")]
@@ -167,7 +168,9 @@ class RoundSolver:
         self.psychic = self.boss == "The Psychic"
         self.hook = self.boss == "The Hook"
         self.serpent = self.boss == "The Serpent"
+        self.fish = self.boss == "The Fish"
         self.mark = self.boss == "The Mark"
+        self.wheel = self.boss == "The Wheel"
         self.tooth = self.boss == "The Tooth"
         # Mouth/Eye are applied here (the lock and the used types change during a rollout), not inside estimate
         lock = b.get("only_hand") if self.boss == "The Mouth" else None
@@ -487,7 +490,8 @@ class RoundSolver:
 
     def _certain(self, cand):
         """True when this PLAY plus the best plays of the cards already in hand (no draws used) clear the blind for
-        sure: deterministic scoring (no Misprint/Lucky/Bloodstone/Space rolls), no face-down cards, no The Hook."""
+        sure: deterministic scoring (no Misprint/Lucky/Bloodstone/Space rolls), no face-down cards, no The Hook, and
+        no held-card joker that a drawn card can weaken when a later hand is needed."""
         if cand["kind"] != PLAY or self.random_fx or self.fd_pos or self.hook or self.psychic:
             return False
         cards = list(self.slots)
@@ -512,6 +516,10 @@ class RoundSolver:
             cards = rest
             if not cards or h <= 0:
                 return False
+            if self.held_down and self.pool:
+                # the next hand holds the cards drawn now too: Blackboard (a red one) / Raised Fist (a lower one)
+                # can lose to them, so the follow-up is not certain (7807 E1PM6PSH)
+                return False
             _s, sel, _t = self.best_play(cards, h, self.d0, (lock, used, rtypes, ob))
         return False
 
@@ -531,10 +539,12 @@ class RoundSolver:
         (base with every Misprint at 0, score per Misprint mult point, Misprint count, score per Lucky +20 hit,
         Lucky triggers, Bloodstone x1.5 chances, score of a Space Joker level-up, Space Joker count)."""
         st = self._state(h, d, ob)
+        if self.n_misprint:  # cli.estimate takes the roll from _misprint_roll (default its mean): pin it at 6
+            st = dict(st, _misprint_roll=6)
         scd = [c.d for c in sc]
         hd = [c.d for c in held if c.known]
         n = max(5, len(played)) if self.psychic else len(played)  # The Psychic: every real play is 5 cards
-        s6 = self._est(t, scd, hd, st, rep, n)  # estimate counts each Misprint as +6
+        s6 = self._est(t, scd, hd, st, rep, n)  # every Misprint at +6 mult
         base, slope = s6, 0.0
         if self.n_misprint:
             st0 = dict(st, jokers=[dict(j, name="_misprint_zero") if j.get("name") == "Misprint" else j
@@ -1039,6 +1049,9 @@ class RoundSolver:
         growth = 0.0
         n_played = 0
         pos = 0
+        # ids of face-down cards in hand: the ones dealt face down now stay hidden, and The Fish / The Mark / The Wheel
+        # turn later draws face down; the policy decides on the face-up cards only
+        down = {id(hand[p]) for p in self.fd_pos}
         kind, sel = first[0], [hand[i] for i in first[1]]
         cards = list(hand)
         while True:
@@ -1071,12 +1084,30 @@ class RoundSolver:
                 if "Green Joker" in self.growth_j:
                     growth -= 1
             n = 3 if self.serpent else max(0, self.hand_size - len(rest))
+            drawn = order[pos:pos + n]
+            if self.fish and kind == PLAY:  # The Fish: cards drawn after a played hand come face down
+                down.update(id(c) for c in drawn)
+            elif self.mark:  # The Mark: every face card is drawn face down
+                down.update(id(c) for c in drawn if c.face)
+            elif self.wheel:  # The Wheel: each drawn card 1 in 7 face down
+                down.update(id(c) for c in drawn if rng.random() < 1 / 7)
             rest.extend(order[pos:pos + n])
             pos += n
             cards = rest
             if not cards:
                 return self.bones_at is not None and total >= self.bones_at, total, h, self.d0 - d, growth, n_played
-            kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes, ob))
+            up = [c for c in cards if id(c) not in down] if down else cards
+            if not up:
+                kind, sel = PLAY, cards[:self.lim]  # all face down: played blind
+            elif len(up) < len(cards):
+                # the player decides on the face-up cards only; unknown cards are worth nothing held (they stay
+                # hidden), so they go along blind: fillers of a play (they may pair up) or discards (redrawn)
+                kind, sel = self.policy(up, order[pos:], h, d, need, (lock, used, rtypes, ob))
+                if not (kind == PLAY and self.psychic):
+                    blind = [c for c in cards if id(c) in down]
+                    sel = list(sel) + blind[:max(0, self.lim - len(sel))]
+            else:
+                kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes, ob))
 
     # ---- sampling ---------------------------------------------------------------------------------------------
     def _sample(self, s):
@@ -1200,10 +1231,10 @@ class RoundSolver:
         return out
 
     def forced_after(self, kind):
-        """True when, after this first action, the rest of the round is forced (only the best final play is left):
-        the final hand itself, or a play with 2 hands and 0 discards. Its p is exact under the model, so it is
-        reported raw instead of through the calibration map."""
-        return self.h0 <= 1 or (self.h0 == 2 and self.d0 == 0 and kind == PLAY)
+        """True when the p of this first action is reported raw instead of through the calibration map: the final hand,
+        or no discard left (the rest of the round is plays of known cards and draws, which the model covers: raw p
+        is calibrated there on recorded data, the map over-lifted it, 7814 T5IPHJUR 0.88 -> 0.95)."""
+        return self.h0 <= 1 or self.d0 == 0
 
     def evaluate(self, cands, samples=400, time_budget_s=2.0):
         """Successive halving on common sampled draw orders; returns ranked option dicts.
@@ -1276,7 +1307,7 @@ class RoundSolver:
             res[-1]["first_card"], res[-1]["order"] = self._first_for(c)
         # slices where p is less trustworthy: few samples, final-hand jokers (Acrobat/Dusk slice is mis-calibrated on
         # recorded data), face-down cards (their identity is sampled)
-        shaky = self.final_dep or bool(self.fd_pos)
+        shaky = self.final_dep or bool(self.fd_pos) or self.fish or self.mark or self.wheel
         for r in res:
             r["low_confidence"] = r["low_n"] or shaky
             if r["certain"]:

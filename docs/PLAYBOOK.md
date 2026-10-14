@@ -109,6 +109,11 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   perishables never ticked. With the cash, 4 rerolls at ante 5 found Throwback. Order: the best flat joker (Stuntman
   +250) LEFTMOST for Brainstorm, Blueprint directly left of Throwback (x4.25 twice). Re-run `order` after every buy.
   Cerulean Bell: every play includes the forced card (`advise` adds it).
+- WINNING LINE 3 (7802 IFYMR9UX, third Gold win, docs/runs/7802_IFYMR9UX.md): Acrobat LEFTMOST, Brainstorm (copies the
+  leftmost), Blueprint directly LEFT of Brainstorm (copies Brainstorm, which copies Acrobat): x3 x3 x3 = x27 on the final
+  hand of every round (verified 10 times). Card-phase jokers (Even Steven, Scary Face, Photograph) build the pre-mult
+  value. Hands 1-2 dig (or bank under The Hook), hand 3 is the hand; level its type (Full House to L5). Copy chains
+  resolve recursively in `est`; check `b order` keeps the chain after every buy.
 - SMALL BLIND SKIP: ante 1 only for a tag that gives jokers NOW (Buffoon = Mega Buffoon pack, Top-up = 2 jokers; needs a
   free slot). Ante 2-4: other useful tags need 2+ scoring jokers, and at ante 3-4 your typical hand must reach half this
   ante's boss (skippers died 40-46% vs 25-33%). Rare/Uncommon/Polychrome/Negative/Coupon tags pay in the NEXT shop,

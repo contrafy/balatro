@@ -258,7 +258,7 @@ def show(d):
           f"| blind {b.get('name')} need {b.get('chips_needed')} scored {b.get('chips_scored')} | deck {dc.get('draw_pile')}/disc {dc.get('discard_pile')}")
     hand = lst(d.get("hand"))
     if hand:
-        print("Hand: " + " ".join(f"{c.get('index')}:{card_str(c)}" for c in hand))
+        print("Hand: " + " ".join(f"{c.get('index')}:{card_str(c)}" + ("(FORCED: every play/discard includes it)" if c.get("forced") else "") for c in hand))
         suits = Counter(SUIT.get(c.get("suit"), "?") for c in hand)
         ranks = Counter(RANK.get(str(c.get("rank")), str(c.get("rank"))) for c in hand)
         print("  suits " + " ".join(f"{k}{v}" for k, v in suits.most_common()) + " | ranks " + " ".join(f"{k}x{v}" for k, v in ranks.most_common() if v > 1))
@@ -719,29 +719,30 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         chips -= inc[0]; mult -= inc[1]
         notes.append("The Arm: scored at one level lower (and the level is lost)")
     jokers = lst(state.get("jokers"))
-    # Blueprint copies the joker to its right, Brainstorm copies the leftmost joker: score them as that joker.
-    # A debuffed joker (Crimson Heart, perished, boss) does nothing, edition included; copying a debuffed joker gives nothing.
+    # Blueprint copies the joker to its right, Brainstorm copies the leftmost joker: score them as that joker. Chains
+    # resolve recursively, so Blueprint left of Brainstorm with Acrobat leftmost is a third Acrobat (7802 IFYMR9UX, the
+    # third Gold win: x3 x3 x3 = x27 on the final hand; the old one-step resolution counted x9). A debuffed joker (Crimson
+    # Heart, perished, boss) does nothing, edition included; copying a debuffed joker gives nothing.
+    def _copy_target(idx, seen):
+        nm_c = jokers[idx].get("name")
+        if nm_c not in ("Blueprint", "Brainstorm"):
+            return jokers[idx]
+        t = idx + 1 if nm_c == "Blueprint" else 0
+        if t >= len(jokers) or t in seen or t == idx or jokers[t].get("debuff"):
+            return None
+        return _copy_target(t, seen | {idx})
     resolved = []
     for i, j in enumerate(jokers):
         n0 = j.get("name")
         if j.get("debuff"):
             notes.append(f"{n0} is DEBUFFED: counts for nothing")
             continue
-        if n0 == "Blueprint":
-            k = i + 1
-            while k < len(jokers) and jokers[k].get("name") in ("Blueprint", "Brainstorm"):
-                k += 1
-            tgt = jokers[k] if k < len(jokers) else None
-            if tgt is not None and not tgt.get("debuff"):
+        if n0 in ("Blueprint", "Brainstorm"):
+            tgt = _copy_target(i, frozenset())
+            if tgt is not None:
                 resolved.append(dict(tgt, edition=j.get("edition")))
-            elif tgt is None:
-                resolved.append(j)
-        elif n0 == "Brainstorm":
-            tgt = jokers[0] if jokers and jokers[0].get("name") not in ("Blueprint", "Brainstorm") else None
-            if tgt is not None and not tgt.get("debuff"):
-                resolved.append(dict(tgt, edition=j.get("edition")))
-            elif tgt is None:
-                resolved.append(j)
+            elif _joker_edition(j):
+                resolved.append(j)  # copies nothing, but its own edition still scores
         else:
             resolved.append(j)
     jokers = resolved
