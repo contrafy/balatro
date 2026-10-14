@@ -557,7 +557,7 @@ JOKER_DESC = {
     "Mail-In Rebate": "$5 per discarded card of a rank", "To Do List": "$4 if listed hand played", "Trading Card": "destroy lone discard for $3",
     "Business Card": "faces held 1/2 chance $2", "Gift Card": "+$1 sell value to jokers per round", "Golden Ticket": "$4 per Gold card scored",
     "Midas Mask": "faces become Gold when played", "Driver's License": "x3 if 16+ enhanced cards", "Burnt Joker": "level up first discarded hand",
-    "Perkeo": "copies consumable at end of shop", "Chicot": "disables boss", "Canio": "x1 per face destroyed", "Yorick": "x1 per 23 discards",
+    "Perkeo": "copies consumable at end of shop", "Chicot": "disables boss", "Canio": "x1 per face destroyed", "Caino": "x1 +1x per face card destroyed", "Yorick": "x1 per 23 discards",
     "Showman": "duplicates allowed", "Oops! All 6s": "doubles probabilities", "Invisible Joker": "duplicate a joker after 2 rounds",
     "Certificate": "adds sealed card at round start", "Hallucination": "1/2 tarot when pack opened", "Seance": "spectral on Straight Flush",
     "Superposition": "tarot if Ace in Straight", "Cartomancer": "tarot at blind select", "Mr. Bones": "survive at 25% of blind, destroys self",
@@ -1655,9 +1655,9 @@ def advise(d):
         made_pf = max((c for c in _candidates(d) if c[0] in ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")), key=lambda c: c[2], default=None)
         if made_pf is not None and made_pf[0] == "Pair" and made_pf[2] * max(1, int(d.get("hands_remaining") or 1)) < 0.8 * need_now:
             made_pf = None  # a Pair far off pace is not a made hand worth shielding (7818 VP4RNVT2: est 36 vs need 300)
-        # ... and so does a PLAY that drops cards of the made hand (7810 GLE6W9AC: "play Pair QQ + fillers" over made QQ66)
-        breaks = made_pf is not None and ((top["action"] == "DISCARD" and bool(set(top.get("cards") or []) & set(made_pf[1])))
-                                          or (top["action"] == "PLAY" and not set(made_pf[1]) <= set(top.get("cards") or [])))
+        # only a DISCARD of a component breaks it; a PLAY that scores part of it now (QQ of QQ22, the 22 stay in hand) is not
+        # a break (Main 16:2x, 7817 HH1TRLD1 kept a .91 discard over the solver's .96 "play QQ" line)
+        breaks = made_pf is not None and top["action"] == "DISCARD" and bool(set(top.get("cards") or []) & set(made_pf[1]))
         # jokerless or ante 1-2: a made hand at pace (est >= need / hands left) is played unless the alternative wins by
         # 0.10 on a full sample (n >= 300) (Main 11:4x: GLE6W9AC, YY9W2AKB lost the ante-1 Small)
         early = int(d.get("ante") or 1) <= 2 or not any(not j.get("debuff") for j in lst(d.get("jokers")))
@@ -2662,7 +2662,7 @@ def classify_joker(name, cost, mh):
         return "PLUS(weak/conditional)", 25
     if name in SUIT_JOKERS:
         return "PLUS(one suit)", 18  # ~1 matching card per pair-family hand: +3 mult on average, not worth a slot
-    if name in ("Hologram", "Vampire", "Constellation", "Campfire", "Madness", "Lucky Cat", "Glass Joker", "Steel Joker", "Canio", "Yorick"):
+    if name in ("Hologram", "Vampire", "Constellation", "Campfire", "Madness", "Lucky Cat", "Glass Joker", "Steel Joker", "Canio", "Caino", "Yorick"):
         return "XMULT(growth: must be fed)", 80
     if dl.startswith("x") or " x" in dl or "xmult" in dl:
         return "XMULT", 100
@@ -3917,6 +3917,11 @@ def _shop_rules(d):
                 score = min(score, 48 if not owns_mult else int(45 + 30 * 0.58 * max(0.0, marginal_gain(d, mh, c))))
             elif name in ("Popcorn", "Ice Cream", "Turtle Bean"):
                 score = min(score, 60)  # decaying: below a permanent joker of the same gain (Main 16:xx, Ice Cream rated BUY)
+            elif name == "Madness" and not any(not _stk(j)["eternal"] and (_is_scoring(classify_joker(j.get("name"), 0, mh)[0]) or joker_share(d, j, mh) >= 0.1)
+                                               for j in jokers):
+                # nothing valuable to destroy (only joker, or only eternal/dead weight): a free growing xMult, +0.5 per Small/Big
+                # (7807 ELNXY7D1: AVOID as the only joker)
+                cls, score = "XMULT(growth: +x0.5 per Small/Big; nothing of value for it to destroy)", max(score, 70)
             score, st_notes, may_replace = sticker_adjust(c, cls, base_sc, score, ante, rounds_left, len(rentals), (ante <= 3 and scoring_now < 2) or bool(emergency), core_hint=core_gain)
             if any("ETERNAL on a" in s_n for s_n in st_notes) and len(jokers) >= 3:
                 score = min(score, 15)  # 3+ jokers owned: a weak Eternal takes one of the last slots meant for an xMult, forever
@@ -4303,16 +4308,18 @@ def _shop_rules(d):
             print(f"ADVICE: SELL -> b sell {j.get('index')}   (fund {o[3].split(' [')[0]} (${o[4]}, score {o[0]}): {j.get('name')}{stickers(j)} "
                   f"{'dies within a round' if _stk(j)['perishable'] else 'is a flat rental costing $3 a round'}; sell it (${j.get('sell_cost')}), then re-run shopadvise)")
             return
-    if emergency and money >= 4:
-        # EMERGENCY with $4+: never a bare LEAVE; interest is worth nothing if the run ends (7815 3CR57DK4 left at 0.18)
-        em_o = [o for o in options if o[4] <= money and o[0] >= 20 and not o[1].startswith("AVOID") and refused not in o[3] and "ETERNAL on a" not in o[3]
-                and not (o[6] and free <= 0)]
+    if (emergency or tight) and money >= 4:
+        # EMERGENCY / TIGHT with $4+: never a bare LEAVE; interest is worth nothing if the run ends (7815 3CR57DK4 left at
+        # 0.18; 7816 QIB6QXEF left a TIGHT 1.08x shop with $4 and lost the Flint by 5)
+        tag_e = "EMERGENCY" if emergency else "TIGHT"
+        em_o = [o for o in options if o[4] <= money and o[0] >= (20 if emergency else 30) and not o[1].startswith("AVOID") and refused not in o[3] and "ETERNAL on a" not in o[3]
+                and not (o[6] and free <= 0) and (emergency or not o[1].startswith(("ECON", "UTIL", "VOUCHER")))]
         if em_o:
             o = max(em_o, key=lambda t: t[0])
             lab_e = "PACK" if o[2].startswith("pack") else "VOUCHER" if o[2].startswith("vouch") else "BUY"
-            print(f"ADVICE: {lab_e} -> b {o[2]}   (EMERGENCY: the best affordable item beats leaving with ${money}; {o[3]})")
+            print(f"ADVICE: {lab_e} -> b {o[2]}   ({tag_e}: the best affordable item beats leaving with ${money}; {o[3]})")
             return
-        if money - reroll - rent_due >= 1:
+        if emergency and money - reroll - rent_due >= 1:
             print(f"ADVICE: REROLL -> b reroll   (EMERGENCY: nothing here helps; a reroll for a +mult joker beats leaving with ${money}; ${money - reroll} left after)")
             return
     print("ADVICE: LEAVE -> b endshop   (nothing worth buying at this money level)")

@@ -226,7 +226,7 @@ From 438 Gold runs (`data/swarm_results.jsonl`; wins 9IIGB2FF, 2WEJC1IS, IFYMR9U
 2. `hands` + `advise`: take the best est that is not your strict most-played type when Obelisk is owned.
 3. Order: Hanging Chad's first scoring card = your best live face/enhanced card (`move hand`); +mult left of xMult.
 4. Pace: best hand + 85% of later hands < need -> discard toward a bigger hand (never with Banner/Green Joker owned).
-5. Never break a made Pair/Two Pair for a draw when the solver margin is < 0.10, above all at ante 1-2 [12].
+5. SOLVER line shown: take the highest-p line; heuristics (bank the made hand...) only break ties within ~0.05.
 
 **Ante 1-2: economy and first scorers**
 - 0 scorers: any affordable scorer that adds mult (suit-gated, eternal or $1 rental OK) before packs/rerolls/planets;
@@ -243,8 +243,8 @@ From 438 Gold runs (`data/swarm_results.jsonl`; wins 9IIGB2FF, 2WEJC1IS, IFYMR9U
   non-xMult eternal [21].
 - No planets/Celestials at 0-1 scorers or off-hand planets in EMERGENCY; from 2 scorers the main-hand planet is a buy [22].
 - Reroll only if (money after it + junk sell value) >= the $4-8 a revealed joker costs [9].
-- Jokerless ante 1: 100 a hand is pace, so play a made Two Pair on hand 1; after one missed draw bank the made hand and
-  keep a discard; no 3-card flush chases [14].
+- Jokerless ante 1 (no solver line or margin < ~0.05): 100 a hand is pace, so play a made Two Pair on hand 1; after one
+  missed draw bank the made hand and keep a discard; otherwise the highest-p solver line wins (HH1TRLD1 lost overriding it).
 - Credit Card: -$20 hard wall, no packs/vouchers on credit; in EMERGENCY spend it on rerolls for a scorer.
 - Main hand is pair-family (Pair/Two Pair/Trips); Flush/Straight-only engines died by ante 3 [9].
 
@@ -335,7 +335,7 @@ joker before The Goad, no face engine before The Plant)**
 
 **Advisor trust**
 - Solver P(clear) at antes 1-2 is calibrated on 2985 decisions (p >= 0.95 predicts 0.995, 0.997 happened); 0.9+ losses
-  are the ~1-in-20 tail. Trust p, but never break a made hand for a 1-2 out line (step 5).
+  are the ~1-in-20 tail. Trust p: heuristics only break ties within ~0.05 (step 5).
 - SIM noise: every option p < 0.15 (or all +0.00 / ~1.00 saturated, e.g. a Wall in the window) = gaps under ~0.10 are
   noise: decide by the next blind, SCORE CHECK and step 4 order [20].
 - Follow SIM over heuristic text (LEAVE/AVOID/sell) at SIM gain >= +0.15 outside its blind spots [12].
