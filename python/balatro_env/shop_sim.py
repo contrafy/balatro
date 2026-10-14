@@ -198,6 +198,14 @@ def apply_option(state, opt):
                 v["chips"] = float(v.get("chips") or 0) + c
                 v["mult"] = float(v.get("mult") or 1) + m
         st["hand_levels"] = hl
+        planets = sum(1 for h in opt["levels"] if h != "*")  # Black Hole is a Spectral: Constellation ignores it
+        if planets:
+            for j in jokers:
+                if j.get("name") == "Constellation" and not j.get("debuff"):
+                    ab = dict(j.get("ability") or {})
+                    ab["x_mult"] = max(1.0, float(ab.get("x_mult") or 1)) + 0.1 * planets
+                    j["ability"] = ab
+                    notes.append(f"Constellation +x{0.1 * planets:.1f}")
     if opt.get("add_cards") or opt.get("remove_cards") or opt.get("enhance"):
         dk = dict(state.get("deck") or {})
         cards = [dict(c) for c in _lst(dk.get("cards")) if c.get("id") not in set(opt.get("remove_cards") or [])]
@@ -238,9 +246,11 @@ def _active(j):
     return not j.get("debuff")
 
 
-def _jokers_at(jokers, k, removed):
+def _jokers_at(jokers, k, removed, growth=()):
     """Jokers as they will be at blind k (k round-ends from now): perished ones debuffed, decayed values applied,
-    removed ids (Gros Michel died, Mr. Bones used, Seltzer/Popcorn/Ice Cream used up) dropped."""
+    removed ids (Gros Michel died, Mr. Bones used, Seltzer/Popcorn/Ice Cream used up, destroyed by Madness or
+    Ceremonial Dagger) dropped; growth = ((index, gain), ...) adds Dagger mult / Madness xMult gained so far."""
+    grow = dict(growth)
     out = []
     for i, j in enumerate(jokers):
         if i in removed:
@@ -248,6 +258,11 @@ def _jokers_at(jokers, k, removed):
         ab = dict(j.get("ability") or {})
         j = dict(j, ability=ab)
         n = j.get("name")
+        if i in grow:
+            if n == "Ceremonial Dagger":
+                ab["mult"] = float(ab.get("mult") or 0) + grow[i]
+            elif n == "Madness":
+                ab["x_mult"] = max(1.0, float(ab.get("x_mult") or 1)) + grow[i]
         tally = j.get("perish_tally", ab.get("perish_tally"))
         if (j.get("perishable") or ab.get("perishable")) and tally is not None and int(tally) - k <= 0:
             j["debuff"] = True
@@ -274,10 +289,20 @@ def _jokers_at(jokers, k, removed):
     return out
 
 
-def _round_state(st, base, blind, k, removed):
-    """Synthetic SELECTING_HAND state for a fresh round of `blind` played k round-ends from now."""
+def _rounds_left(state):
+    """Round-ends still ahead through the ante-8 boss (rent is charged at each)."""
+    ante = int(state.get("ante") or 1)
+    ch = (state.get("blind_select") or {}).get("choices") or {}
+    open_ = sum(1 for k in ("Small", "Big", "Boss") if ((ch.get(k) or {}).get("state") or "Upcoming")
+                not in ("Defeated", "Skipped"))
+    return max(1, open_ + 3 * max(0, 8 - ante))
+
+
+def _round_state(st, base, blind, k, removed, growth=(), added=()):
+    """Synthetic SELECTING_HAND state for a fresh round of `blind` played k round-ends from now; `added` are jokers
+    created since (Riff-raff)."""
     jokers = _lst(st.get("jokers"))
-    now = _jokers_at(jokers, k, removed)
+    now = _jokers_at(jokers, k, removed, growth) + [dict(j, index=len(jokers) + i + 1) for i, j in enumerate(added)]
     hs = int(base.get("hand_size") or 8)
     ds = int(base.get("discards_per_round") or base.get("discards_remaining") or 0)
     hp = int(base.get("hands_per_round") or base.get("hands_remaining") or 1)
@@ -301,13 +326,45 @@ def _round_state(st, base, blind, k, removed):
         hs -= 1
     rentals = sum(1 for j in jokers if j.get("rental"))
     cards = [dict(c, remaining=True) for c in _lst((st.get("deck") or {}).get("cards"))]
+    hl = st.get("hand_levels") or {}
+    if k and hl:
+        # growth over the k rounds already played, assuming ~2 plays of the most played type per round: Supernova
+        # reads that type's play count; Spare Trousers gains +2 mult per Two Pair-family play
+        main = max(hl, key=lambda h: int((hl[h] or {}).get("played") or 0))
+        names = {j.get("name") for j in now if _active(j)}
+        if "Supernova" in names:
+            hl = dict(hl, **{main: dict(hl[main], played=int(hl[main].get("played") or 0) + 2 * k)})
+        if "Spare Trousers" in names and main in ("Two Pair", "Full House", "Flush House"):
+            now = [dict(j, ability=dict(j.get("ability") or {}, mult=float((j.get("ability") or {}).get("mult") or 0)
+                                        + 4 * k)) if j.get("name") == "Spare Trousers" else j for j in now]
     return dict(st, phase="SELECTING_HAND", hand=[], jokers=now, money=int(st.get("money") or 0) - RENT * rentals * k,
                 hand_size=max(1, int(round(hs))), hands_remaining=max(1, int(hp)), discards_remaining=max(0, int(ds)),
                 blind={"name": name, "boss": boss, "chips_needed": blind["chips"], "chips_scored": 0, "disabled": False},
-                deck=dict(st.get("deck") or {}, cards=cards, draw_pile=len(cards)))
+                deck=dict(st.get("deck") or {}, cards=cards, draw_pile=len(cards)), hand_levels=hl)
 
 
 # ---- simulation ---------------------------------------------------------------------------------------------------
+_COMMONS = None
+
+
+def _commons():
+    """Common jokers of the empirical Gold pool (pack_pool.json) without stickers: what Riff-raff creates."""
+    global _COMMONS
+    if _COMMONS is None:
+        pool = load_pack_pool() or {}
+        merged = {}
+        for j in pool.get("jokers") or []:
+            if int(j.get("rarity") or 0) != 1:
+                continue
+            key = (j.get("name"), j.get("edition"))
+            if key in merged:
+                merged[key]["count"] += j["count"]
+            else:
+                merged[key] = dict(j, eternal=False, perishable=False, rental=False, perish_tally=None, debuff=False)
+        _COMMONS = list(merged.values())
+    return _COMMONS
+
+
 class _OptionSim:
     def __init__(self, sv, est, state, blinds, seed):
         self.sv, self.est, self.state, self.base, self.blinds, self.seed = sv, est, state, None, blinds, seed
@@ -315,21 +372,66 @@ class _OptionSim:
         self.jokers = _lst(state.get("jokers"))
         self.gros = [i for i, j in enumerate(self.jokers) if j.get("name") == "Gros Michel" and _active(j)]
         self.bones = [i for i, j in enumerate(self.jokers) if j.get("name") == "Mr. Bones" and _active(j)]
+        self.daggers = [i for i, j in enumerate(self.jokers) if j.get("name") == "Ceremonial Dagger" and _active(j)]
+        self.madness = [i for i, j in enumerate(self.jokers) if j.get("name") == "Madness" and _active(j)]
+        self.riffraff = [i for i, j in enumerate(self.jokers) if j.get("name") == "Riff-raff" and _active(j)]
+        self.slots = int(state.get("joker_slots") or 5)
         self.stats = [[0, 0, 0.0, 0.0] for _ in blinds]  # per blind: n, survived, sum min(1, total/need), $ hands
         self.joint = 0
         self.n = 0
         self.bones_used = 0
+        self.destroyed = 0
+        self.created = 0
 
-    def solver(self, k, removed):
-        key = (k, removed)
+    def solver(self, k, removed, growth=(), added=()):
+        key = (k, removed, growth, added)
         rs = self.solvers.get(key)
         if rs is None:
-            rs = self.sv.RoundSolver(_round_state(self.state, self.base, self.blinds[k], k, removed), self.est, seed=0)
+            jk = [_commons()[i] for i in added]
+            rs = self.sv.RoundSolver(_round_state(self.state, self.base, self.blinds[k], k, removed, growth, jk),
+                                     self.est, seed=0)
             self.solvers[key] = rs
         return rs
 
+    def _eternal(self, i):
+        j = self.jokers[i]
+        return bool(j.get("eternal") or (j.get("ability") or {}).get("eternal"))
+
+    def _select_blind(self, blind, removed, growth, rng, added=None):
+        """Blind-select joker effects: each Ceremonial Dagger destroys the joker to its right (gains 2x its sell
+        value as mult); Madness (Small/Big only) destroys a random other joker and gains x0.5; Riff-raff creates 2
+        Common jokers (drawn from the empirical Gold pool, no stickers) while slots are free."""
+        for d in self.daggers:
+            if d in removed:
+                continue
+            right = next((i for i in range(d + 1, len(self.jokers)) if i not in removed), None)
+            if right is not None and not self._eternal(right):
+                removed.add(right)
+                growth[d] = growth.get(d, 0.0) + 2 * float(self.jokers[right].get("sell_cost") or 1)
+                self.destroyed += 1
+        if not blind["boss"]:
+            for m in self.madness:
+                if m in removed:
+                    continue
+                growth[m] = growth.get(m, 0.0) + 0.5
+                victims = [i for i in range(len(self.jokers)) if i != m and i not in removed and not self._eternal(i)]
+                if victims:
+                    removed.add(rng.choice(victims))
+                    self.destroyed += 1
+        if added is not None:
+            commons = _commons()
+            for r in self.riffraff:
+                if r in removed or not commons:
+                    continue
+                free = self.slots - (len(self.jokers) - len(removed)) - len(added)
+                for _ in range(max(0, min(2, free))):
+                    added.append(rng.choices(range(len(commons)), weights=[c["count"] for c in commons])[0])
+                    self.created += 1
+
     def sample(self, s):
         removed = set()
+        growth = {}
+        added = []
         grng = random.Random(f"{self.seed}:gros:{s}")
         all_ok = True
         for k, blind in enumerate(self.blinds):
@@ -337,7 +439,9 @@ class _OptionSim:
                 for g in self.gros:
                     if g not in removed and grng.random() < 1 / 6:
                         removed.add(g)
-            rs = self.solver(k, frozenset(removed))
+            if self.daggers or self.madness or self.riffraff:
+                self._select_blind(blind, removed, growth, grng, added)
+            rs = self.solver(k, frozenset(removed), tuple(sorted(growth.items())), tuple(sorted(added)))
             rng = random.Random(f"{self.seed}:{k}:{s}")
             pool = rs.pool
             perm = list(range(len(pool)))
@@ -396,6 +500,14 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
             rentals = sum(1 for j in _lst(st.get("jokers")) if j.get("rental"))
             r["rent_per_round"] = RENT * rentals
             r["money_after_rent"] = r["money_after"] - RENT * rentals * len(blinds)
+            # an eternal rental can never be sold: its rent runs to the end of the run
+            stuck = [j for j in _lst(st.get("jokers")) if j.get("rental")
+                     and (j.get("eternal") or (j.get("ability") or {}).get("eternal"))]
+            r["rent_run"] = RENT * len(stuck) * _rounds_left(state)
+            new = opt.get("add_joker")
+            if new is not None and any(j.get("name") == new.get("name") for j in stuck):
+                r["notes"].append(f"ETERNAL RENTAL: {new.get('name')} costs ${RENT} every round for the rest of the run "
+                                  f"(~${RENT * _rounds_left(state)}) and can never be sold")
             for j in _lst(st.get("jokers")):
                 tally = j.get("perish_tally", (j.get("ability") or {}).get("perish_tally"))
                 if j.get("perishable") and tally is not None and int(tally) < len(blinds):
@@ -408,6 +520,17 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         s += 1
         if s >= min_samples and time.perf_counter() - t0 > budget_s:
             break
+    # the baseline (every delta's reference) always gets BASE_N samples, so repeated calls on the same shop agree (a
+    # 3-blind product at n=24 swings by +-0.2); the 2 best options get TOP_N while the total stays under 2x the budget
+    for r, sim in sims:
+        if _is_base(r["option"]):
+            while sim.n < BASE_N:
+                sim.sample(sim.n)
+    best = sorted((sim for r, sim in sims if not _is_base(r["option"]) and not r["label"].startswith("_pack ")),
+                  key=lambda sm: -sm.joint / max(1, sm.n))[:2]
+    for sim in best:
+        while sim.n < TOP_N and time.perf_counter() - t0 < 2 * budget_s:
+            sim.sample(sim.n)
     for r, sim in sims:
         n = max(1, sim.n)
         r["n"] = sim.n
@@ -423,12 +546,18 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         r["dollars"] = sum(st[3] / max(1, st[0]) for st in sim.stats)
         if sim.bones_used:
             r["notes"].append(f"Mr. Bones saved {sim.bones_used / n:.2f} blinds per run")
+        if sim.destroyed:
+            r["notes"].append(f"Madness/Ceremonial Dagger destroy {sim.destroyed / n:.1f} joker(s) over these blinds")
+        if sim.created:
+            r["notes"].append(f"Riff-raff creates {sim.created / n:.1f} Common joker(s) over these blinds")
     for r in res:
         r.setdefault("p_next", None)
     return res
 
 
 _POOL = None
+BASE_N = 96  # guaranteed samples for the baseline option
+TOP_N = 64  # guaranteed samples for the 2 best options
 PACK_REPS = 8  # joker draws from the pool evaluated per Buffoon pack (distinct ones become simulated sub-options)
 PACK_PLANETS = 4  # Celestial: planets of the 4 most played hands are simulated; others count as skipping
 PACK_VIRTUAL = 2000  # virtual packs drawn from the evaluated cards for the expected value
@@ -602,7 +731,7 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
         if r.get("p_next") is None:
             return (0, 0, 0.0, 0.0, 0)
         tied = r["p_next"] >= top - TIE_P
-        return (1, tied, 1.0 if tied else r["p_next"], r["score_ratio"], r["money_after"])
+        return (1, tied, 1.0 if tied else r["p_next"], r["score_ratio"], r["money_after"] - r.get("rent_run", 0))
 
     res.sort(key=rank, reverse=True)
     return res

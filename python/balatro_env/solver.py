@@ -174,7 +174,14 @@ class RoundSolver:
         rtypes = frozenset(k for k, v in (state.get("hand_levels") or {}).items() if int(v.get("played_this_round") or 0) > 0)
         if self.boss == "The Mouth" and lock is None and len(rtypes) == 1:
             lock = next(iter(rtypes))
-        self.ctx0 = (lock, used, rtypes)
+        # Obelisk: its xMult and the played counts change with every hand in the round, so they live in ctx
+        hl_s = state.get("hand_levels") or {}
+        ob_j = next((j for j in _lst(state.get("jokers")) if j.get("name") == "Obelisk" and not j.get("debuff")), None)
+        self._ob_extra = float((ob_j or {}).get("ability", {}).get("extra") or 0.2) if ob_j else 0.0
+        self._ob_visible = frozenset(k for k, v in hl_s.items() if v.get("visible", True))
+        ob0 = None if ob_j is None else (float((ob_j.get("ability") or {}).get("x_mult") or 1),
+                                          tuple(sorted((k, int(v.get("played") or 0)) for k, v in hl_s.items())))
+        self.ctx0 = (lock, used, rtypes, ob0)
         self._base = dict(state, blind=dict(b, only_hand=None, hands_used=[]))
         self._st = {}
         self._nb = 0  # each Card gets its own bit: card sets are keyed by int masks
@@ -211,6 +218,7 @@ class RoundSolver:
         self.held_dep = bool(jn & HELD_JOKERS) or steel
         self.hd_dep = bool(jn & HD_JOKERS)
         self.final_dep = bool(jn & {"Dusk", "Acrobat"})  # final-hand jokers: holding a hand for the last play pays
+        self.keep_discards = bool(jn & {"Banner", "Green Joker"})  # discards tax every later hand
         lucky = any("lucky" in str(c.d.get("enhancement") or "").lower() for c in self.pool + [c for c in self.slots if c])
         self.jokerless = not jn  # calibration segment: no active joker
         self.random_fx = bool(self.n_misprint or self.n_blood or self.n_space or lucky)
@@ -359,14 +367,15 @@ class RoundSolver:
         return r
 
     # ---- scoring ------------------------------------------------------------------------------------------------
-    def _state(self, h, d):
+    def _state(self, h, d, ob=None):
         """State at hands_remaining=h, discards_remaining=d of this round: Green Joker has gained +1 mult per hand
-        played and lost 1 per discard since the decision; Ice Cream has lost 5 chips per hand played."""
-        st = self._st.get((h, d))
+        played and lost 1 per discard since the decision; Ice Cream has lost 5 chips per hand played; with an Obelisk
+        state ob = (x_mult, played counts) the Obelisk and hand_levels.played are set from it."""
+        st = self._st.get((h, d, ob))
         if st is None:
             st = dict(self._base, hands_remaining=h, discards_remaining=d)
             played, disc = self.h0 - h, self.d0 - d
-            if (played or disc) and self.jn & {"Green Joker", "Ice Cream"}:
+            if ((played or disc) and self.jn & {"Green Joker", "Ice Cream"}) or ob is not None:
                 js = []
                 for j in _lst(self._base.get("jokers")):
                     ab = j.get("ability") or {}
@@ -376,10 +385,27 @@ class RoundSolver:
                         ex = ab["extra"]
                         j = dict(j, ability=dict(ab, extra=dict(ex, chips=max(0.0, float(ex.get("chips") or 0)
                                                                               - float(ex.get("chip_mod") or 5) * played))))
+                    elif j.get("name") == "Obelisk" and ob is not None and not j.get("debuff"):
+                        j = dict(j, ability=dict(ab, x_mult=ob[0]))
                     js.append(j)
                 st["jokers"] = js
-            self._st[(h, d)] = st
+            if ob is not None:
+                counts = dict(ob[1])
+                st["hand_levels"] = {k: dict(v, played=counts.get(k, 0))
+                                     for k, v in (self._base.get("hand_levels") or {}).items()}
+            self._st[(h, d, ob)] = st
         return st
+
+    def _obelisk_after(self, ob, t):
+        """Obelisk state after playing type t (card.lua): reset to x1 when t is now strictly the most played visible
+        type, otherwise +extra."""
+        if ob is None:
+            return None
+        counts = dict(ob[1])
+        p = counts.get(t, 0) + 1
+        other_more = any(k != t and k in self._ob_visible and c >= p for k, c in counts.items())
+        counts[t] = p
+        return (ob[0] + self._ob_extra) if other_more else 1.0, tuple(sorted(counts.items()))
 
     def _est(self, t, scd, hd, st, rep, n):
         if self._kw:
@@ -388,14 +414,14 @@ class RoundSolver:
             r = self._est_fn(t, scd, hd, st)
         return float(r[0] if isinstance(r, tuple) else r)
 
-    def _components(self, t, sc, played, held, h, d, rep):
+    def _components(self, t, sc, played, held, h, d, rep, ob=None):
         """Score of a play split into its random parts (estimate itself is deterministic):
         (base with every Misprint at 0, score per Misprint mult point, Misprint count, score per Lucky +20 hit,
         Lucky triggers, Bloodstone x1.5 chances, score of a Space Joker level-up, Space Joker count)."""
-        st = self._state(h, d)
+        st = self._state(h, d, ob)
         scd = [c.d for c in sc]
         hd = [c.d for c in held if c.known]
-        n = len(played)
+        n = max(5, len(played)) if self.psychic else len(played)  # The Psychic: every real play is 5 cards
         s6 = self._est(t, scd, hd, st, rep, n)  # estimate counts each Misprint as +6
         base, slope = s6, 0.0
         if self.n_misprint:
@@ -430,7 +456,7 @@ class RoundSolver:
         if not played:
             return 0.0, "High Card"
         t, sc, scm = self.classify(played)
-        lock, used, rtypes = ctx
+        lock, used, rtypes, ob = ctx
         if (lock and t != lock) or t in used:
             return 0.0, t
         if self.psychic and len(played) < 5 and len(played) + len(held) >= 5:
@@ -442,10 +468,10 @@ class RoundSolver:
                 hm |= c.bit
         else:
             hm = 0
-        key = (t, scm, len(played), hm, (h, d) if self.hd_dep else None, rep)
+        key = (t, scm, len(played), hm, (h, d) if self.hd_dep else None, rep, ob)
         comp = self._score_memo.get(key)
         if comp is None:
-            comp = self._components(t, sc, played, held, h, d, rep)
+            comp = self._components(t, sc, played, held, h, d, rep, ob)
             if not self.random_fx:
                 comp = comp[0]
             self._score_memo[key] = comp
@@ -786,6 +812,12 @@ class RoundSolver:
             hold = self._hold(cards, h, d, ctx)
             if hold and hold[0] >= need:
                 return PLAY, [hold[1]]
+        if self.keep_discards and d > 0 and h >= 2 and bs * h >= need:
+            # Banner (+30 chips per remaining discard) / Green Joker (-1 mult per discard): every discard taxes all
+            # later hands, so play the best hand while it keeps pace instead of digging
+            if self.psychic:
+                return PLAY, self._pad(bp, cards, 5)
+            return PLAY, (bp if self.pillar_ahead else self._fillers(bp, cards, frozenset(), h, d, ctx, bs))
         pile = _Pile(pile_cards, self.suit_keys)
         scored = []
         for K in self._keep_sets(cards, bp):
@@ -856,7 +888,7 @@ class RoundSolver:
         Each played hand's random jokers/cards are sampled from rng. Returns (cleared, total scored, hands left,
         discards used, growth-joker progress, cards played)."""
         h, d, need = self.h0, self.d0, self.need0
-        lock, used, rtypes = self.ctx0
+        lock, used, rtypes, ob = self.ctx0
         total = 0.0
         growth = 0.0
         n_played = 0
@@ -867,7 +899,8 @@ class RoundSolver:
             ids = {id(c) for c in sel}
             rest = [c for c in cards if id(c) not in ids]
             if kind == PLAY:
-                s, t = self.score(sel, rest, h, d, (lock, used, rtypes), rng)
+                s, t = self.score(sel, rest, h, d, (lock, used, rtypes, ob), rng)
+                ob = self._obelisk_after(ob, t)
                 total += s
                 need -= s
                 h -= 1
@@ -897,7 +930,7 @@ class RoundSolver:
             cards = rest
             if not cards:
                 return self.bones_at is not None and total >= self.bones_at, total, h, self.d0 - d, growth, n_played
-            kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes))
+            kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes, ob))
 
     # ---- sampling ---------------------------------------------------------------------------------------------
     def _sample(self, s):

@@ -1036,9 +1036,14 @@ def show_hands(d):
     # a 1-card High Card is always a candidate: with Half Joker / Hanging Chad / Photograph it can beat a Pair (7803 at
     # The Water: High Card K est 2625 was never listed, Pair 7 est 484 was advised); est decides
     live_c = [c for c in hand if not c.get("debuff")] or hand
-    hc = max(live_c, key=lambda c: CHIP_VAL.get(RANK.get(str(c.get("rank")), str(c.get("rank"))), 0), default=None)
-    fc = max((c for c in live_c if RANK.get(str(c.get("rank")), str(c.get("rank"))) in FACES), key=lambda c: CHIP_VAL.get(RANK.get(str(c.get("rank")), str(c.get("rank"))), 0), default=None)
-    for c1 in [x for x in (hc, fc) if x is not None][: (1 if fc is hc else 2)]:
+    # one High Card per distinct rank (Odd Todd / Even Steven / Scholar / Walkie make a lower card score more: 7806's
+    # High 7S 2021 vs the listed KC 780); est ranks them
+    seen_r = set()
+    for c1 in sorted(live_c, key=lambda c: -CHIP_VAL.get(RANK.get(str(c.get("rank")), str(c.get("rank"))), 0)):
+        r1 = c1.get("rank")
+        if r1 is None or r1 in seen_r:
+            continue
+        seen_r.add(r1)
         out.append(f"HIGH CARD {card_str(c1)}: idx {c1.get('index')} | {base('High Card')}")
     print("Candidate hands (est = estimated score with your jokers; 'x3 if repeat' hands show both):")
     b = d.get("blind") or {}
@@ -1893,7 +1898,7 @@ def _main_hand_raw(d):
     value = {}
     for t, via in CAPABLE.items():
         freq = sum(plays.get(x, 0) for x in via)
-        if freq >= (3 if t == "Four of a Kind" else 2) and t in SYN_HANDS:  # one lucky Quads/Straight is not a plan
+        if freq >= 3 and t in SYN_HANDS:  # 1-2 lucky plays are not a plan: a type needs 3 plays to become the main hand
             value[t] = freq * typical_est(d, t)
     if not value:
         return lead
@@ -2375,6 +2380,8 @@ def shop_advise_sim(d, budget_s=6.0):
     mf = re.search(r"money floor \$(\d+)", out_all)
     floor_v = int(mf.group(1)) if mf else 0
     floor_off = "TIGHT:" in out_all or "EMERGENCY" in out_all
+    m_sr = re.search(r"\(ratio (\d+\.\d+);", out_all)
+    sc_ratio_s = float(m_sr.group(1)) if m_sr else 9.0
     ante_s = int(d.get("ante") or 1)
     own_rent = any(_stk(j)["rental"] for j in lst(d.get("jokers")))
     m0 = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
@@ -2386,7 +2393,11 @@ def shop_advise_sim(d, budget_s=6.0):
         aj = r["option"].get("add_joker") or {}
         st = _stk(aj)
         if st["eternal"] and st["rental"] and ante_s < 7:
-            return False
+            # exception (7806 lost the ante-4 Small by 79 after a $1 eternal-rental The Trio at SIM +0.23 was blocked):
+            # an xMult while SCORE CHECK < 0.5 and the SIM gain is >= 0.15
+            x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS
+            if not (x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
+                return False
         if aj.get("name") in AVOID_JOKERS and aj.get("name") in ("Madness", "Ceremonial Dagger"):
             return False  # the SIM does not model them destroying your jokers (7809: SIM recommended Madness)
         # a second PERMANENT rental before ante 6 drains the run; a perishable one is bounded, and a buy the rules already
@@ -3645,34 +3656,12 @@ def main():
     d_raw = _await_action_effect(wait_settled())
     d = _with_known_jokers(d_raw)
     LEGAL = get("legal")
-    pack_file = os.path.join(CACHE_DIR, f"{PORT}_pack.json")
-    pk_now = [[c.get("id"), c.get("name")] for c in lst((d.get("pack") or {}).get("cards"))]
-    if d.get("phase") == "PACK_OPENING" and cmd in ("s", "state", "advise", "hands", "raw"):
-        # the listing the player decides from: `pick N` is resolved against it (Fable 7801: in a Mega pack the indices
-        # shifted after the first pick and the CLI sent a different card)
-        try:
-            os.makedirs(CACHE_DIR, exist_ok=True)
-            with open(pack_file, "w", encoding="utf-8") as f:
-                json.dump({"cards": pk_now}, f)
-        except Exception:
-            pass
     if cmd == "pick" and ints and d.get("phase") == "PACK_OPENING":
-        try:
-            with open(pack_file, encoding="utf-8") as f:
-                seen = json.load(f).get("cards") or []
-        except Exception:
-            seen = []
-        if seen and seen != pk_now and 1 <= ints[0] <= len(seen):
-            want = seen[ints[0] - 1]
-            pos = next((i for i, c in enumerate(pk_now, 1) if (want[0] is not None and c[0] == want[0]) or (want[0] is None and c[1] == want[1])), None)
-            if pos is None:
-                print(f"REFUSED (nothing sent): pick {ints[0]} was {want[1]} in the listing you saw, and it is no longer in the pack. Run `b advise` again.")
-                sys.exit(1)
-            if pos != ints[0]:
-                print(f"(pack indices shifted since your listing: {want[1]} is now pick {pos}; sending pick {pos})")
-                ints[0] = pos
-                if rest:
-                    rest = [str(pos)] + rest[1:]
+        # a typed index always means the CURRENT pack listing (Main 08:xx: remapping it through a cached listing sent the
+        # wrong card); show what it is so a shifted index is visible before the next pick
+        cur = lst((d.get("pack") or {}).get("cards"))
+        if 1 <= ints[0] <= len(cur):
+            print(f"(pick {ints[0]} = {cur[ints[0] - 1].get('name')} in the current pack listing)")
     if cmd in ("s", "state"):
         show(d); show_legal(LEGAL); return
     if cmd == "hands":
@@ -3723,8 +3712,13 @@ def main():
         r = act(typ, params)
         if r.get("ok") or not r.get("retry") or attempt == 3:
             break
-        print(f"(bridge not settled: {r.get('error')}; waiting and retrying)")
-        wait_settled()
+        print(f"(bridge not settled: {r.get('error')}; waiting, then rebuilding the action from fresh state)")
+        d_fresh = wait_settled()
+        params2 = _remap_params(typ, params, d_raw, d_fresh)
+        if params2 is None:
+            print("REFUSED (nothing sent): the state changed under this command (a card/item it named is gone). Run `b s` and decide again.")
+            sys.exit(2)
+        params, d_raw = params2, d_fresh
     if r.get("ok"):
         print(f"ok: {typ}" + (f" (step {r['step']})" if r.get("step") is not None else "")
               + (f" -> recording {r['trajectory_path']}" if r.get("trajectory_path") else ""))
@@ -3891,9 +3885,100 @@ def _log_est(d):
         print(f"(est log skipped: {e})")
 
 
+def _remap_params(typ, params, d_old, d_new):
+    """After retry:true: re-resolve every index in params by the entity ids of the state the command was built from
+    (SwarmOps: a retry resent params built from stale state). None when an entity is gone."""
+    sh_o, sh_n = d_old.get("shop") or {}, d_new.get("shop") or {}
+    areas = {"card_indices": "hand", "targets": "hand"}
+    idx_area = {"SELL_JOKER": "jokers", "SELL_CONSUMABLE": "consumables", "USE_CONSUMABLE": "consumables", "SELECT_PACK_CARD": "pack"}
+    slot_area = {"SHOP_BUY": "shopj", "SHOP_BUY_AND_USE": "shopj", "SHOP_BUY_BOOSTER": "boosters", "SHOP_BUY_VOUCHER": "vouchers"}
+
+    def items(d_, area, sh):
+        if area == "pack":
+            return lst((d_.get("pack") or {}).get("cards"))
+        if area == "shopj":
+            return lst(sh.get("jokers"))
+        if area in ("boosters", "vouchers"):
+            return lst(sh.get(area))
+        return lst(d_.get(area))
+
+    def remap(i, area):
+        old = next((x for x in items(d_old, area, sh_o) if x.get("index") == i), None)
+        if old is None or old.get("id") is None:
+            return i
+        new = next((x for x in items(d_new, area, sh_n) if x.get("id") == old.get("id")), None)
+        return None if new is None else new.get("index")
+    out = dict(params)
+    for k, area in areas.items():
+        if isinstance(out.get(k), list):
+            m_ = [remap(i, area) for i in out[k]]
+            if None in m_:
+                return None
+            out[k] = m_
+    if typ in idx_area and "index" in out:
+        out["index"] = remap(out["index"], idx_area[typ])
+    if typ in slot_area and "slot" in out:
+        out["slot"] = remap(out["slot"], slot_area[typ])
+    if typ == "REORDER" and isinstance(out.get("order"), list):
+        area = {"jokers": "jokers", "hand": "hand", "consumables": "consumables"}.get(out.get("area"), "jokers")
+        ids_old = [x.get("id") for x in items(d_old, area, sh_o)]
+        ids_new = [x.get("id") for x in items(d_new, area, sh_n)]
+        if sorted(map(str, ids_old)) != sorted(map(str, ids_new)):
+            return None
+        want = [ids_old[p - 1] for p in out["order"]]
+        out["order"] = [ids_new.index(w) + 1 for w in want]
+    if out.get("index", 1) is None or out.get("slot", 1) is None:
+        return None
+    return out
+
+
+class _PortLock:
+    """One CLI command at a time per port, held across read -> decide -> act -> wait-settled (SwarmOps: overlapping b.sh
+    calls on one port read pre-action state). Read-only commands wait for it too, so they never print mid-action state."""
+
+    def __init__(self, timeout=90.0):
+        self.timeout = timeout
+        self.f = None
+
+    def __enter__(self):
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        self.f = open(os.path.join(CACHE_DIR, f"{PORT}.lock"), "a+b")
+        t0 = time.time()
+        while True:
+            try:
+                if os.name == "nt":
+                    import msvcrt
+                    self.f.seek(0)
+                    msvcrt.locking(self.f.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(self.f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return self
+            except OSError:
+                if time.time() - t0 > self.timeout:
+                    print(f"(another command on port {PORT} still holds the CLI lock after {self.timeout:.0f}s; proceeding)")
+                    return self
+                time.sleep(0.1)
+
+    def __exit__(self, *exc):
+        try:
+            if os.name == "nt":
+                import msvcrt
+                self.f.seek(0)
+                msvcrt.locking(self.f.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(self.f.fileno(), fcntl.LOCK_UN)
+        except OSError:
+            pass
+        self.f.close()
+        return False
+
+
 if __name__ == "__main__":
     try:
-        main()
+        with _PortLock():
+            main()
     except requests.exceptions.ConnectionError:
         print(f"BRIDGE OFFLINE: nothing is listening on port {PORT} (Connection refused). Not retryable: stop and report.")
         sys.exit(3)

@@ -800,3 +800,19 @@ def test_arcana_pack_has_advice():
          "hand": [_card("King", "Spades", 1), _card("King", "Hearts", 2), _card("4", "Clubs", 3)],
          "pack": {"kind": "Arcana", "choices_remaining": 1, "cards": [{"name": "The Tower", "set": "Tarot"}, {"name": "The Hermit", "set": "Tarot"}]}}
     assert _advice(_out(cli.pack_advise, d)).startswith("ADVICE: PICK -> b pick 2")
+
+
+def test_retry_remaps_indices_by_id():
+    old = {"hand": [{"index": 1, "id": 10}, {"index": 2, "id": 11}, {"index": 3, "id": 12}], "jokers": [{"index": 1, "id": 50}, {"index": 2, "id": 51}]}
+    new = {"hand": [{"index": 1, "id": 12}, {"index": 2, "id": 10}, {"index": 3, "id": 11}], "jokers": [{"index": 1, "id": 51}]}
+    assert cli._remap_params("PLAY_HAND", {"card_indices": [1, 3]}, old, new) == {"card_indices": [2, 1]}
+    assert cli._remap_params("SELL_JOKER", {"index": 2}, old, new) == {"index": 1}
+    assert cli._remap_params("SELL_JOKER", {"index": 1}, old, new) is None  # the joker is gone
+
+
+def test_port_lock_reentrant_sequentially(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "CACHE_DIR", str(tmp_path))
+    with cli._PortLock(timeout=2):
+        pass
+    with cli._PortLock(timeout=2):
+        pass

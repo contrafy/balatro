@@ -51,21 +51,19 @@ _Updated 07:50._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 08:05:38 by `balatro-data status` (edits inside this block are overwritten). Player runs: 212 (203 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 08:15:42 by `balatro-data status` (edits inside this block are overwritten). Player runs: 216 (209 finished, 7 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (9)
+### Live runs (7)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | YSBWEA3U | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 232/450 | DISCARD {"card_indices":[2,4,7,8]} | Need 218 in 2 hands; two High Cards (~111+106) fall 1 short, so draw: keep AS QS 8S 6S (flush/pair … | 15s |
-| 7802 | port-7802 | claude-opus-5-5 | SCSDWJWT | 8 | SHOP | 5 | 8 | 44 | Small Blind (25000) | SHOP_BUY_BOOSTER {"slot":1} | second Arcana (0 left): Hermit would add +0, Judgement a joker, Wheel an edition; first one paid 1 | 39s |
-| 7803 | port-7803 | claude-opus-5-5 | CLA5SVN7 | 8 | SELECTING_HAND | 4 | 9 | 28 | Small Blind 7380/9000 | PLAY_HAND {"card_indices":[4,5]} | Pair 99 ~4.5k vs 1620 remaining | 18s |
-| 7804 | port-7804 | claude-opus-5-5 | NIMYTH5Y | 8 | SHOP | 4 | 6 | -9 | Small Blind (9000) | SHOP_END | hBc9, nothing affordable | 27s |
-| 7805 | port-7805 | claude-opus-5-5 | RNVA7G3B | 8 | SELECTING_HAND | 6 | 14 | 10 | Big Blind 43155/90000 | DISCARD {"card_indices":[4,5,6,7,8]} | no pair; 46845 needed in 1 hand vs ~23k max, discard 5 low cards to at least find a pair | 9s |
-| 7806 | port-7806 | claude-opus-5-5 | RHQLHNTL | 8 | SHOP | 4 | 8 | 15 | Small Blind (9000) | SELL_JOKER {"index":5} | sell Joker +4 (perishable) to fit Odd Todd +31 chips/odd: SIM 0.52 vs 0.00, chips are my missing ax… | 7s |
-| 7807 | port-7807 | claude-opus-5-5 | ZYK9EUJR | 8 | ROUND_EVAL | 6 | 10 | 25 | The Mark (120000) | CASH_OUT | cash out Mark (Mr. Bones saved it) | 9s |
-| 7809 | port-7809 | claude-opus-5-5 | ZCAAIS17 | 8 | SELECTING_HAND | 2 | 4 | 10 | Big Blind 0/1500 | PLAY_HAND {"card_indices":[4,5,8,7,6]} | Pair TH TC fires Seeing Double est 1020 of 1500; fillers 4H 7H 9D draw, keep 1 discard | 0s |
-| 7810 | port-7810 | claude-sonnet-5-5 | B2SNYDTS | 8 | SELECTING_HAND | 3 | 7 | 5 | Big Blind 2376/4800 | DISCARD {"card_indices":[1,3,8]} | Two Pair 7766 est 2300 < 2424 needed; discard KH 9C 4D to draw (aces/better), keep QC held +13 and … | 28s |
+| 7801 | port-7801 | claude-fable-5-1 | YSBWEA3U | 8 | ROUND_EVAL | 3 | 5 | 8 | The Water (6400) | CASH_OUT | Water cleared 2700/2000 one-shot, cash out | 66s |
+| 7803 | port-7803 | claude-opus-5-5 | CLA5SVN7 | 8 | SELECTING_HAND | 5 | 12 | 25 | Small Blind 0/25000 | PLAY_HAND {"card_indices":[2,3,4,5,8]} | 2P QQ88 (foil QH first for Chad) est 27165 >= 25000 | 6s |
+| 7804 | port-7804 | claude-opus-5-5 | 922SITWK | 8 | SELECTING_HAND | 1 | 2 | 0 | Big Blind 0/450 | DISCARD {"card_indices":[8,7,6,5,1]} | Mystic Summit: burn discards keeping JJJ; Trips becomes ~1080 at 0 discards vs need 450 | 7s |
+| 7805 | port-7805 | claude-opus-5-5 | N5BDCVFH | 8 | SELECTING_HAND | 1 | 3 | 2 | The Goad 0/600 | DISCARD {"card_indices":[1,2,3,6,8]} | Straight 192 + 2x85% < 600; solver p 0.97 vs 0.78: dump 4 debuffed spades+3D, keep 6C 5D 4C for str… | 20s |
+| 7806 | port-7806 | claude-opus-5-5 | CMVCIW9Q | 8 | BLIND_SELECT | 1 | 1 | 0 | Big Blind (450) | SELECT_BLIND | Big 450, never skip Big | 9s |
+| 7807 | port-7807 | claude-opus-5-5 | B6JW7ICP | 8 | SHOP | 1 | 1 | 5 | Small Blind (300) | SHOP_BUY {"slot":1} | only scorer: Crazy +12 mult on Straight, SIM 0.58 vs Buffoon 0.36 vs 0.00 nothing; eternal slot cos… | 0s |
+| 7809 | port-7809 | claude-opus-5-5 | ZCAAIS17 | 8 | SELECTING_HAND | 3 | 7 | 6 | The Manacle 0/6400 | DISCARD {"card_indices":[1,2,3,6,7]} | Solver p 0.90 vs 0.73: keep 9S 9C, 4 more nines in deck (Cryptid); Trips 9 with Wily +100 and SD x2… | 8s |
 
 ### Results by model x stake x deck
 
@@ -74,8 +72,8 @@ _Generated 2026-10-14 08:05:38 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 23 | 0 | 23 | 0 | 0 | 3.91 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 130 | 1 | 129 | 0 | 0 | 3.87 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 44 | 0 | 43 | 0 | 1 | 3.32 | 8 |
+| claude-opus-5-5 | 8 | Black | 135 | 1 | 134 | 0 | 0 | 3.91 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 45 | 0 | 44 | 0 | 1 | 3.33 | 8 |
 
 ### Deepest runs
 
@@ -94,28 +92,28 @@ _Generated 2026-10-14 08:05:38 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 212 files in manifest; schema_ok 212, schema invalid 0; replay_ok 198, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 104 / failed 0; gui (live) ok 107 / failed 0; cross-checked by both 13, disagreeing 0.
-- All files (incl. fuzz + replays): 393; schema_ok 391; replay_ok 204 (headless 104, gui 113); replay failed 0; awaiting replay 175; quarantined 2.
+- Player runs: 216 files in manifest; schema_ok 216, schema invalid 0; replay_ok 204, replay failed 0, awaiting replay 3, open/unended 9; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 110 / failed 0; gui (live) ok 107 / failed 0; cross-checked by both 13, disagreeing 0.
+- All files (incl. fuzz + replays): 397; schema_ok 395; replay_ok 210 (headless 110, gui 113); replay failed 0; awaiting replay 175; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 1737 |
+| port-7805 | 2 | 2 | 1754 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1363 |
-| port-7803 | 1 | 1 | 1805 |
-| port-7804 | 1 | 1 | 1439 |
-| port-7807 | 1 | 1 | 1888 |
+| port-7802 | 1 | 1 | 1391 |
+| port-7803 | 1 | 1 | 1834 |
+| port-7804 | 1 | 1 | 1457 |
+| port-7807 | 1 | 1 | 1909 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1028 |
-| port-7806 | 0 | 0 | 1819 |
+| port-7801 | 0 | 0 | 1047 |
+| port-7806 | 0 | 0 | 1836 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 1675 |
-| port-7810 | 0 | 0 | 2015 |
+| port-7809 | 0 | 0 | 1703 |
+| port-7810 | 0 | 0 | 2041 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

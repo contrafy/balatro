@@ -2389,7 +2389,9 @@ def shop_advise_sim(d, budget_s=6.0):
             return False
         if aj.get("name") in AVOID_JOKERS and aj.get("name") in ("Madness", "Ceremonial Dagger"):
             return False  # the SIM does not model them destroying your jokers (7809: SIM recommended Madness)
-        if st["rental"] and own_rent and ante_s < 6:
+        # a second PERMANENT rental before ante 6 drains the run; a perishable one is bounded, and a buy the rules already
+        # advised passed their own rental checks (7809: The Duo perishable rental +0.40 was turned into LEAVE)
+        if st["rental"] and not st["perishable"] and own_rent and ante_s < 6 and r["option"].get("_cmd") != adv_cmd0:
             return False
         # the $ floor binds unless TIGHT/EMERGENCY, the rules exempted this very buy, or the SIM gain is large (+0.15)
         if not floor_off and r.get("money_after") is not None and int(r.get("money_after") or 0) < floor_v and int(r["option"].get("cost") or 0) > 0 \
@@ -2423,10 +2425,23 @@ def shop_advise_sim(d, budget_s=6.0):
                 sim.append(f"  (rule advice was: {adv[8:]})")
                 adv = new
         elif adv_cmd in sim_cmds and int(next((r["option"].get("cost") or 0 for r in feas if r["option"].get("_cmd") == adv_cmd), 1)) > 0:
-            # (a $0 item is never vetoed: it costs nothing)
-            sim.append(f"  (rule advice was: {adv[8:]})")
+            # LEAVE only when the SIM says the rule pick HURTS (< -0.02); a neutral pick (Egg, Fortune Teller) stays with the
+            # rules (money / long-term value), and a $0 item is never vetoed
             mine = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
-            adv = f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes survival by {(key(mine) - key(base)) if mine and base else 0:+.2f}; nothing on offer raises it by more than 0.02)"
+            g_m = (key(mine) - key(base)) if mine and base else 0
+            forced = "NEEDED NOW" in adv or "EMERGENCY" in adv  # a survival-forced buy must actually help survival (7810 Banner)
+            if g_m < -0.02 or (forced and g_m <= 0.0):
+                sim.append(f"  (rule advice was: {adv[8:]})")
+                adv = f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes P(clear all next 3 blinds) by {g_m:+.2f}; nothing on offer raises it by more than 0.02)"
+            else:
+                sim.append(f"  (SIM neutral on the rule pick ({g_m:+.2f}): the rules decide)")
+    # INVARIANT: an affordable item with SIM gain >= 0.10 that passes the hard rules is never answered with LEAVE
+    if adv.startswith("ADVICE: LEAVE") and best is not None and gain >= 0.10:
+        sim.append(f"  (rule advice was: {adv[8:]})")
+        sell_ix = best["option"].get("sell")
+        sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
+        adv = (f"ADVICE: SELL then BUY -> b sell {sell_ix}  then  b {best['option']['_cmd']}" if sell_ix else f"ADVICE: BUY -> b {best['option']['_cmd']}") + \
+            f"   (SIM: {best['label']} +{gain:.2f} P(clear all next 3 blinds))"
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
     print("\n".join(lines))
 
@@ -2468,8 +2483,12 @@ def pack_advise_sim(d, budget_s=3.5):
     own_rent = any(_stk(j)["rental"] for j in lst(d.get("jokers")))
 
     def allowed(r):
-        st = _stk(r["option"].get("add_joker") or {})
-        return not (st["eternal"] and st["rental"] and ante_s < 7) and not (st["rental"] and own_rent and ante_s < 6)
+        aj = r["option"].get("add_joker") or {}
+        st = _stk(aj)
+        # packs are already paid: only an unsellable rental or a second PERMANENT rental is barred; Madness / Dagger are not
+        # modelled by the SIM (they destroy jokers)
+        return not (st["eternal"] and st["rental"] and ante_s < 7) and not (st["rental"] and not st["perishable"] and own_rent and ante_s < 6) \
+            and aj.get("name") not in ("Madness", "Ceremonial Dagger")
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f} vs skipping)")
         for r in sorted(feas, key=key, reverse=True)[:6]]
@@ -3291,6 +3310,44 @@ def pack_advise(d):
         t = SPEC.get(c.get("name"), (0, None, ""))[1]
         print(f"ADVICE: PICK -> b pick {i}{' ' + str(t.get('index')) if t else ''}   ({c.get('name')}: {SPEC.get(c.get('name'), (0, None, ''))[2]}"
               + (f"; target {card_str(t)} (your most common rank)" if t else "") + ")")
+        return
+    tarots = [(i, c) for i, c in enumerate(cards, 1) if c.get("set") == "Tarot"]
+    if tarots:
+        # Arcana: card-phase enhancements multiply only the base mult (PLAYBOOK), so money and +mult/+chips cards on your
+        # main-hand ranks come first; targets are your most common rank in hand
+        hand = [c for c in lst(d.get("hand")) if c.get("rank") is not None and not c.get("debuff")]
+        by_rank = Counter(_r(c) for c in hand)
+        tgt_cards = sorted(hand, key=lambda c: (-by_rank[_r(c)], -CHIP_VAL.get(_r(c), 0)))
+        money_a = int(d.get("money") or 0)
+        sell_sum = min(50, sum(int(j.get("sell_cost") or 0) for j in jokers))
+        n_x = sum(1 for j in jokers if classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT"))
+        TV = {"The Hermit": (70 if money_a >= 8 else 40, 0, f"+${min(20, max(money_a, 0))} (doubles money, max $20)"),
+              "Temperance": (65 if sell_sum >= 6 else 20, 0, f"+${sell_sum} (your jokers' sell values)"),
+              "The Empress": (55, 2, "+4 mult on 2 cards (Mult) - fires with your main-hand ranks"),
+              "The Hierophant": (50, 2, "+30 chips on 2 cards (Bonus)"),
+              "Strength": (45, 2, "+1 rank on 2 cards (completes pairs/straights)"),
+              "Death": (45, 2, "left card becomes a copy of the right: duplicate your best rank"),
+              "Justice": (55 if n_x >= 1 else 30, 1, "Glass x2 on 1 card (multiplies base mult only; strong with xMult jokers)"),
+              "The Chariot": (45 if n_x >= 1 else 25, 1, "Steel x1.5 held (base mult only)"),
+              "The Lovers": (35, 1, "Wild card (any suit)"), "The Devil": (40, 1, "Gold card: $3 when held at round end"),
+              "The Tower": (30, 1, "Stone card +50 chips"), "The Magician": (25, 2, "Lucky cards"),
+              "The Hanged Man": (40, 2, "destroy 2 cards (thin the deck)"), "The Fool": (35, 0, "copy of the last tarot/planet used"),
+              "Wheel of Fortune": (20, 0, "1/4: edition on a random joker"), "Judgement": (45 if len(jokers) < slots else 5, 0, "a random joker"),
+              "The Emperor": (30, 0, "2 random tarots"), "The High Priestess": (35, 0, "2 random planets"),
+              "The Star": (25 if mh == "Flush" else 10, 3, "3 cards to Diamonds"), "The Moon": (25 if mh == "Flush" else 10, 3, "3 cards to Clubs"),
+              "The Sun": (25 if mh == "Flush" else 10, 3, "3 cards to Hearts"), "The World": (25 if mh == "Flush" else 10, 3, "3 cards to Spades")}
+        ranked_t = sorted(((TV.get(c.get("name"), (15, 0, "?"))[0], i, c) for i, c in tarots), key=lambda t: -t[0])
+        print(f"Pack advisor: Arcana, choose {pk.get('choices_remaining')}")
+        for sc, i, c in ranked_t:
+            print(f"  {sc:>3} pick {i:<3} {c.get('name')}: {TV.get(c.get('name'), (0, 0, '?'))[2]}")
+        sc, i, c = ranked_t[0]
+        if sc < 25:
+            print(f"ADVICE: SKIP -> b skippack   (nothing here helps; best is {c.get('name')} at {sc})")
+            return
+        n_t = TV.get(c.get("name"), (0, 0, ""))[1]
+        tg = [str(x.get("index")) for x in tgt_cards[:n_t]] if n_t else []
+        print(f"ADVICE: PICK -> b pick {i}{' ' + ' '.join(tg) if tg else ''}   ({c.get('name')}: {TV.get(c.get('name'), (0, 0, ''))[2]}"
+              + (f"; targets {' '.join(card_str(x) for x in tgt_cards[:n_t])} (your most common ranks)" if tg else "") + ")")
         return
     print("No pack advice for this pack type: pick per PLAYBOOK section 5 (enhance main-hand ranks), or `skippack` if nothing fits.")
 
