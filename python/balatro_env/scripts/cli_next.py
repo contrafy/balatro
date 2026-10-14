@@ -346,7 +346,11 @@ def show(d):
         if tk in cash and cash[tk] >= 5:  # Handy/Garbage/Economy/Skip pay right after the skip (3 reports of a refused Handy)
             NOW_TAGS[tk] = f"${cash[tk]} right now (the Small Blind pays $0 at this stake)"
         orb = small.get("orbital_hand")
-        if tk == "tag_orbital" and orb in (main_hand(d), "Pair", "Two Pair", "Three of a Kind", "Full House"):
+        hl_o = d.get("hand_levels") or {}
+        most_o = max(hl_o, key=lambda k: int((hl_o[k] or {}).get("played") or 0), default=None) if hl_o else None
+        # ... or the type you actually play / have leveled (7807 C9P7LBTQ: Orbital on an L5 Straight called worthless)
+        if tk == "tag_orbital" and (orb in (main_hand(d), most_o, "Pair", "Two Pair", "Three of a Kind", "Full House")
+                                    or int((hl_o.get(orb) or {}).get("level") or 1) >= 3):
             NOW_TAGS[tk] = f"+3 levels to {orb} right now"
         boss_n = (ch.get("Boss") or {}).get("name")
         mh_b = main_hand(d)
@@ -1015,7 +1019,12 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Gros Michel":
             mult += 15
         elif n == "Blue Joker":
-            chips += 2 * int(((state.get("deck") or {}).get("draw_pile")) or 0)
+            dp_b = int(((state.get("deck") or {}).get("draw_pile")) or 0)
+            if state.get("phase") in ("SHOP", "PACK_OPENING", "BLIND_SELECT", "ROUND_EVAL"):
+                # outside a round the draw pile is the whole deck; over a round it averages about half of what is left after
+                # the deal (7811 4LSDVET1: Blue Joker valued at full-deck chips)
+                dp_b = max(0, dp_b - int(state.get("hand_size") or 8)) // 2
+            chips += 2 * dp_b
         elif n == "Supernova":
             mult += int(((state.get("hand_levels") or {}).get(hand_name) or {}).get("played") or 0) + 1
         elif n == "Ride the Bus":
@@ -1606,7 +1615,26 @@ def advise(d):
         # a full-sample solver lead (n >= 300) of +0.02 wins unless the made-hand gate applies (Main 15:xx: the rule pick
         # kept discarding against its own solver, 7801 LIH39HVG / 7806 M4XX7Z7H)
         req_p = 0.10 if breaks else (0.02 if int(top.get("n") or 0) >= 300 else 0.05)
-        better_p = mine and conf_ok and gap > req_p and not (breaks and int(top.get("n") or 0) < 300)
+
+        def _sig(a, b):
+            # two-sample significance of a's lead over b (Main 16:xx: 3IW3CJIZ kept Two Pair over a .90 vs .76 dig at n=64;
+            # IX9HA65T broke one on a thin n=64 lead): the lead must exceed 2 standard errors
+            na, nb = max(1, int(a.get("n") or 1)), max(1, int(b.get("n") or 1))
+            pa, pb = a["p_clear"], b["p_clear"]
+            return pa - pb > 2 * ((pa * (1 - pa) / na + pb * (1 - pb) / nb) ** 0.5)
+        sig_ok = bool(mine) and _sig(top, mine)
+        if breaks and mine and conf_ok and gap > 0.10 and not sig_ok and int(top.get("n") or 0) < 300:
+            # borderline on a small sample: re-measure just the leading line with a full sample before deciding
+            try:
+                top_r = _round_solver().evaluate_action(d, top["action"], list(top["cards"]), estimate, samples=400, seed=11)
+                if top_r and top_r.get("p_clear") is not None:
+                    top = dict(top, p_clear=top_r["p_clear"], n=top_r.get("n", 400))
+                    gap = top["p_clear"] - mine["p_clear"]
+                    sig_ok = _sig(top, mine)
+                    sol.append(f"  (re-measured the solver's lead on a full sample: p {top['p_clear']:.2f} vs {mine['p_clear']:.2f}, n={top.get('n')})")
+            except Exception:
+                pass
+        better_p = mine and conf_ok and gap > req_p and not (breaks and not sig_ok)
         better_c = mine and conf_ok and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
         cert = next((r for r in plan if r.get("certain") and r["action"] == "PLAY"), None)
         if mine and cert is not None and m and m.group(1) == "DISCARD" and not (better_p or better_c) and cert["p_clear"] >= mine["p_clear"] - 0.01:
@@ -1615,7 +1643,7 @@ def advise(d):
         if mine and not (better_p or better_c):
             why_k = (f"the solver's best is low-confidence (n={top.get('n')}; it switches only on +0.20 with n >= 300; lead {gap:+.2f})" if gap > 0.05 and not conf_ok else
                      f"breaking your made {made_pf[0]} needs +0.10 (the solver leads by {gap:+.2f})" if breaks and 0.05 < gap <= 0.10 else
-                     f"breaking your made {made_pf[0]} needs a full solver sample (n >= 300; this lead {gap:+.2f} is on n={top.get('n')})" if breaks and gap > 0.10 else
+                     f"breaking your made {made_pf[0]} needs a lead beyond 2 standard errors (this lead {gap:+.2f} on n={top.get('n')} is not)" if breaks and gap > 0.10 else
                      f"the solver's best leads by only {gap:+.2f} (needs > {req_p:.2f} calibrated p at n={top.get('n')})")
             sol.append(f"  (rule pick kept: {why_k})")
         if better_p or better_c:
@@ -3073,7 +3101,7 @@ def shop_advise_sim(d, budget_s=6.0):
         if st["eternal"] and st["rental"] and ante_s < 7:
             # exception (7806 lost the ante-4 Small by 79 after a $1 eternal-rental The Trio at SIM +0.23 was blocked):
             # an xMult while SCORE CHECK < 0.5 and the SIM gain is >= 0.15
-            x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or \
+            x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or aj.get("name") in ("Joker Stencil", "Throwback") or \
                 (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
             # a copier of an owned xMult is an xMult (7810 UIL7HPIQ: Blueprint doubling the only xMult Ramen was barred)
             # exception: 0 scoring jokers at ante 1-2 and no other scorer on offer: an eternal-rental scorer is the only way
@@ -3108,7 +3136,7 @@ def shop_advise_sim(d, budget_s=6.0):
             return False
         # the 2nd-eternal-non-xMult bar yields to a +0.15 SIM gain (7803 IX9HA65T: eternal Abstract .79 vs .52 was barred)
         bar_e = _eternal_bar(d, aj)
-        if bar_e and bar_e.startswith("a 2nd ETERNAL non-xMult") and key(r) - key0 >= 0.15:
+        if bar_e and bar_e.startswith("a 2nd ETERNAL") and key(r) - key0 >= 0.15:
             bar_e = None
         return not bar_e and not _sells_boss_carrier(d, r["option"])
     base = next((r for r in feas if not r["option"].get("_cmd")), None)
@@ -3180,6 +3208,10 @@ def shop_advise_sim(d, budget_s=6.0):
             sim_top_nothing = best is None or gain <= 0  # the SIM's best is buying nothing: a BUY must not contradict it (Main 09:xx)
             barred_rule = mine is not None and not allowed(mine)
             weak_fade = mine is not None and _req(mine) > 0.02 and g_m < _req(mine)
+            if "NEEDED NOW" in adv and 0 < g_m < 0.10:
+                # NEEDED NOW needs a meaningful SIM gain (Main 16:xx: Spare Trousers 'NEEDED NOW' at +0.01): drop the label
+                adv = re.sub(r"NEEDED NOW[^>]*-> ", "", adv) + f"  [SIM {g_m:+.2f}: a small gain, not NEEDED NOW]"
+                forced = "EMERGENCY" in adv
             if g_m < -0.02 or (forced and g_m <= 0.0) or (sim_top_nothing and g_m <= 0.0) or barred_rule or weak_fade:
                 sim.append(f"  (rule advice was{' [BARRED: hard sticker rule]' if barred_rule else ''}: {adv[8:]})")
                 adv = ("ADVICE: LEAVE -> b endshop   (the rule pick is barred by a hard sticker rule: a 2nd permanent rental before ante 6 (unless both are xMults or you sell the first), an eternal rental, or an eternal non-scorer; nothing else raises P(clear) by more than 0.02)"
@@ -3268,13 +3300,13 @@ def pack_advise_sim(d, budget_s=3.5):
         rent_ok = not (st["rental"] and own_rent and ante_s < 6) or sells_rp or (ante_s >= 5 and big)
         # an eternal rental before ante 7 only for an xMult (or a copier of one) on a +0.15 gain (7810 YYBSWJIJ: an
         # eternal-rental Jolly at +0.51 was picked; Blue Joker 7809 D5KV79HL was the xMult-like case)
-        x_e = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or \
+        x_e = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or aj.get("name") in ("Joker Stencil", "Throwback") or \
             (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
         # 0 scorers at ante 1-2: an eternal-rental scorer is allowed (the players' rule exception; 7809 S634VB4Y)
         jokerless_p = ante_s <= 2 and _is_scoring_cls(classify_joker(aj.get("name"), 0, main_hand(d))[0]) and \
             not any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers")))
         bar_e = _eternal_bar(d, aj)
-        if bar_e and bar_e.startswith("a 2nd ETERNAL non-xMult") and base_p is not None and key(r) - key(base_p) >= 0.15:
+        if bar_e and bar_e.startswith("a 2nd ETERNAL") and base_p is not None and key(r) - key(base_p) >= 0.15:
             bar_e = None  # yields to a +0.15 SIM gain (7803 IX9HA65T)
         return (((big and x_e) or jokerless_p or not (st["eternal"] and st["rental"] and ante_s < 7)) and rent_ok
                 and not bar_e and not _sells_boss_carrier(d, r["option"]) and not _bad_swap(d, r["option"]))
