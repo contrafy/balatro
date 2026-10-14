@@ -980,3 +980,13 @@ def test_mime_and_red_seal_retrigger_held_steel():
     mime = cli.estimate("Pair", kk, [steel], dict(st, jokers=[joker("Joker", 1), joker("Mime", 2)]))[0]
     red = cli.estimate("Pair", kk, [dict(steel, seal="Red")], st)[0]
     assert abs(mime / plain - 1.5) < 0.02 and abs(red / plain - 1.5) < 0.02
+
+
+def test_death_model_left_of_target_prints_move_then_pick():
+    # 7813 9DIH5LTY: `pick 2 1 8` with QD at 1 and 2S at 8 turned QD into 2S (the LEFT card becomes the RIGHT one)
+    hand = [_card("Queen", "Diamonds", 1), _card("Queen", "Hearts", 2), _card("9", "Clubs", 3), _card("8", "Clubs", 4),
+            _card("7", "Hearts", 5), _card("6", "Spades", 6), _card("5", "Diamonds", 7), _card("2", "Spades", 8)]
+    d = {"phase": "PACK_OPENING", "stake": 8, "ante": 3, "money": 0, "joker_slots": 6, "jokers": [joker("Joker", 1)], "hand_levels": {},
+         "hand": hand, "pack": {"kind": "Arcana", "choices_remaining": 1, "cards": [{"name": "Death", "set": "Tarot"}]}}
+    adv = _advice(_out(cli.pack_advise, d))
+    assert adv.startswith("ADVICE: MOVE then PICK -> b move hand 8 1  then  b pick 1 1 2"), adv

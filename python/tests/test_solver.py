@@ -538,3 +538,13 @@ def test_obelisk_policy_avoids_resets_and_quantiles_take_a_boss():
     assert flint["round"][1] < plain["round"][1]
     needle = solver.round_score_quantiles(dict(st, jokers=[]), estimate, n=10, boss="The Needle")
     assert needle["per_hand"] == needle["round"]  # one hand
+
+
+def test_quantiles_keep_the_pillars_played_cards_debuffed():
+    # 7814 41YJQ6Q7 / 7811 V3KKS63Z: cards played earlier this ante are debuffed at The Pillar
+    st = state(["KS"], need=300, hands=3, discards=2, jokers=["Joker"])
+    st.update(phase="SHOP", hand=[], hands_per_round=3, discards_per_round=2)
+    played = [c["id"] for c in st["deck"]["cards"] if c["rank"] in ("King", "Queen", "Jack", "Ace", "10")]
+    hit = solver.round_score_quantiles(st, estimate, n=20, boss="The Pillar", debuff_ids=played)
+    free = solver.round_score_quantiles(st, estimate, n=20, boss="The Pillar")
+    assert hit["round"][1] < free["round"][1]

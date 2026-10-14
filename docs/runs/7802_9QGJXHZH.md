@@ -1,2 +1,5 @@
 # Run 9QGJXHZH (port 7802, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (Juggle/Holo/The Pillar 600, $4): Small: 2P KK99 116 + 2P TT88 + Trips 777. Shop $4: passed Hanging Chad{ETERNAL} (no mult), Buffoon -> Acrobat{RENTAL}. Big: 2 spare singles + spade Flush x3 = 936. Pillar: discard to 5 spades, spare 77 + AC, final Straight A-5 x3 660.
+Ante 2 (Buffoon/Economy/The Window 2000, $3): skipped Small for Buffoon tag (Mega Buffoon): SOLD Acrobat{R} and took Joker Stencil{P,R} (x5) + foil Fortune Teller{E}. Big: 2P 8844 940 + 2P JJ33. Window: Straight 9-K 2580 one-shot.
+Ante 3 (Juggle/Ethereal/The Manacle 6400, $10): Emperor $3 -> Fool (copied Emperor) + Judgement (Droll, sold) -> Emperor -> Lovers + Star: 6 tarots = Fortune Teller +6 mult (advisor ignores it). Small: used Star/Lovers, diamond Flush 6000 one-shot (est 2400). Shop: Uranus. Skipped Big (Ethereal; keeps Stencil alive for ante-4 Small): Wraith -> Brainstorm ($6 -> $0). Order Stencil, FT, Brainstorm (copies Stencil: x4 x4). Manacle: 2P TT22 8208 one-shot (est 5472).

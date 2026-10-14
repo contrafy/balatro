@@ -43,6 +43,7 @@ CALIBRATION = ((0.0, 0.0), (0.0263, 0.1905), (0.1368, 0.3269), (0.2822, 0.4778),
                (0.5948, 0.7167), (0.6623, 0.7391), (0.7796, 0.8756), (0.8544, 0.9079), (0.884, 0.961),
                (0.9206, 0.973), (0.9947, 1.0), (1.0, 1.0))
 PILLAR_W = 0.25  # $-equivalent cost per card played when The Pillar is this ante's boss (played cards get debuffed)
+OB_FUTURE = 0.5  # Obelisk: weight of each later hand (proxied by this hand's best score) in the play choice
 LEVEL_UP = {"High Card": (10, 1), "Pair": (15, 1), "Two Pair": (20, 1), "Three of a Kind": (20, 2),
             "Straight": (30, 3), "Flush": (15, 2), "Full House": (25, 2), "Four of a Kind": (30, 3),
             "Straight Flush": (40, 4), "Five of a Kind": (35, 3), "Flush House": (40, 4), "Flush Five": (50, 3)}
@@ -276,9 +277,10 @@ class RoundSolver:
         c.suit = "" if c.stone else SUITS.get(cd.get("suit"), "")
         c.face = c.rank in (11, 12, 13) or (self.pareidolia and c.rank > 0)
         if from_deck:
-            deb = self.boss == "Verdant Leaf"
+            # _force_debuff: a debuff the caller knows (round_score_quantiles debuff_ids: The Pillar's played cards)
+            deb = self.boss == "Verdant Leaf" or bool(cd.get("_force_debuff"))
             if self.boss in SUIT_DEBUFF and not c.stone:
-                deb = wild or self._group(c.suit) == self._group(SUIT_DEBUFF[self.boss])
+                deb = deb or wild or self._group(c.suit) == self._group(SUIT_DEBUFF[self.boss])
             if self.boss == "The Plant" and c.face:
                 deb = True
         else:
@@ -532,7 +534,7 @@ class RoundSolver:
                 # the next hand holds the cards drawn now too: Blackboard (a red one) / Raised Fist (a lower one)
                 # can lose to them, so the follow-up is not certain (7807 E1PM6PSH)
                 return False
-            _s, sel, _t = self.best_play(cards, h, self.d0, (lock, used, rtypes, ob, jd))
+            _s, sel, _t = self.best_play(cards, h, self.d0, (lock, used, rtypes, ob, jd), raw=True)
         return False
 
     def _first_for(self, cand):
@@ -724,24 +726,36 @@ class RoundSolver:
         rest = sorted((c for c in cards if id(c) not in ids), key=lambda c: (id(c) in avoid, c.val))
         return play + rest[:n - len(play)]
 
-    def best_play(self, cards, h, d, ctx):
-        """(score, play cards, type) of the highest-scoring candidate play in `cards` (memoized on the card set)."""
+    def best_play(self, cards, h, d, ctx, raw=False):
+        """(score, play cards, type) of the best candidate play in `cards` (memoized on the card set). With an Obelisk
+        and later hands left (and not raw), plays are ranked by score + the later hands' share of the Obelisk xMult
+        they keep (OB_FUTURE): a play of the strictly most played type resets it to x1, so the round policy prefers
+        Obelisk-safe types (7804 9BFAAC9S: rounds projected 2.5-5k/hand vs 23-74k played Obelisk-safe at x3.4).
+        raw=True: the highest score now."""
         m = 0
         for c in cards:
             m |= c.bit
-        mk = (m, h, d, ctx) if (self.hd_dep or self.psychic) else (m, ctx)
+        ob = ctx[3]
+        adj = not raw and ob is not None and h >= 2
+        mk = (m, h, d, ctx, adj) if (self.hd_dep or self.psychic or adj) else (m, ctx, adj)
         r = self._bp_memo.get(mk)
         if r is not None:
             return r
-        best = (-1.0, None, None)
+        scored = []
         for p in self._gen_plays(cards):
             ids = {id(c) for c in p}
             s, t = self.score(p, [c for c in cards if id(c) not in ids], h, d, ctx)
-            if s > best[0]:
-                best = (s, p, t)
-        if best[1] is None:
-            p = sorted(cards, key=lambda c: c.val)[:1]
-            best = (0.0, p, "High Card")
+            scored.append((s, p, t))
+        if not scored:
+            best = (0.0, sorted(cards, key=lambda c: c.val)[:1], "High Card")
+        elif adj:
+            # later hands scale with the Obelisk xMult left after this play; this hand's best score at the current
+            # xMult stands in for a later hand
+            top = max(s for s, _p, _t in scored)
+            x_now = max(1.0, ob[0])
+            best = max(scored, key=lambda e: e[0] + OB_FUTURE * (h - 1) * top * self._obelisk_after(ob, e[2])[0] / x_now)
+        else:
+            best = max(scored, key=lambda e: e[0])
         self._bp_memo[mk] = best
         return best
 
@@ -988,8 +1002,11 @@ class RoundSolver:
 
     def policy(self, cards, pile_cards, h, d, need, ctx):
         """Greedy later-hand policy; returns (kind, list of card objects)."""
+        rs_, rp, _rt = self.best_play(cards, h, d, ctx, raw=True)
+        if rs_ >= need or (h <= 1 and d <= 0):  # a clear (or the last hand) takes the highest score now
+            return PLAY, (self._pad(rp, cards, 5) if self.psychic else rp)
         bs, bp, _bt = self.best_play(cards, h, d, ctx)
-        if bs >= need or (h <= 1 and d <= 0) or not pile_cards:
+        if not pile_cards:
             return PLAY, (self._pad(bp, cards, 5) if self.psychic else bp)
         if self.final_dep and h >= 2 and not self.psychic:
             # Acrobat/Dusk/...: hold a hand that clears as the final hand; burn the hands before it with 1 junk card
@@ -1036,10 +1053,12 @@ class RoundSolver:
         for p in plays:
             ids = {id(c) for c in p}
             held = [c for c in cards if id(c) not in ids]
-            s, _t = self.score(p, held, h, d, ctx)
+            s, t = self.score(p, held, h, d, ctx)
             if s >= need:
                 return PLAY, p
-            u2, _l = self.keep_value(held, pile, need - s, h - 1, d, ctx, self._n_draw(len(held), pile.P))
+            # the next hand is valued with the Obelisk this play leaves (a reset to x1 costs every later hand)
+            c2 = ctx if ctx[3] is None else ctx[:3] + (self._obelisk_after(ctx[3], t),) + ctx[4:]
+            u2, _l = self.keep_value(held, pile, need - s, h - 1, d, c2, self._n_draw(len(held), pile.P))
             if s + u2 > best_tot:
                 best, best_tot = p, s + u2
         return PLAY, best
@@ -1373,14 +1392,18 @@ class RoundSolver:
 
 
 def round_score_quantiles(state, estimate_fn, n=40, seed=7, hands=None, discards=None, hand_size=None,
-                          time_budget_s=2.0):
+                          time_budget_s=2.0, boss=None, debuff_ids=None):
     """What the current build scores in a fresh round, outside any blind: n rounds dealt from the full deck (every
-    card back in the deck, no boss, no card debuffs) with the current jokers and hand levels, played by the round
-    policy aiming at the highest total (discards used to dig). hands / discards / hand_size override the state's
-    per-round values (boss constraints: The Water 0 discards, The Needle 1 + 3 x Burglar hands, The Manacle -1 hand
-    size); by default hands_per_round / discards_per_round, Burglar applied (+3 hands, no discards).
+    card back in the deck, no card debuffs) with the current jokers and hand levels, played by the round policy
+    aiming at the highest total (discards used to dig). boss: a boss name played with the round solver's boss rules
+    (suit/face debuffs on draws, Psychic, Eye, Mouth, Hook, Serpent, Flint/Arm via estimate...); its round sizes
+    apply unless overridden (The Needle 1 + 3 x Burglar hands, The Water 0 discards, The Manacle -1 hand size).
+    debuff_ids: card ids that stay debuffed in the fresh round (The Pillar: the cards played earlier this ante).
+    hands / discards / hand_size override the state's per-round values; by default hands_per_round /
+    discards_per_round, Burglar applied (+3 hands, no discards).
     Returns {"per_hand": [p25, p50, p75] of each round's mean scored hand, "round": [p25, p50, p75] of the round
     total, "n": rounds played} (n < requested when time_budget_s runs out)."""
+    forced = set(debuff_ids or ())
     t0 = time.perf_counter()
     cards, seen = [], set()
     for c in _lst((state.get("deck") or {}).get("cards")) + _lst(state.get("hand")):
@@ -1388,19 +1411,22 @@ def round_score_quantiles(state, estimate_fn, n=40, seed=7, hands=None, discards
         if key is not None and key in seen:
             continue
         seen.add(key)
-        cards.append(dict(c, remaining=True, debuff=False, facing="front"))
+        cards.append(dict(c, remaining=True, debuff=False, facing="front", _force_debuff=c.get("id") in forced))
     burglars = sum(1 for j in _lst(state.get("jokers")) if j.get("name") == "Burglar" and not j.get("debuff"))
     hp = int(hands if hands is not None else
+             1 + 3 * burglars if boss == "The Needle" else
              int(state.get("hands_per_round") or state.get("hands_remaining") or 4) + 3 * burglars)
     dp = int(discards if discards is not None else
-             0 if burglars else int(state.get("discards_per_round") or state.get("discards_remaining") or 0))
-    hs = int(hand_size if hand_size is not None else int(state.get("hand_size") or 8))
+             0 if burglars or boss == "The Water" else
+             int(state.get("discards_per_round") or state.get("discards_remaining") or 0))
+    hs = int(hand_size if hand_size is not None else int(state.get("hand_size") or 8) - (boss == "The Manacle"))
     # a fresh round: nothing played yet (a SHOP state keeps the last round's played_this_round: Card Sharp)
     hl = {k: dict(v, played_this_round=0) for k, v in (state.get("hand_levels") or {}).items()}
+    blind = ({"name": boss, "boss": True, "disabled": False, "hands_used": [], "only_hand": None} if boss
+             else {"name": "Small Blind", "boss": False, "disabled": False})
     st = dict(state, phase="SELECTING_HAND", hand=[], hands_remaining=max(1, hp), discards_remaining=max(0, dp),
               hand_size=max(1, hs), deck=dict(state.get("deck") or {}, cards=cards, draw_pile=len(cards)),
-              hand_levels=hl,
-              blind={"name": "Small Blind", "boss": False, "chips_needed": 1e12, "chips_scored": 0, "disabled": False})
+              hand_levels=hl, blind=dict(blind, chips_needed=1e12, chips_scored=0))
     rs = RoundSolver(st, estimate_fn, seed=seed)
     totals, per = [], []
     for s in range(n):
