@@ -8832,3 +8832,51 @@
 7803	a1	-	Two Pair	AS AC 2S 2C	Even Steven	est=460	actual=460	OK
 7807	a2	-	Pair	6C 6D	Clever Joker,Jolly Joker,Ice Cream,Photograph	est=1120	actual=1120	OK
 7801	a4	-	Two Pair	9H 9D 4C 4D	Mad Joker,Blue Joker,Jolly Joker,Odd Todd,Ramen,Bloodstone	est=12902	actual=12902	OK
+7807	a2	-	Pair	5S 5D	Clever Joker,Jolly Joker,Ice Cream,Photograph	est=1050	actual=1050	OK
+7806	a4	The Flint	Two Pair	AH AD 6H 6D	Blue Joker,Blueprint,Swashbuckler,Clever Joker,Smiley Face,Mad Joker	est=4988	actual=6020	OK
+7802	a1	-	Flush	KS QS JS 6S 3S		est=296	actual=296	OK
+7801	a4	-	Pair	7H 7D	Mad Joker,Blue Joker,Jolly Joker,Odd Todd,Ramen,Bloodstone	est=3225	actual=3548	OK
+7802	a1	-	High Card	2S		est=7	actual=7	OK
+7809	a3	The Wall	Two Pair	JH JD 6H 6C	Jolly Joker,Joker,Swashbuckler(holo),Burglar,Wrathful Joker,Arrowhead	est=1664	actual=1664	OK
+7810	a6	The Arm	Three of a Kind	2S 2H 2D	Smiley Face,Half Joker,Vampire(holo),Banner,Hanging Chad,To Do List(negative),Gros Michel	est=4500	actual=4500	OK
+7804	a2	-	High Card	KH	Credit Card,Wrathful Joker	est=15	actual=15	OK
+7805	a2	-	Straight	KS QD JS TD 9C	Crazy Joker,Supernova	est=1501	actual=1501	OK
+7803	a1	The Club	Flush	AS 8S 7S 4S 2S	Even Steven	est=1072	actual=1072	OK
+7809	a3	The Wall	Pair	3H 3D	Jolly Joker,Joker,Swashbuckler(holo),Burglar,Wrathful Joker,Arrowhead	est=512	actual=512	OK
+7807	a2	The Head	Pair	8C 8D	Clever Joker,Jolly Joker,Ice Cream,Photograph,Bootstraps	est=1484	actual=1484	OK
+7810	a6	The Arm	Straight	AS KD QH JH TC	Smiley Face,Half Joker,Vampire(holo),Banner,Hanging Chad,To Do List(negative),Gros Michel	est=5852	actual=5852	OK
+7804	a2	-	High Card	KD	Credit Card,Wrathful Joker	est=15	actual=15	OK
+7810	a6	The Arm	Pair	3C 3D	Smiley Face,Half Joker,Vampire(holo),Banner,Hanging Chad,To Do List(negative),Gros Michel	est=5712	actual=5712	OK
+7809	a3	The Wall	Two Pair	5S 5D 2H 2D	Jolly Joker,Joker,Swashbuckler(holo),Burglar,Wrathful Joker,Arrowhead	est=2940	actual=2940	OK
+7807	a2	The Head	Pair	9H(DEBUFF) 9C	Clever Joker,Jolly Joker,Ice Cream,Photograph,Bootstraps	est=1316	actual=1316	OK
+7804	a2	-	Two Pair	TH TD 2S 2H	Credit Card,Wrathful Joker	est=220	actual=220	OK
+7809	a3	The Wall	Pair	4H 4D	Jolly Joker,Joker,Swashbuckler(holo),Burglar,Wrathful Joker,Arrowhead	est=576	actual=576	OK
+7802	a1	The Window	Straight	QD(DEBUFF) JC TS 9C 8H	Walkie Talkie	est=616	actual=616	OK
+7809	a3	The Wall	Flush	QS JS TS 9S 6S	Jolly Joker,Joker,Swashbuckler(holo),Burglar,Wrathful Joker,Arrowhead	est=13530	actual=13530	OK
+7805	a2	The Mark	Straight	TH 9S 8D 7D 6C	Crazy Joker,Supernova,Scholar	est=1400	actual=1400	OK
+7801	a4	The Arm	Two Pair	9S 9C 4S 4D	Mad Joker,Blue Joker,Jolly Joker,Odd Todd,Misprint(negative),Ramen,Bloodstone	est=14476	actual=14975	OK
+7801	a4	The Arm	Full House	JS JD TH TC TD	Mad Joker,Blue Joker,Jolly Joker,Odd Todd,Misprint(negative),Ramen,Bloodstone	est=9246	actual=13209	MISS
+7803	a2	-	Straight	AD 5S 4H 3S 2C	Even Steven,Blue Joker(foil)	est=2364	actual=2364	OK
+7807	a3	-	Two Pair	6S 6C 5S 5H	Clever Joker,Jolly Joker,Ice Cream,Photograph,Bootstraps	est=3180	actual=3180	OK
+7805	a2	The Mark	Two Pair	AC AD 3S 3D	Crazy Joker,Supernova,Scholar	est=1056	actual=1056	OK
+7807	a3	-	Pair	3H 3D	Clever Joker,Jolly Joker,Ice Cream,Photograph,Bootstraps	est=1134	actual=1134	OK
+7806	a5	The Serpent	High Card	5D	Blue Joker,Swashbuckler,Smiley Face,Mad Joker,Blueprint,The Trio	est=1064	actual=1140	OK
+7809	a4	-	Two Pair	QS QH 2S 2H	Jolly Joker,Joker,Swashbuckler(holo),Burglar,Wrathful Joker,Arrowhead	est=5472	actual=5472	OK
+7810	a1	-	Straight	TD 9H 8S 7S 6S		est=280	actual=280	OK
+7809	a4	-	Two Pair	KS KD 9C 9D	Jolly Joker,Joker,Swashbuckler(holo),Burglar,Wrathful Joker,Arrowhead	est=3780	actual=3780	OK
+7806	a5	The Serpent	Three of a Kind	2H 2C 2D	Blue Joker,Swashbuckler,Smiley Face,Mad Joker,Blueprint,The Trio	est=13824	actual=14688	OK
+7804	a1	-	Flush	JC TC 9C 5C 3C		est=288	actual=288	OK
+7810	a1	-	Two Pair	9C 9D 4H 4D		est=92	actual=92	OK
+7803	a2	The Goad	Two Pair	7H 7C 2S(DEBUFF) 2H	Even Steven,Blue Joker(foil),Mad Joker	est=2752	actual=2752	OK
+7804	a1	-	High Card	AD		est=16	actual=16	OK
+7806	a5	The Serpent	Two Pair	QS QD TC TD	Blue Joker,Swashbuckler,Smiley Face,Mad Joker,Blueprint,The Trio	est=4824	actual=4958	OK
+7807	a3	-	Two Pair	QC QD 4H 4C	Clever Joker,Jolly Joker,Ice Cream,Photograph,Bootstraps	est=3744	actual=3744	OK
+7802	a2	-	Two Pair	8S 8D 7S 7H	Wrathful Joker,Arrowhead	est=1200	actual=1200	OK
+7810	a1	-	Straight	AC 5S 4D 3H 2D	Shoot the Moon	est=220	actual=220	OK
+7807	a3	-	Pair	TH TD	Clever Joker,Jolly Joker,Ice Cream,Photograph,Bootstraps	est=1190	actual=1190	OK
+7802	a2	-	Pair	8S 8H	Wrathful Joker,Arrowhead	est=380	actual=380	OK
+7805	a3	-	Pair	TS TC	Crazy Joker,Supernova,Scholar,Gros Michel,Half Joker(holo)	est=1440	actual=1440	OK
+7804	a1	-	Straight	9C 8S 7D 6C 5S	Mad Joker	est=260	actual=260	OK
+7804	a1	-	Two Pair	TS TD 6S 6D	Mad Joker	est=624	actual=624	OK
+7805	a3	-	Three of a Kind	4S 4C 4D	Crazy Joker,Supernova,Scholar,Gros Michel,Half Joker(holo)	est=2058	actual=2058	OK
+7810	a1	-	Two Pair	8S 8C 4S 4H	Shoot the Moon	est=660	actual=660	OK

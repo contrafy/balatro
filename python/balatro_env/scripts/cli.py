@@ -307,18 +307,31 @@ def show(d):
         n_rent = sum(1 for j in lst(d.get("jokers")) if _stk(j)["rental"])
         # Gold: the Small pays no blind reward (~$2-3 for unused hands); its round end charges every rental $3. With rent
         # due and a wallet that still could not buy a $4 joker afterwards, the shop visit is worth nothing (7801/7804/7807)
-        poor = n_rent >= 1 and int(d.get("money") or 0) + 3 - 3 * n_rent < 4
+        money_b = int(d.get("money") or 0)
+        # broke: after the Small's ~$3 (and its rent) the shop could not buy a $4 joker; skip if the Big is beatable as is
+        # (7804/7807: "take the shop" at $<=3 or negative money)
+        big_c = int((ch.get("Big") or {}).get("chips") or 0)
+        big_ok = big_c > 0 and (deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * int(d.get("hands_per_round") or 3) >= big_c
+        poor = (money_b + 3 - 3 * n_rent < 4) and (n_rent >= 1 or (big_ok and ante_n >= 2))
         if poor and ante_n <= 4 and tk and not riff and bs.get("on_deck") == "Small":
             skip_ok = True
             NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag (the shop after this Small would find you broke: ${d.get('money')})")
         thr = any(j.get("name") == "Throwback" and not j.get("debuff") for j in lst(d.get("jokers")))
+        # a skip has no round end, so perishables do not tick: with a key scorer at <= 2 rounds left, skipping keeps it
+        # alive for the boss (Main 08:xx, ~6 runs lost a perishable carrier the round before the boss)
+        perish_key = any(_stk(j)["perishable"] and (_stk(j)["perish_tally"] or 9) <= 2 and not _dead_perishable(j)
+                         and joker_share(d, j, main_hand(d)) >= 0.2 for j in lst(d.get("jokers")))
         thr_ok = False
-        if thr and not riff:
+        if (thr or perish_key) and not riff:
             # WINNING LINE (7807, first Gold win): with Throwback, skip Small AND Big while your round beats this ante's
             # boss with margin: +x0.25 per skip forever, the tags pay now, one blind fought per ante
             boss_c_t = int((ch.get("Boss") or {}).get("chips") or 0)
             best_t = deck_best_est(d) or typical_est(d, main_hand(d), best=True)
-            thr_ok = boss_c_t > 0 and best_t * int(d.get("hands_per_round") or 3) >= 1.3 * boss_c_t
+            # handicap bosses (The House/Fish/Mark deal face-down, Psychic/Eye/Mouth restrict plays...) need more margin
+            hard_b = (ch.get("Boss") or {}).get("name") in ("The House", "The Fish", "The Mark", "The Wheel", "The Psychic", "The Eye", "The Mouth",
+                                                             "The Needle", "The Water", "The Pillar", "The Serpent", "The Manacle", "The Hook",
+                                                             "Crimson Heart", "Cerulean Bell", "Amber Acorn", "Verdant Leaf", "Violet Vessel", "The Wall")
+            thr_ok = boss_c_t > 0 and best_t * int(d.get("hands_per_round") or 3) >= (1.6 if hard_b else 1.3) * boss_c_t
             if thr_ok and bs.get("on_deck") == "Small" and tk:
                 skip_ok = True
                 NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag")
@@ -339,14 +352,16 @@ def show(d):
         pay = NOW_TAGS.get(tk) or LATER_TAGS.get(tk) or f"the {small.get('tag')} tag"
         if thr:
             pay += f"; Throwback gains x0.25 forever (x{1 + 0.25 * int((d.get('run') or {}).get('skips') or 0):g} -> x{1 + 0.25 * (int((d.get('run') or {}).get('skips') or 0) + 1):g})"
+        if perish_key:
+            pay += "; no round end, so your perishable carrier does not tick and stays alive for the boss"
         if stake_n >= 2 and bs.get("on_deck") == "Big" and thr_ok:
             big_t = (ch.get("Big") or {}).get("tag") or "Big Blind tag"
-            print(f"ADVICE: b skip   (Throwback skip plan: your rounds beat this ante's boss by 1.3x+, so skip the Big too: {pay.replace(str(small.get('tag')), str(big_t)) if small.get('tag') else big_t}; "
+            print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss by 1.3x+, so skip the Big too: {pay.replace(str(small.get('tag')), str(big_t)) if small.get('tag') else big_t}; "
                   f"Boss Tag rerolls a Wall/Violet boss, Garbage/Skip/Economy pay money for the post-boss shop. The boss is never skipped.)")
         elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok) and skip_ok:
             gold = f" Skipping also avoids one round-end ({sum(1 for j in lst(d.get('jokers')) if _stk(j)['rental'])} rental charge(s), one perishable tick)." if stake_n >= 8 and any(_stk(j)["rental"] or _stk(j)["perishable"] for j in lst(d.get("jokers"))) else ""
             print(f"ADVICE: b skip   (stake {stake_n}: the Small Blind pays $0, so skipping costs one shop visit; tag pays: {pay} ({small.get('tag')}). You own {scoring_j} scoring joker(s) for the Big Blind.{gold}"
-                  + (" Throwback skip plan: skip the Big too while your rounds beat the boss by 1.3x+; the boss is never skipped.)" if thr_ok else " Big and Boss blinds are never skipped.)"))
+                  + (" Skip plan: skip the Big too while your rounds beat the boss by 1.3x+; the boss is never skipped.)" if thr_ok else " Big and Boss blinds are never skipped.)"))
         elif stake_n >= 2 and bs.get("on_deck") == "Small" and tk:
             why_not = ("you own Riff-raff: playing the blind creates 2 Common jokers, a skip forfeits them" if riff else
                        "ante 5+: the shop after the Small Blind is worth more than a tag" if ante_n > 4 else
@@ -1116,6 +1131,8 @@ def _candidates(d):
 
 
 ORDER_JOKERS = {"Hanging Chad", "Photograph"}  # retrigger / x2 on the FIRST scored (face) card: hand order matters
+GROWTH_X = {"Throwback", "Hologram", "Constellation", "Lucky Cat", "Campfire", "Glass Joker", "Vampire", "Madness", "Obelisk",
+            "Ramen", "Steel Joker", "Caino", "Canio", "Yorick", "Hit the Road", "Joker Stencil"}  # xMults that grow: never "flat rentals"
 
 
 def _order_gain(d, hand_name, idxs):
@@ -1739,6 +1756,10 @@ def _advise_rules(d):
             why += f"; debuffed cards {debuffed_idx} score nothing, discard them first"
         mail_r = ((d.get("run") or {}).get("mail_card") or {}).get("rank") if any(j.get("name") == "Mail-In Rebate" and not j.get("debuff") for j in lst(d.get("jokers"))) else None
         rest_d = [i for i in all_idx if i not in keep and i not in debuffed_idx]
+        if boss_name != "The Mark":
+            # The House/Fish/Wheel face-downs are unknown random cards: they go first (7805 kept a face-down and threw visible ones)
+            fd_set = {c.get("index") for c in hand if c.get("rank") is None}
+            rest_d = sorted(rest_d, key=lambda i: i not in fd_set)
         if mail_r:
             # Mail-In Rebate pays $5 per discarded card of this round's rank: discard those first (7805 missed ~$40)
             rest_d = sorted(rest_d, key=lambda i: str((_cards_by_idx(d, [i]) or [{}])[0].get("rank")) != str(mail_r))
@@ -2358,10 +2379,13 @@ def shop_advise_sim(d, budget_s=6.0):
     if not any(r["option"].get("_cmd") for r in feas):
         print("\n".join(lines)); return
     all_zero = all((r.get("p_next") or 0) < 0.05 for r in feas)
-    key = (lambda r: r.get("score_ratio") or 0) if all_zero else (lambda r: r.get("p_next") or 0)
+    # p_adj: p_next minus rent and dead-shop penalties (shop_sim, 09:xx); ranking and the ADVICE switch use it
+    key = (lambda r: r.get("score_ratio") or 0) if all_zero else (lambda r: r.get("p_adj", r.get("p_next")) or 0)
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
-        f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f} vs buying nothing)")
+        f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
+                                    f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f}, rent-adjusted {key(r):.2f} ({r.get('delta_adj', r.get('delta')) or 0:+.2f} vs buying nothing)")
         + f" ${r.get('money_after')}" + (f" rent {r['rent_per_round']}/round" if r.get("rent_per_round") else "")
+        + (f" | a later shop sees ${r['shop_money']}" if r.get("shop_money") is not None and r["shop_money"] < 5 else "")
         + (f" | ETERNAL RENTAL: -${3 * _rounds_left(d)} to the run's end, beyond the SIM's 3 blinds"
            if _stk(r["option"].get("add_joker") or {})["eternal"] and _stk(r["option"].get("add_joker") or {})["rental"] else "")
         for r in sorted(feas, key=key, reverse=True)[:6]]
@@ -2398,8 +2422,6 @@ def shop_advise_sim(d, budget_s=6.0):
             x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS
             if not (x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
                 return False
-        if aj.get("name") in AVOID_JOKERS and aj.get("name") in ("Madness", "Ceremonial Dagger"):
-            return False  # the SIM does not model them destroying your jokers (7809: SIM recommended Madness)
         # a second PERMANENT rental before ante 6 drains the run; a perishable one is bounded, and a buy the rules already
         # advised passed their own rental checks (7809: The Duo perishable rental +0.40 was turned into LEAVE)
         if st["rental"] and not st["perishable"] and own_rent and ante_s < 6 and r["option"].get("_cmd") != adv_cmd0:
@@ -2415,7 +2437,9 @@ def shop_advise_sim(d, budget_s=6.0):
     if cands_s:
         top_k = max(key(r) for r in cands_s)
         tied = [r for r in cands_s if key(r) >= top_k - 0.03]
-        best = max(tied, key=lambda r: (rank.get(r["option"]["_cmd"], -999), key(r)))
+        # ties: a permanent joker beats a perishable/rental one (Main 09:xx), then the rule score, then the SIM value
+        best = max(tied, key=lambda r: (-(_stk(r["option"].get("add_joker") or {})["perishable"] + _stk(r["option"].get("add_joker") or {})["rental"]),
+                                        rank.get(r["option"]["_cmd"], -999), key(r)))
     gain = (key(best) - key(base)) if best and base else 0.0
     m = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
     adv_cmd = f"{'pack' if m.group(1) == 'pack' else 'buy'} {m.group(2)}" if m else None
@@ -2441,7 +2465,8 @@ def shop_advise_sim(d, budget_s=6.0):
             mine = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
             g_m = (key(mine) - key(base)) if mine and base else 0
             forced = "NEEDED NOW" in adv or "EMERGENCY" in adv  # a survival-forced buy must actually help survival (7810 Banner)
-            if g_m < -0.02 or (forced and g_m <= 0.0):
+            sim_top_nothing = best is None or gain <= 0  # the SIM's best is buying nothing: a BUY must not contradict it (Main 09:xx)
+            if g_m < -0.02 or (forced and g_m <= 0.0) or (sim_top_nothing and g_m <= 0.0):
                 sim.append(f"  (rule advice was: {adv[8:]})")
                 adv = f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes P(clear all next 3 blinds) by {g_m:+.2f}; nothing on offer raises it by more than 0.02)"
             else:
@@ -2489,17 +2514,15 @@ def pack_advise_sim(d, budget_s=3.5):
     if not any(r["option"].get("_cmd") for r in feas):
         print("\n".join(lines)); return
     all_zero = all((r.get("p_next") or 0) < 0.05 for r in feas)
-    key = (lambda r: r.get("score_ratio") or 0) if all_zero else (lambda r: r.get("p_next") or 0)
+    key = (lambda r: r.get("score_ratio") or 0) if all_zero else (lambda r: r.get("p_adj", r.get("p_next")) or 0)
     ante_s = int(d.get("ante") or 1)
     own_rent = any(_stk(j)["rental"] for j in lst(d.get("jokers")))
 
     def allowed(r):
         aj = r["option"].get("add_joker") or {}
         st = _stk(aj)
-        # packs are already paid: only an unsellable rental or a second PERMANENT rental is barred; Madness / Dagger are not
-        # modelled by the SIM (they destroy jokers)
-        return not (st["eternal"] and st["rental"] and ante_s < 7) and not (st["rental"] and not st["perishable"] and own_rent and ante_s < 6) \
-            and aj.get("name") not in ("Madness", "Ceremonial Dagger")
+        # packs are already paid: only an unsellable rental or a second PERMANENT rental is barred
+        return not (st["eternal"] and st["rental"] and ante_s < 7) and not (st["rental"] and not st["perishable"] and own_rent and ante_s < 6)
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f} vs skipping)")
         for r in sorted(feas, key=key, reverse=True)[:6]]
@@ -2697,7 +2720,7 @@ def _shop_rules(d):
     fresh = set(d.get("_bought_ids") or [])
     for j in [x for x in sellable_j if x.get("id") not in fresh]:
         cls_r = classify_joker(j.get("name"), 0, mh)[0]
-        if (_stk(j)["rental"] and ante <= 6 and keep_value(j) <= 45 and j.get("name") not in ENGINE_KEEP
+        if (_stk(j)["rental"] and ante <= 6 and keep_value(j) <= 45 and j.get("name") not in ENGINE_KEEP and j.get("name") not in GROWTH_X
                 and not _is_scoring(cls_r) and not cls_r.startswith("XMULT") and _joker_edition(j) not in ("holo", "foil", "polychrome")):
             print(f"  SELL FIRST: b sell {j.get('index')}   ({j.get('name')} [{cls_r}] is a RENTAL and not a core scorer: it costs $3 every round (~${3 * rounds_left} if kept to the end); selling returns $1 and stops the charge)")
             sold = j
@@ -2705,6 +2728,7 @@ def _shop_rules(d):
     non_rental_scorers = [j for j in jokers if not _stk(j)["rental"] and alive_next(j) and _is_scoring(classify_joker(j.get("name"), 0, mh)[0])]
     if sold is None and len(non_rental_scorers) >= 2 and ante <= 6:
         flat_r = [j for j in rentals if j.get("id") not in fresh and not _stk(j)["eternal"] and not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") and j.get("name") not in TYPE_X_JOKERS
+                  and j.get("name") not in GROWTH_X
                   and joker_share(d, j, mh) < 0.3 and j.get("name") != "Mr. Bones"]  # 7805: The Trio was called a "flat rental"
         if flat_r:
             sold = min(flat_r, key=keep_value)
@@ -2907,10 +2931,14 @@ def _shop_rules(d):
             psc += 25 if feeds else 0
             if const and ante >= 4 and n_x_now <= 1:
                 psc = max(psc, 82)  # Constellation: every planet used is +0.1x on every hand forever; $3 beats a $5+ reroll
+            if ante <= 2 and scoring_now <= 1 and not const:
+                psc = min(psc, 20)  # 0-1 scoring jokers at ante 1-2: a level on a jokerless hand is +10-20 points; buy a scorer
             # planets are used on purchase: `buyuse` needs no consumable slot and feeds Constellation immediately
             options.append((psc, "PLANET", f"{'buyuse' if feeds else 'buy'} {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
         elif name == "Judgement":
             jsc = (75 if scoring_now < 2 else 62) if free > 0 else 5
+            if any(j.get("name") == "Joker Stencil" for j in jokers):
+                jsc = min(jsc, 15)  # the new joker fills a slot your Stencil counts (x1 less; Main 08:xx)
             options.append((jsc, "TAROT", f"buyuse {c['index']}", f"{name} ${cost} [creates a random joker now (`buyuse` it; needs a free joker slot{'' if free > 0 else ': slots FULL, worthless now'}); at Gold it can carry stickers]", cost, False, False))
         elif name == "The Hermit":
             options.append((45 if money - cost >= 10 else 5, "TAROT", f"buy {c['index']}", f"{name} ${cost} [doubles money up to +$20: only worth it with $10+ left after buying]", cost, False, False))
@@ -2945,7 +2973,9 @@ def _shop_rules(d):
             note = ("Telescope: your main planet is guaranteed" if telescope else
                     "no main hand yet: take the planet of the hand you play most (`advise` inside the pack picks it)" if mh == "undecided" else
                     f"take {PLANET_FOR.get(mh)}; if it is not offered, a fallback planet is worth little (skip the pack if you can buy your planet directly next shop)")
-            options.append((csc + big + (15 if feeds else 0), "PACK", f"pack {c['index']}", f"{name} ${cost} [hand level gamble: {note}{'; feeds Constellation' if feeds else ''}]", cost, ante >= 2 and (telescope or mh == "undecided"), False))
+            if ante <= 2 and scoring_now <= 1 and not feeds:
+                csc = min(csc, 15 - big)  # 0-1 scoring jokers at ante 1-2: levels on a jokerless hand barely move it (Main 08:xx)
+            options.append((csc + big + (15 if feeds else 0), "PACK", f"pack {c['index']}", f"{name} ${cost} [hand level gamble: {note}{'; feeds Constellation' if feeds else ''}]", cost, ante >= 2 and (telescope or mh == "undecided") and not (ante <= 2 and scoring_now <= 1), False))
         elif "Buffoon" in name:
             n_x = sum(1 for j in jokers if (classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") or _joker_edition(j) == "polychrome"))
             bscore = 55 if free > 0 else 0
@@ -3044,11 +3074,12 @@ def _shop_rules(d):
             passed = [o[3].split(" [")[0].split(" -> ")[-1] + ("" if o[4] <= money else f" (${o[4]}, unaffordable)") for o in options if o[0] >= 30 and not o[1].startswith("AVOID")]
             if passed and money - reroll0 - rent_due >= 3:
                 print(f"  Ranked higher but passed over: {', '.join(passed)}: no scoring joker on offer, so the money goes to a reroll for one")
-            if money - reroll0 - rent_due >= 4:
-                print(f"ADVICE: REROLL -> b reroll   (no scoring joker in this shop and you own {scoring_now}: at ante {ante} a joker matters more than any pack; ${money - reroll0} left after)")
-                return
-            if scoring_now == 0 and money - reroll0 - rent_due >= 3:
-                print(f"ADVICE: REROLL -> b reroll   (you own NO scoring joker and none is offered: a jokerless deck does not clear the next blind at this stake; ${money - reroll0} stays for a $3 Sly/Jolly if the reroll shows one)")
+            # Credit Card: in a survival spot (EMERGENCY / no scorer / <2 scorers early) the -$20 debt is spendable (7804
+            # died at the ante-2 Small with $18 of credit unused)
+            credit_e = 20 if any(j.get("name") == "Credit Card" and not j.get("debuff") for j in jokers) and (emergency or scoring_now < 2) else 0
+            if money + credit_e - reroll0 - rent_due >= (5 if scoring_now == 0 else 4):  # 0 scorers: keep $5 for a $5 scorer (7806)
+                print(f"ADVICE: REROLL -> b reroll   (no scoring joker in this shop and you own {scoring_now}: at ante {ante} a joker matters more than any pack; ${money - reroll0} left after"
+                      + (", Credit Card debt allowed" if credit_e and money - reroll0 < 4 else "") + ")")
                 return
             if scoring_now == 0 and money >= reroll0:
                 print(f"  (no scorer offered and a reroll would leave under $3: rerolling to $0 has revealed $3 jokers it could no longer buy - keep the ${money} for the next shop)")
@@ -3155,7 +3186,8 @@ def _shop_rules(d):
         print(f"ADVICE: REROLL -> b reroll   (you own {n_rg} reliable/growth xMult (target {rg_target}): hunt for one; ${money - reroll} left after; only if an xMult appears, sell your weakest flat joker for it)")
         return
     scoring = scoring_now
-    if (ante <= 2 and scoring < 2 or scoring == 0) and replaceable > 0 and money - reroll - rent_due >= 3:
+    credit_r = 20 if any(j.get("name") == "Credit Card" and not j.get("debuff") for j in jokers) and (emergency or scoring_now < 2) else 0
+    if (ante <= 2 and scoring < 2 or scoring == 0) and replaceable > 0 and money + credit_r - reroll - rent_due >= 3:
         boss_need = f"; the {boss_c.get('name')} needs {boss_c.get('chips')} in {d.get('hands_per_round') or 3} hands" if boss_ahead and boss_c.get("chips") else ""
         print(f"ADVICE: REROLL -> b reroll   (ante {ante} with only {scoring} scoring joker(s) alive next ante: a reroll leaving ${money - reroll} for a $3-4 joker beats leaving{boss_need})")
         return
@@ -3165,7 +3197,8 @@ def _shop_rules(d):
     # before leaving: a strong item just out of reach can be funded by selling a joker that is about to die anyway
     # (perishable with <= 1 round left) or a flat rental (it costs $3 every round)
     want_o = [o for o in options if o[4] > money and o[0] >= 70 and (o[2].startswith("buy") or "Buffoon" in o[3]) and refused not in o[3]]
-    fund = sorted([j for j in sellable_j if (_stk(j)["perishable"] and (_stk(j)["perish_tally"] or 0) <= 1)
+    rgx_wanted = any(_rg_x(o[1]) for o in want_o)  # a lasting r/g xMult $1-3 short: a perishable at <= 2 rounds may fund it
+    fund = sorted([j for j in sellable_j if (_stk(j)["perishable"] and (_stk(j)["perish_tally"] or 0) <= (2 if rgx_wanted else 1))
                    or (_stk(j)["rental"] and not _rg_x(classify_joker(j.get("name"), 0, mh)[0]) and joker_share(d, j, mh) < 0.3)],
                   key=lambda j: owned_value(d, j, mh))
     if want_o and fund:
@@ -3297,7 +3330,8 @@ def pack_advise(d):
         money = int(d.get("money") or 0)
         SPEC = {"The Soul": (100 if n_j < slots else 5, None, "a Legendary joker"),
                 "Black Hole": (90, None, "+1 level to every hand"),
-                "Wraith": (75 if n_j < slots and money <= 10 else (40 if n_j < slots else 5), None, "a random Rare joker, money set to $0"),
+                "Wraith": ((max(5, 75 - 3 * max(money, 0)) if n_j < slots else 5) if not any(j.get("name") == "Joker Stencil" for j in jokers) else 15, None,
+                           "a random Rare joker, money set to $0" + ("; it fills a slot your Joker Stencil counts" if any(j.get("name") == "Joker Stencil" for j in jokers) else "")),
                 "Aura": (70, tgt, "Foil/Holo/Polychrome on the target card"),
                 "Cryptid": (65 if glass else 45, glass or tgt, "2 copies of the target card"),
                 "Deja Vu": (55, tgt, "Red Seal (retrigger) on the target card"),
@@ -3439,22 +3473,62 @@ USAGE = """commands (state-changing ones need --why "..."):
   cards: use N [t1 t2 ...] | sellc N | sell N | order [hand|jokers|cons] p1 p2 ... | move hand|jokers|cons FROM TO
   shop:  buy N | buyuse N [t1 ...] | vouch N | pack N | reroll | endshop | cash
   pack:  pick N [t1 t2 ...] | skippack
+  guard: buy/buyuse/vouch/pack/sell/sellc/use/pick accept a NAME instead of N (`buy Clever`, `pick Venus`) or
+         `--expect NAME` (`buy 1 --expect Clever`): the command is refused if slot N is not that item. The target name
+         is always echoed before sending. Use it after any reroll / pick / sell that may have shifted indices.
   raw:   do TYPE '{json params}'   (harness testing only: skips the client-side legality check)"""
 
 
 def parse_flags(args):
-    """Pull --why/--seed (either `--x val` or `--x=val`) out of argv; returns (positional, why, seed)."""
+    """Pull --why/--seed/--expect (either `--x val` or `--x=val`) out of argv; returns (positional, why, seed); the
+    --expect value is stored in _EXPECT."""
+    global _EXPECT
     pos, opts, i = [], {}, 0
     while i < len(args):
         a = args[i]
-        name = next((n for n in ("why", "seed") if a == f"--{n}" or a.startswith(f"--{n}=")), None)
+        name = next((n for n in ("why", "seed", "expect") if a == f"--{n}" or a.startswith(f"--{n}=")), None)
         if name is None:
             pos.append(a); i += 1
         elif "=" in a:
             opts[name] = a.split("=", 1)[1]; i += 1
         else:
             opts[name] = args[i + 1] if i + 1 < len(args) else ""; i += 2
+    _EXPECT = opts.get("expect")
     return pos, opts.get("why"), opts.get("seed")
+
+
+_EXPECT = None
+_TARGET_AREA = {"buy": "shopj", "buyuse": "shopj", "vouch": "vouchers", "pack": "boosters", "sell": "jokers", "sellc": "consumables",
+                "use": "consumables", "pick": "pack"}
+
+
+def _area_items(d, area):
+    sh = d.get("shop") or {}
+    return {"shopj": lst(sh.get("jokers")), "vouchers": lst(sh.get("vouchers")), "boosters": lst(sh.get("boosters")),
+            "pack": lst((d.get("pack") or {}).get("cards"))}.get(area, lst(d.get(area)))
+
+
+def _resolve_target(cmd, rest, ints, d):
+    """NAME targets and the --expect guard for slot commands (7802: `buy N` after a reroll bought another item):
+    returns the index to use; exits with REFUSED on a mismatch. Always echoes the target name."""
+    area = _TARGET_AREA.get(cmd)
+    if not area:
+        return ints
+    items = _area_items(d, area)
+    name_arg = " ".join(x for x in rest if not re.sub(r"^[A-Za-z]+", "", x).isdigit()) if not ints else None
+    want = (name_arg or _EXPECT or "").strip().lower()
+    if not ints and want:
+        hits = [x for x in items if str(x.get("name") or "").lower().startswith(want) or want in str(x.get("name") or "").lower()]
+        if len(hits) != 1:
+            print(f"REFUSED (nothing sent): '{want}' matches {len(hits)} item(s) in {area}: {[x.get('name') for x in items]}"); sys.exit(1)
+        ints = [hits[0].get("index")]
+    if ints:
+        tgt = next((x for x in items if x.get("index") == ints[0]), None)
+        nm = (tgt or {}).get("name")
+        if want and (nm is None or want not in str(nm).lower()):
+            print(f"REFUSED (nothing sent): {cmd} {ints[0]} is {nm!r} now, not '{want}' (indices shift after a reroll/pick/sell). Run `b s`."); sys.exit(1)
+        print(f"(target: {cmd} {ints[0]} = {nm})")
+    return ints
 
 
 def check_why(why):
@@ -3651,24 +3725,21 @@ def main():
         if err:
             print(f"REFUSED (nothing sent): {err}.\n  e.g. b <port> {' '.join(args)} --why \"Two Pair est 412 clears the 300 needed\"")
             sys.exit(1)
-    if cmd in ("buy", "buyuse", "vouch", "pack", "pick", "sell", "sellc", "use") and not ints:
-        print(f"{cmd} needs a slot number (e.g. `{cmd} 2` or `{cmd} J2`)"); sys.exit(1)
+    if cmd in ("buy", "buyuse", "vouch", "pack", "pick", "sell", "sellc", "use") and not ints and not [x for x in rest if x.strip()] and not _EXPECT:
+        print(f"{cmd} needs a slot number or a name (e.g. `{cmd} 2`, `{cmd} 2 --expect Clever`, `{cmd} Clever`)"); sys.exit(1)
     d_raw = _await_action_effect(wait_settled())
     d = _with_known_jokers(d_raw)
     LEGAL = get("legal")
-    if cmd == "pick" and ints and d.get("phase") == "PACK_OPENING":
-        # a typed index always means the CURRENT pack listing (Main 08:xx: remapping it through a cached listing sent the
-        # wrong card); show what it is so a shifted index is visible before the next pick
-        cur = lst((d.get("pack") or {}).get("cards"))
-        if 1 <= ints[0] <= len(cur):
-            print(f"(pick {ints[0]} = {cur[ints[0] - 1].get('name')} in the current pack listing)")
+    if cmd in _TARGET_AREA:
+        ints = _resolve_target(cmd, rest, ints, d)
+        rest = [str(i) for i in ints] if not [x for x in rest if re.sub(r"^[A-Za-z]+", "", x).isdigit()] else rest
     if cmd in ("s", "state"):
         show(d); show_legal(LEGAL); return
     if cmd == "hands":
         show_hands(d); return
     if cmd == "advise":
         t0 = time.time()
-        while d.get("phase") not in ("SELECTING_HAND", "PACK_OPENING") and time.time() - t0 < 6:
+        while d.get("phase") not in ("SELECTING_HAND", "PACK_OPENING") and time.time() - t0 < 12:
             time.sleep(0.3)  # right after `blind` / a pack pick the phase is still changing (7805)
             d = _with_known_jokers(wait_settled())
         if d.get("phase") == "PACK_OPENING":

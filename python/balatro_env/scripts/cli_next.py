@@ -2437,7 +2437,9 @@ def shop_advise_sim(d, budget_s=6.0):
     if cands_s:
         top_k = max(key(r) for r in cands_s)
         tied = [r for r in cands_s if key(r) >= top_k - 0.03]
-        best = max(tied, key=lambda r: (rank.get(r["option"]["_cmd"], -999), key(r)))
+        # ties: a permanent joker beats a perishable/rental one (Main 09:xx), then the rule score, then the SIM value
+        best = max(tied, key=lambda r: (-(_stk(r["option"].get("add_joker") or {})["perishable"] + _stk(r["option"].get("add_joker") or {})["rental"]),
+                                        rank.get(r["option"]["_cmd"], -999), key(r)))
     gain = (key(best) - key(base)) if best and base else 0.0
     m = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
     adv_cmd = f"{'pack' if m.group(1) == 'pack' else 'buy'} {m.group(2)}" if m else None
@@ -2463,7 +2465,8 @@ def shop_advise_sim(d, budget_s=6.0):
             mine = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
             g_m = (key(mine) - key(base)) if mine and base else 0
             forced = "NEEDED NOW" in adv or "EMERGENCY" in adv  # a survival-forced buy must actually help survival (7810 Banner)
-            if g_m < -0.02 or (forced and g_m <= 0.0):
+            sim_top_nothing = best is None or gain <= 0  # the SIM's best is buying nothing: a BUY must not contradict it (Main 09:xx)
+            if g_m < -0.02 or (forced and g_m <= 0.0) or (sim_top_nothing and g_m <= 0.0):
                 sim.append(f"  (rule advice was: {adv[8:]})")
                 adv = f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes P(clear all next 3 blinds) by {g_m:+.2f}; nothing on offer raises it by more than 0.02)"
             else:
@@ -3071,11 +3074,12 @@ def _shop_rules(d):
             passed = [o[3].split(" [")[0].split(" -> ")[-1] + ("" if o[4] <= money else f" (${o[4]}, unaffordable)") for o in options if o[0] >= 30 and not o[1].startswith("AVOID")]
             if passed and money - reroll0 - rent_due >= 3:
                 print(f"  Ranked higher but passed over: {', '.join(passed)}: no scoring joker on offer, so the money goes to a reroll for one")
-            if money - reroll0 - rent_due >= 4:
-                print(f"ADVICE: REROLL -> b reroll   (no scoring joker in this shop and you own {scoring_now}: at ante {ante} a joker matters more than any pack; ${money - reroll0} left after)")
-                return
-            if scoring_now == 0 and money - reroll0 - rent_due >= 3:
-                print(f"ADVICE: REROLL -> b reroll   (you own NO scoring joker and none is offered: a jokerless deck does not clear the next blind at this stake; ${money - reroll0} stays for a $3 Sly/Jolly if the reroll shows one)")
+            # Credit Card: in a survival spot (EMERGENCY / no scorer / <2 scorers early) the -$20 debt is spendable (7804
+            # died at the ante-2 Small with $18 of credit unused)
+            credit_e = 20 if any(j.get("name") == "Credit Card" and not j.get("debuff") for j in jokers) and (emergency or scoring_now < 2) else 0
+            if money + credit_e - reroll0 - rent_due >= (5 if scoring_now == 0 else 4):  # 0 scorers: keep $5 for a $5 scorer (7806)
+                print(f"ADVICE: REROLL -> b reroll   (no scoring joker in this shop and you own {scoring_now}: at ante {ante} a joker matters more than any pack; ${money - reroll0} left after"
+                      + (", Credit Card debt allowed" if credit_e and money - reroll0 < 4 else "") + ")")
                 return
             if scoring_now == 0 and money >= reroll0:
                 print(f"  (no scorer offered and a reroll would leave under $3: rerolling to $0 has revealed $3 jokers it could no longer buy - keep the ${money} for the next shop)")
@@ -3182,7 +3186,8 @@ def _shop_rules(d):
         print(f"ADVICE: REROLL -> b reroll   (you own {n_rg} reliable/growth xMult (target {rg_target}): hunt for one; ${money - reroll} left after; only if an xMult appears, sell your weakest flat joker for it)")
         return
     scoring = scoring_now
-    if (ante <= 2 and scoring < 2 or scoring == 0) and replaceable > 0 and money - reroll - rent_due >= 3:
+    credit_r = 20 if any(j.get("name") == "Credit Card" and not j.get("debuff") for j in jokers) and (emergency or scoring_now < 2) else 0
+    if (ante <= 2 and scoring < 2 or scoring == 0) and replaceable > 0 and money + credit_r - reroll - rent_due >= 3:
         boss_need = f"; the {boss_c.get('name')} needs {boss_c.get('chips')} in {d.get('hands_per_round') or 3} hands" if boss_ahead and boss_c.get("chips") else ""
         print(f"ADVICE: REROLL -> b reroll   (ante {ante} with only {scoring} scoring joker(s) alive next ante: a reroll leaving ${money - reroll} for a $3-4 joker beats leaving{boss_need})")
         return
@@ -3468,22 +3473,62 @@ USAGE = """commands (state-changing ones need --why "..."):
   cards: use N [t1 t2 ...] | sellc N | sell N | order [hand|jokers|cons] p1 p2 ... | move hand|jokers|cons FROM TO
   shop:  buy N | buyuse N [t1 ...] | vouch N | pack N | reroll | endshop | cash
   pack:  pick N [t1 t2 ...] | skippack
+  guard: buy/buyuse/vouch/pack/sell/sellc/use/pick accept a NAME instead of N (`buy Clever`, `pick Venus`) or
+         `--expect NAME` (`buy 1 --expect Clever`): the command is refused if slot N is not that item. The target name
+         is always echoed before sending. Use it after any reroll / pick / sell that may have shifted indices.
   raw:   do TYPE '{json params}'   (harness testing only: skips the client-side legality check)"""
 
 
 def parse_flags(args):
-    """Pull --why/--seed (either `--x val` or `--x=val`) out of argv; returns (positional, why, seed)."""
+    """Pull --why/--seed/--expect (either `--x val` or `--x=val`) out of argv; returns (positional, why, seed); the
+    --expect value is stored in _EXPECT."""
+    global _EXPECT
     pos, opts, i = [], {}, 0
     while i < len(args):
         a = args[i]
-        name = next((n for n in ("why", "seed") if a == f"--{n}" or a.startswith(f"--{n}=")), None)
+        name = next((n for n in ("why", "seed", "expect") if a == f"--{n}" or a.startswith(f"--{n}=")), None)
         if name is None:
             pos.append(a); i += 1
         elif "=" in a:
             opts[name] = a.split("=", 1)[1]; i += 1
         else:
             opts[name] = args[i + 1] if i + 1 < len(args) else ""; i += 2
+    _EXPECT = opts.get("expect")
     return pos, opts.get("why"), opts.get("seed")
+
+
+_EXPECT = None
+_TARGET_AREA = {"buy": "shopj", "buyuse": "shopj", "vouch": "vouchers", "pack": "boosters", "sell": "jokers", "sellc": "consumables",
+                "use": "consumables", "pick": "pack"}
+
+
+def _area_items(d, area):
+    sh = d.get("shop") or {}
+    return {"shopj": lst(sh.get("jokers")), "vouchers": lst(sh.get("vouchers")), "boosters": lst(sh.get("boosters")),
+            "pack": lst((d.get("pack") or {}).get("cards"))}.get(area, lst(d.get(area)))
+
+
+def _resolve_target(cmd, rest, ints, d):
+    """NAME targets and the --expect guard for slot commands (7802: `buy N` after a reroll bought another item):
+    returns the index to use; exits with REFUSED on a mismatch. Always echoes the target name."""
+    area = _TARGET_AREA.get(cmd)
+    if not area:
+        return ints
+    items = _area_items(d, area)
+    name_arg = " ".join(x for x in rest if not re.sub(r"^[A-Za-z]+", "", x).isdigit()) if not ints else None
+    want = (name_arg or _EXPECT or "").strip().lower()
+    if not ints and want:
+        hits = [x for x in items if str(x.get("name") or "").lower().startswith(want) or want in str(x.get("name") or "").lower()]
+        if len(hits) != 1:
+            print(f"REFUSED (nothing sent): '{want}' matches {len(hits)} item(s) in {area}: {[x.get('name') for x in items]}"); sys.exit(1)
+        ints = [hits[0].get("index")]
+    if ints:
+        tgt = next((x for x in items if x.get("index") == ints[0]), None)
+        nm = (tgt or {}).get("name")
+        if want and (nm is None or want not in str(nm).lower()):
+            print(f"REFUSED (nothing sent): {cmd} {ints[0]} is {nm!r} now, not '{want}' (indices shift after a reroll/pick/sell). Run `b s`."); sys.exit(1)
+        print(f"(target: {cmd} {ints[0]} = {nm})")
+    return ints
 
 
 def check_why(why):
@@ -3680,17 +3725,14 @@ def main():
         if err:
             print(f"REFUSED (nothing sent): {err}.\n  e.g. b <port> {' '.join(args)} --why \"Two Pair est 412 clears the 300 needed\"")
             sys.exit(1)
-    if cmd in ("buy", "buyuse", "vouch", "pack", "pick", "sell", "sellc", "use") and not ints:
-        print(f"{cmd} needs a slot number (e.g. `{cmd} 2` or `{cmd} J2`)"); sys.exit(1)
+    if cmd in ("buy", "buyuse", "vouch", "pack", "pick", "sell", "sellc", "use") and not ints and not [x for x in rest if x.strip()] and not _EXPECT:
+        print(f"{cmd} needs a slot number or a name (e.g. `{cmd} 2`, `{cmd} 2 --expect Clever`, `{cmd} Clever`)"); sys.exit(1)
     d_raw = _await_action_effect(wait_settled())
     d = _with_known_jokers(d_raw)
     LEGAL = get("legal")
-    if cmd == "pick" and ints and d.get("phase") == "PACK_OPENING":
-        # a typed index always means the CURRENT pack listing (Main 08:xx: remapping it through a cached listing sent the
-        # wrong card); show what it is so a shifted index is visible before the next pick
-        cur = lst((d.get("pack") or {}).get("cards"))
-        if 1 <= ints[0] <= len(cur):
-            print(f"(pick {ints[0]} = {cur[ints[0] - 1].get('name')} in the current pack listing)")
+    if cmd in _TARGET_AREA:
+        ints = _resolve_target(cmd, rest, ints, d)
+        rest = [str(i) for i in ints] if not [x for x in rest if re.sub(r"^[A-Za-z]+", "", x).isdigit()] else rest
     if cmd in ("s", "state"):
         show(d); show_legal(LEGAL); return
     if cmd == "hands":
