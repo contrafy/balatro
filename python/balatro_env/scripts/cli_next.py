@@ -273,13 +273,13 @@ def show(d):
         ante_n = int(d.get("ante") or 1)
         tk = str(small.get("tag_key") or "")
         n_jk = len(lst(d.get("jokers"))); free_j = int(d.get("joker_slots") or 5) - n_jk
-        scoring_j = sum(1 for j in lst(d.get("jokers")) if not _dead_perishable(j) and _is_scoring_cls(classify_joker(j.get("name"), 0, main_hand(d))[0]))
+        scoring_j = sum(1 for j in lst(d.get("jokers")) if is_scorer(d, j, main_hand(d)))
         # cash / level tags pay right after the skip (tag.lua 'immediate'): value them in dollars against a $0 Small Blind
         run_c = d.get("run") or {}
         money_n = int(d.get("money") or 0)
         cash = {"tag_handy": int(run_c.get("hands_played_total") or 0), "tag_garbage": int(run_c.get("unused_discards") or 0),
                 "tag_economy": min(max(money_n, 0), 40), "tag_skip": 5 * (int(run_c.get("skips") or 0) + 1)}
-        if tk in cash and cash[tk] >= 8:
+        if tk in cash and cash[tk] >= 5:  # Handy/Garbage/Economy/Skip pay right after the skip (3 reports of a refused Handy)
             NOW_TAGS[tk] = f"${cash[tk]} right now (the Small Blind pays $0 at this stake)"
         orb = small.get("orbital_hand")
         if tk == "tag_orbital" and orb in (main_hand(d), "Pair", "Two Pair", "Three of a Kind", "Full House"):
@@ -2105,9 +2105,20 @@ def marginal_gain(d, mh, c, jokers=None):
     # a Negative joker brings its own slot (Stencil sees no change); any other joker fills one (Stencil loses x1)
     d_c = dict(d, joker_slots=int(d.get("joker_slots") or 5) + 1) if _joker_edition(c) == "negative" else d
     b = deck_round_est(d, own)
-    if b:
-        return deck_round_est(d_c, own + [c]) / b - 1
-    return round_est(d_c, mh, own + [c]) / (round_est(d, mh, own) or 1) - 1
+    deck_g = deck_round_est(d_c, own + [c]) / b - 1 if b else None
+    # the KK synthetic round on YOUR main hand sees hand-type-gated jokers (Mad Joker +10 on Two Pair) that the deck deals'
+    # best hands often miss (7807 lost the ante-4 boss by 1304 with Mad Joker rated "adds ~0"); take the larger
+    syn_g = round_est(d_c, mh, own + [c]) / (round_est(d, mh, own) or 1) - 1
+    return syn_g if deck_g is None else max(deck_g, syn_g)
+
+
+def is_scorer(d, j, mh):
+    """ONE scorer test for blind select, shop and packs (7806: `s` said 1 scorer with 4 owned): a scoring class, a
+    scoring edition, or 15%+ of a round's est."""
+    if j.get("debuff") or _dead_perishable(j):
+        return False
+    return (_is_scoring_cls(classify_joker(j.get("name"), 0, mh)[0]) or _joker_edition(j) in ("holo", "foil", "polychrome")
+            or joker_share(d, j, mh) >= 0.15)
 
 
 def deck_best_est(d, samples=40, pct=0.75, seed=7):
@@ -2317,42 +2328,135 @@ def shop_advise_sim(d, budget_s=3.5):
            if _stk(r["option"].get("add_joker") or {})["eternal"] and _stk(r["option"].get("add_joker") or {})["rental"] else "")
         for r in sorted(feas, key=key, reverse=True)[:6]]
     adv = lines[adv_i]
+    out_all = "\n".join(lines)
+    # SIM PRIMARY (orchestrator 06:4x: ~10 post-mortems where the rule score contradicted the SIM and the SIM was right).
+    # Jokers/planets/playing cards are chosen by SIM delta (score ratio when every p < 0.05); the rule score only breaks
+    # SIM ties within 0.03 and decides what the SIM cannot model (packs, vouchers, tarots, boss counters, sells first).
+    # Hard money/sticker rules stay: no eternal rental before ante 7, no 2nd rental before ante 6, the $ floor unless
+    # TIGHT/EMERGENCY.
+    rank = {}
+    for ln in lines:
+        mm = re.match(r"^\s{1,4}(-?\d{1,3}) (buy \d+)\s", ln)
+        if mm:
+            rank[mm.group(2)] = int(mm.group(1))
+    mf = re.search(r"money floor \$(\d+)", out_all)
+    floor_v = int(mf.group(1)) if mf else 0
+    floor_off = "TIGHT:" in out_all or "EMERGENCY" in out_all
+    ante_s = int(d.get("ante") or 1)
+    own_rent = any(_stk(j)["rental"] for j in lst(d.get("jokers")))
+    m0 = re.search(r"b (buy|buyuse) (\d+)", adv)
+    adv_cmd0 = f"buy {m0.group(2)}" if m0 else None
+    base0 = next((r for r in feas if not r["option"].get("_cmd")), None)
+    key0 = key(base0) if base0 else 0
+
+    def allowed(r):
+        aj = r["option"].get("add_joker") or {}
+        st = _stk(aj)
+        if st["eternal"] and st["rental"] and ante_s < 7:
+            return False
+        if st["rental"] and own_rent and ante_s < 6:
+            return False
+        # the $ floor binds unless TIGHT/EMERGENCY, the rules exempted this very buy, or the SIM gain is large (+0.15)
+        if not floor_off and r.get("money_after") is not None and int(r.get("money_after") or 0) < floor_v and int(r["option"].get("cost") or 0) > 0 \
+                and r["option"].get("_cmd") != adv_cmd0 and key(r) - key0 < 0.15:
+            return False
+        return True
+    base = next((r for r in feas if not r["option"].get("_cmd")), None)
+    cands_s = [r for r in feas if r["option"].get("_cmd") and allowed(r)]
+    best = None
+    if cands_s:
+        top_k = max(key(r) for r in cands_s)
+        tied = [r for r in cands_s if key(r) >= top_k - 0.03]
+        best = max(tied, key=lambda r: (rank.get(r["option"]["_cmd"], -999), key(r)))
+    gain = (key(best) - key(base)) if best and base else 0.0
     m = re.search(r"b (buy|buyuse) (\d+)", adv)
     adv_cmd = f"buy {m.group(2)}" if m else None
-    mine = next((r for r in feas if (r["option"].get("_cmd") == adv_cmd if adv_cmd else not r["option"].get("_cmd") and "baseline" in r["label"])), None)
-    top = max(feas, key=key) if feas else None
-    if mine and adv_cmd and (mine.get("delta") or 0) <= 0 and not all_zero and adv.startswith("ADVICE:") and "BUY" in adv.split("(")[0] \
-            and "XMULT(growth" not in adv and "COUNTER" not in adv:
-        # the SIM says the advised buy (with its sell) does not raise survival: never advise it (Main 06:xx: "sell Mystic
-        # Summit for Baron" while SIM rated Baron -0.04)
-        sim.append(f"  (rule advice was: {adv[8:]})")
-        better = [r for r in feas if (r.get("delta") or 0) > 0.02 and r["option"].get("_cmd")
-                  and not (_stk(r["option"].get("add_joker") or {})["eternal"] and _stk(r["option"].get("add_joker") or {})["rental"])]
-        if better:
-            b_r = max(better, key=key)
-            adv = f"ADVICE: BUY -> b {b_r['option']['_cmd']}   (SIM veto: the rule pick changes survival by {mine.get('delta') or 0:+.2f}; {b_r['label']} {b_r.get('delta'):+.2f})"
-        else:
-            adv = f"ADVICE: LEAVE -> b endshop   (SIM veto: the rule pick changes survival by {mine.get('delta') or 0:+.2f}, nothing on offer raises it)"
-    elif top and mine and top is not mine and key(top) - key(mine) > 0.05:
-        rank = {}
-        for ln in lines:
-            mm = re.match(r"^\s{1,4}(\d{1,3}) (buy \d+)\s", ln)
-            if mm:
-                rank[mm.group(2)] = int(mm.group(1))
-        t_cmd = top["option"].get("_cmd")
-        aj = top["option"].get("add_joker") or {}
-        big_gap = key(top) - key(mine) > 0.2 and not all_zero and t_cmd and not (_stk(aj)["eternal"] and _stk(aj)["rental"])
-        if t_cmd and adv_cmd and t_cmd in rank and adv_cmd in rank and abs(rank[t_cmd] - rank[adv_cmd]) <= 5 and adv.startswith("ADVICE: BUY") \
-                and not (_stk(aj)["eternal"] and _stk(aj)["rental"]):
+    sim_cmds = {r["option"].get("_cmd") for r in feas if r["option"].get("_cmd")}
+    keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING")) or \
+        (adv_cmd not in sim_cmds and adv.split("(")[0].strip() not in ("ADVICE: LEAVE -> b endshop", "ADVICE: REROLL -> b reroll") and gain < 0.05)
+    if "MAIN SCALING" in adv and gain >= 0.05:
+        keep_rule = False  # a main-hand planet levels forever (beyond the SIM's 3 blinds); only a clearly better buy replaces it
+    if not keep_rule:
+        if best is not None and gain > 0.02:
+            new_cmd = best["option"]["_cmd"]
+            sell_ix = best["option"].get("sell")
+            sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
+            new = (f"ADVICE: SELL then BUY -> b sell {sell_ix}  then  b {new_cmd}" if sell_ix else f"ADVICE: BUY -> b {new_cmd}") + \
+                f"   (SIM: {best['label']} {'score ratio' if all_zero else 'p_next'} {key(best):.2f} vs {key(base):.2f} buying nothing" + \
+                (f"; rule score {rank.get(new_cmd)}" if new_cmd in rank else "") + ")"
+            if new.split("   ")[0] != adv.split("   ")[0]:
+                sim.append(f"  (rule advice was: {adv[8:]})")
+                adv = new
+        elif adv_cmd in sim_cmds:
             sim.append(f"  (rule advice was: {adv[8:]})")
-            adv = f"ADVICE: BUY -> b {t_cmd}   (SIM tie-break: rules scored it {rank[t_cmd]} vs {rank[adv_cmd]}; SIM {top['label']} p_next {key(top):.2f} vs {key(mine):.2f})"
-        elif big_gap:
-            # the rules and the SIM disagree by > 0.2 p_next: the SIM played the next 3 blinds, defer to it (7805: Wily
-            # rated -7 while the SIM gave +0.38)
+            mine = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
+            adv = f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes survival by {(key(mine) - key(base)) if mine and base else 0:+.2f}; nothing on offer raises it by more than 0.02)"
+    lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
+    print("\n".join(lines))
+
+
+def pack_advise_sim(d, budget_s=3.5):
+    """`b advise` in a pack: the rule pick plus SIM-primary choice among jokers/planets/cards (skip = baseline); hard
+    sticker rules kept (no eternal rental before ante 7, no 2nd rental before ante 6). Spectral/Arcana picks (targets) stay
+    with the rules."""
+    import contextlib
+    import io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        pack_advise(d)
+    lines = buf.getvalue().splitlines()
+    adv_i = next((i for i, ln in enumerate(lines) if ln.startswith("ADVICE:")), None)
+    if adv_i is None or d.get("phase") != "PACK_OPENING":
+        print("\n".join(lines)); return
+    try:
+        ss = _shop_sim()
+        opts = ss.options_from_state(d)
+        cards = lst((d.get("pack") or {}).get("cards"))
+        for o in opts:
+            item = o.get("add_joker") or (o.get("add_cards") or [None])[0]
+            if item is None and o.get("levels"):
+                nm = o.get("label", "").replace("take ", "", 1).split(" $")[0]
+                item = next((c for c in cards if c.get("name") == nm), None)
+            pos = next((i for i, c in enumerate(cards, 1) if c is item or (item is not None and c.get("id") == item.get("id") and c.get("name") == item.get("name"))), None)
+            o["_cmd"] = f"pick {pos}" if pos else None
+        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate, seed=0, min_samples=48)
+    except Exception as e:
+        lines.insert(adv_i, f"  (SIM unavailable: {type(e).__name__}: {e})")
+        print("\n".join(lines)); return
+    feas = [r for r in res if r.get("feasible") and r.get("label") != "baseline (no change)"]
+    if not any(r["option"].get("_cmd") for r in feas):
+        print("\n".join(lines)); return
+    all_zero = all((r.get("p_next") or 0) < 0.05 for r in feas)
+    key = (lambda r: r.get("score_ratio") or 0) if all_zero else (lambda r: r.get("p_next") or 0)
+    ante_s = int(d.get("ante") or 1)
+    own_rent = any(_stk(j)["rental"] for j in lst(d.get("jokers")))
+
+    def allowed(r):
+        st = _stk(r["option"].get("add_joker") or {})
+        return not (st["eternal"] and st["rental"] and ante_s < 7) and not (st["rental"] and own_rent and ante_s < 6)
+    sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
+        f"  SIM (next 3 blinds): {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"p_next {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f})")
+        for r in sorted(feas, key=key, reverse=True)[:6]]
+    adv = lines[adv_i]
+    base = next((r for r in feas if not r["option"].get("_cmd")), None)
+    cands_s = [r for r in feas if r["option"].get("_cmd") and allowed(r)]
+    if cands_s and base:
+        top_k = max(key(r) for r in cands_s)
+        rule_pick = (re.search(r"b (pick \d+)", adv) or [None, None])[1]
+        tied = [r for r in cands_s if key(r) >= top_k - 0.03]
+        best = next((r for r in tied if r["option"]["_cmd"] == rule_pick), None) or max(tied, key=key)
+        if key(best) - key(base) > 0.02:
+            sell_ix = best["option"].get("sell")
+            sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
+            new = (f"ADVICE: SELL then PICK -> b sell {sell_ix}  then  b {best['option']['_cmd']}" if sell_ix else f"ADVICE: PICK -> b {best['option']['_cmd']}") + \
+                f"   (SIM: {best['label']} {key(best):.2f} vs {key(base):.2f} for skipping)"
+            if new.split("   ")[0] != adv.split("   ")[0]:
+                sim.append(f"  (rule advice was: {adv[8:]})")
+                adv = new
+        elif any(r["option"].get("_cmd") == rule_pick and r["option"].get("add_joker") for r in feas):
+            # only a JOKER pick can be worse than skipping (stickers, a slot); a free planet/card never is
             sim.append(f"  (rule advice was: {adv[8:]})")
-            adv = f"ADVICE: BUY -> b {t_cmd}   (SIM: {top['label']} p_next {key(top):.2f} vs {key(mine):.2f} for the rule pick over the next 3 blinds)"
-        else:
-            sim.append(f"  SIM disagrees: {top['label']} {'score_ratio' if all_zero else 'p_next'} {key(top):.2f} vs {key(mine):.2f} for the ADVICE pick (rules kept; weigh it)")
+            adv = "ADVICE: SKIP -> b skippack   (SIM: no pick raises survival over the next 3 blinds by more than 0.02)"
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
     print("\n".join(lines))
 
@@ -2480,8 +2584,7 @@ def _shop_rules(d):
     _is_scoring = _is_scoring_cls
     # planning unit: scorers alive next ante; a holographic/foil edition makes any joker a flat scorer (+10 mult / +50 chips)
     # (suit jokers, Stencil, ... count when they carry 15%+ of a round: 7810 Gluttonous and 7807 Stencil were "0 scorers")
-    scoring_now = sum(1 for j in jokers if alive_next(j) and (_is_scoring(classify_joker(j.get("name"), 0, mh)[0]) or _joker_edition(j) in ("holo", "foil", "polychrome")
-                                                              or joker_share(d, j, mh) >= 0.15))
+    scoring_now = sum(1 for j in jokers if alive_next(j) and is_scorer(d, j, mh))
     if expiring or any(not alive_next(j) for j in jokers):
         print(f"  Scorers still alive next ante: {scoring_now}")
     owns_mult = any(alive_next(j) and ("mult" in JOKER_DESC.get(j.get("name"), "").lower() or _joker_edition(j) in ("holo", "polychrome")) for j in jokers)
@@ -3015,7 +3118,7 @@ def pack_advise(d):
     if any(c.get("set") == "Joker" for c in cards):
         bl_left = _rounds_left(d) - 3 * max(0, 8 - ante)
         alive = [j for j in jokers if not _dead_perishable(j) and not (_stk(j)["perishable"] and (_stk(j)["perish_tally"] or 0) <= bl_left)]
-        scoring_now = sum(1 for j in alive if _is_scoring_cls(classify_joker(j.get("name"), 0, mh)[0]) or joker_share(d, j, mh) >= 0.15)
+        scoring_now = sum(1 for j in alive if is_scorer(d, j, mh))
         own_rentals = sum(1 for j in jokers if _stk(j)["rental"])
         free_p = slots - len(jokers)
         under = (ante <= 2 and scoring_now < 2) or scoring_now < 2
@@ -3450,7 +3553,7 @@ def main():
             time.sleep(0.3)  # right after `blind` / a pack pick the phase is still changing (7805)
             d = _with_known_jokers(wait_settled())
         if d.get("phase") == "PACK_OPENING":
-            pack_advise(d)
+            pack_advise_sim(d)
         else:
             advise(d)
         return

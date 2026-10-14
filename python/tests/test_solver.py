@@ -1,5 +1,6 @@
 """Round solver (balatro_env/solver.py) on hand-built SELECTING_HAND observations, scored with cli.py's estimate."""
 
+import itertools
 import time
 
 import pytest
@@ -145,6 +146,57 @@ def test_misprint_is_sampled_per_hand():
     st["jokers"][0]["ability"] = {"extra": {"min": 0, "max": 23}}
     top = plan(st)[0]
     assert 0.55 < top["p_model"] < 0.8
+
+
+def _small_deck(st, keep_ids):
+    """Only the listed deck card ids stay in the draw pile."""
+    for c in st["deck"]["cards"]:
+        c["remaining"] = c["remaining"] and c["id"] in keep_ids
+    st["deck"]["draw_pile"] = sum(c["remaining"] for c in st["deck"]["cards"])
+    return st
+
+
+def _exact_last_discard(st, discard_idx):
+    """Exact P(clear) of a last-hand discard: every draw of the discarded count from the pile, then the best play over
+    all 1-5 card subsets of the new hand (with the solver's own scoring of a play)."""
+    rs = solver.RoundSolver(st, estimate)
+    keep = [c for c, ix in zip(rs.slots, rs.slot_index) if ix not in discard_idx]
+    pile = rs.pool[:rs.pile_n]
+    hits = tot = 0
+    for drawn in itertools.combinations(pile, len(discard_idx)):
+        hand = keep + list(drawn)
+        best = 0.0
+        for k in range(1, 6):
+            for play in itertools.combinations(hand, k):
+                s, _t = rs.score(list(play), [c for c in hand if c not in play], 1, 0, rs.ctx0)
+                best = max(best, s)
+        hits += best >= rs.need0
+        tot += 1
+    return hits / tot
+
+
+@pytest.mark.parametrize("need,discard", [(400, ("9C", "6D", "2S")), (330, ("QH", "QD", "2S")), (700, ("JS", "9C", "6D"))])
+def test_last_hand_discard_matches_exhaustive_enumeration(need, discard):
+    # 7803 JEMI6XIF / 7804 GWCJ5DMP: last-hand discard p must be the exact chance that the best final hand clears;
+    # the multi-hand calibration map must not inflate it (no later decision is left to outplay the policy)
+    hand = ["QH", "QD", "JS", "9C", "7S", "7D", "6D", "2S"]
+    st = state(hand, need=need, hands=1, discards=1, jokers=["Joker"])
+    st["jokers"][0]["ability"] = {"mult": 4}
+    ids = {c["id"] for c in st["deck"]["cards"] if c["rank"] in ("Queen", "7", "Jack", "3") and c["suit"] != "Spades"}
+    st = _small_deck(st, ids | {c["id"] for c in st["deck"]["cards"] if c["rank"] == "4"})
+    exact = _exact_last_discard(st, idx(st, *discard))
+    r = solver.evaluate_action(st, "DISCARD", idx(st, *discard), estimate, samples=400)
+    assert abs(r["p_model"] - exact) < 0.07, (r["p_model"], exact)
+    assert r["p_clear"] == r["p_model"]
+
+
+def test_filler_play_is_labelled_by_what_the_game_reads():
+    # 7804: a dig KC TH 7H 7C was labelled "High Card KC est 15" although it plays Pair 77
+    st = state(["KC", "TH", "7H", "7C", "AS", "AD", "QS", "QD"], need=5000, hands=3, discards=0, jokers=["Joker"])
+    st["jokers"][0]["ability"] = {"mult": 4}
+    for r in plan(st, samples=30):
+        if r["action"] == "PLAY" and r["hand"] and not r["note"].startswith(("dig", "throwaway")):
+            assert r["note"].startswith(r["hand"]), r
 
 
 def test_mr_bones_is_a_tie_break_not_a_clear():

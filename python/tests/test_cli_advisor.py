@@ -748,4 +748,23 @@ def test_sim_veto_covers_needed_now(monkeypatch):
     rules = _advice(_out(cli.shop_advise, d))
     out = _out(cli.shop_advise_sim, d)
     assert "b buy 1" in rules
-    assert "SIM veto" in _advice(out) and "b buy 1" not in _advice(out)
+    assert "SIM" in _advice(out) and "b buy 1" not in _advice(out)
+
+
+def test_sim_primary_picks_sim_best_joker(monkeypatch):
+    # orchestrator 06:4x: SIM is primary for jokers (Mad Joker rule 0 vs SIM +0.21)
+    d = shop(jokers=[joker("Joker", 1)], shop_jokers=[{"index": 1, "name": "Mad Joker", "set": "Joker", "cost": 4},
+                                                      {"index": 2, "name": "Jolly Joker", "set": "Joker", "cost": 3}], money=20, ante=3)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
+
+    class FakeSim:
+        def options_from_state(self, st):
+            sj = st["shop"]["jokers"]
+            return [{"label": "baseline (buy nothing)"}, {"label": "buy Mad Joker $4", "add_joker": sj[0], "cost": 4}, {"label": "buy Jolly Joker $3", "add_joker": sj[1], "cost": 3}]
+
+        def value_options(self, st, opts, **kw):
+            return [{"label": opts[0]["label"], "option": opts[0], "feasible": True, "p_next": 0.50, "delta": 0.0, "money_after": 20},
+                    {"label": opts[1]["label"], "option": opts[1], "feasible": True, "p_next": 0.71, "delta": 0.21, "money_after": 16},
+                    {"label": opts[2]["label"], "option": opts[2], "feasible": True, "p_next": 0.55, "delta": 0.05, "money_after": 17}]
+    monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
+    assert "b buy 1" in _advice(_out(cli.shop_advise_sim, d))

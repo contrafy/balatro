@@ -18,7 +18,8 @@ def joker(name, **kw):
     return j
 
 
-def shop_state(jokers=(), shop_jokers=(), money=10, ante=1, small="Defeated", boss="The Hook", slots=6, pack=None):
+def shop_state(jokers=(), shop_jokers=(), money=10, ante=1, small="Defeated", boss="The Hook", slots=6, pack=None,
+               boosters=()):
     deck = [{"id": i + 1, "rank": RK.get(r, r), "suit": ST[s], "remaining": True}
             for i, (s, r) in enumerate((s, r) for s in "SHDC" for r in "23456789TJQKA")]
     base = BLIND_BASE[3][ante - 1]
@@ -28,7 +29,8 @@ def shop_state(jokers=(), shop_jokers=(), money=10, ante=1, small="Defeated", bo
             "deck": {"cards": deck, "draw_pile": 52, "total": 52},
             "hand_levels": {k: {"level": 1, "chips": c, "mult": m, "played": 0, "played_this_round": 0, "visible": True}
                             for k, (c, m) in LEVELS.items()},
-            "shop": {"jokers": [dict(j, index=i + 1) for i, j in enumerate(shop_jokers)], "vouchers": [], "boosters": []},
+            "shop": {"jokers": [dict(j, index=i + 1) for i, j in enumerate(shop_jokers)], "vouchers": [],
+                     "boosters": list(boosters)},
             "pack": {"cards": [dict(c, index=i + 1) for i, c in enumerate(pack or [])]},
             "blind_select": {"choices": {
                 "Small": {"name": "Small Blind", "boss": False, "chips": base, "state": small},
@@ -49,6 +51,23 @@ def test_upcoming_blinds_continue_into_next_ante():
     bl = shop_sim.upcoming_blinds(st, 3, BLIND_BASE)
     assert [(b["ante"], b["kind"], b["chips"]) for b in bl] == [(2, "Big", 1500), (2, "Boss", 2000), (3, "Small", 3200)]
     assert bl[1]["name"] == "The Water" and bl[1]["boss"]
+
+
+def test_buffoon_and_celestial_packs_are_valued_as_expected_best_pick():
+    boosters = [{"index": 1, "kind": "Buffoon", "name": "Buffoon Pack", "size": 2, "choose": 1, "cost": 4},
+                {"index": 2, "kind": "Celestial", "name": "Celestial Pack", "size": 3, "choose": 1, "cost": 4},
+                {"index": 3, "kind": "Arcana", "name": "Arcana Pack", "size": 3, "choose": 1, "cost": 4}]
+    st = shop_state(ante=1, small="Defeated", money=6, boosters=boosters)
+    st["hand_levels"]["Pair"]["played"] = 3
+    assert not any(o.get("pack") for o in shop_sim.options_from_state(st))  # opt-in only
+    opts = shop_sim.options_from_state(st, packs=True)
+    assert [o["label"] for o in opts if o.get("pack")] == ["buy Buffoon Pack $4", "buy Celestial Pack $4"]
+    assert opts[1]["booster_index"] == 1
+    res = by_label(run(st, opts, blinds=2, budget_s=20, min_samples=40))
+    buff, cel = res["buy Buffoon Pack $4"], res["buy Celestial Pack $4"]
+    assert buff["feasible"] and buff["money_after"] == 2 and buff["delta"] > 0.05  # jokerless ante 1: any joker helps
+    assert 0 <= cel["delta"] < buff["delta"]
+    assert any("virtual packs" in n for n in buff["notes"]) and not any(r.startswith("_pack") for r in res)
 
 
 def test_mult_joker_beats_baseline_and_planet_is_not_negative():

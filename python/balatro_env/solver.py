@@ -34,11 +34,13 @@ GROWTH_JOKERS = {"Square Joker", "Runner", "Spare Trousers", "Ride the Bus", "Gr
 TIE_P = 0.015  # p_clear differences below this are Monte-Carlo noise: rank those options by secondary value
 GROWTH_W = 0.5  # secondary value of one growth-joker trigger, in $ (an unused hand pays $1)
 MIN_N = 64  # options within 0.3 of the best p get at least this many samples; fewer are flagged low_n
-# Isotonic map of the model p to the realized clear rate of recorded Gold decisions WITH an active joker (solver_calib:
-# 2757 decisions, 2026-10-14): (model p, realized) knots, linear in between. Jokerless rounds (394 decisions, almost
-# all ante 1) are calibrated as raw (Brier 0.054 raw vs 0.082 mapped out-of-fold), so calibrate() leaves them as is.
-CALIBRATION = ((0.0, 0.0), (0.0276, 0.1053), (0.1509, 0.3611), (0.3465, 0.5521), (0.5901, 0.7512), (0.785, 0.8496),
-               (0.8637, 0.9277), (0.9122, 0.9826), (0.995, 1.0), (1.0, 1.0))
+# Isotonic map of the model p to the realized clear rate of recorded Gold decisions WITH an active joker and 2+ hands
+# left (solver_calib: 3337 decisions, 2026-10-14): (model p, realized) knots, linear in between. Players beat the
+# greedy later-hand policy there. Jokerless rounds and final-hand decisions (the rest of the round is forced: the
+# best play after the draw) are calibrated as raw (final hand: Brier 0.023 raw vs 0.025 mapped), so they stay raw.
+CALIBRATION = ((0.0, 0.0), (0.0256, 0.1884), (0.1371, 0.3109), (0.2845, 0.4479), (0.4229, 0.549), (0.5345, 0.6912),
+               (0.6094, 0.716), (0.6729, 0.7619), (0.7788, 0.8606), (0.8563, 0.8974), (0.8883, 0.9625),
+               (0.9201, 0.9836), (0.9945, 1.0), (1.0, 1.0))
 PILLAR_W = 0.25  # $-equivalent cost per card played when The Pillar is this ante's boss (played cards get debuffed)
 LEVEL_UP = {"High Card": (10, 1), "Pair": (15, 1), "Two Pair": (20, 1), "Three of a Kind": (20, 2),
             "Straight": (30, 3), "Flush": (15, 2), "Full House": (25, 2), "Four of a Kind": (30, 3),
@@ -974,9 +976,14 @@ class RoundSolver:
             for K, _v in top_keeps[:8]:
                 fill = self._fillers(p, known, K | pids, h, d, ctx, s)
                 if len(fill) > len(p):
+                    fids = {id(c) for c in fill}
+                    s2, t2 = self.score(fill, [c for c in known if id(c) not in fids], h, d, ctx)
+                    sc2 = self.classify(fill)[1]  # label what the game reads (fillers can form a pair)
+                    rest = [c for c in fill if c not in sc2]
                     add(PLAY, [idx_of[id(c)] for c in fill],
-                        f"{t} {' '.join(c.label() for c in p)} est {int(s)} + filler(s) "
-                        f"{' '.join(c.label() for c in fill[len(p):])} (draws {len(fill)} new cards)")
+                        f"{t2} {' '.join(c.label() for c in sc2)} est {int(s2)}"
+                        + (f" + filler(s) {' '.join(c.label() for c in rest)}" if rest else "")
+                        + f" (draws {len(fill)} new cards)")
                     break
         if self.final_dep and h >= 2 and vis and not self.psychic:
             hold = self._hold(vis, h, d, ctx)
@@ -1073,7 +1080,8 @@ class RoundSolver:
             if not n:
                 continue
             res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]],
-                        "p_clear": calibrate(cl / n, self.jokerless), "p_model": cl / n, "p_survive": sv / n,
+                        "p_clear": cl / n if self.h0 <= 1 else calibrate(cl / n, self.jokerless),
+                        "p_model": cl / n, "p_survive": sv / n,
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
                         "discards_used": du / n, "n": n, "low_n": n < min(MIN_N, samples), "note": c["note"],

@@ -21,10 +21,12 @@ than the absolute probabilities. Stdlib only; cli.py may load it by file path.
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import random
 import sys
 import time
+from collections import Counter
 
 LEVEL_UP = {"High Card": (10, 1), "Pair": (15, 1), "Two Pair": (20, 1), "Three of a Kind": (20, 2),
             "Straight": (30, 3), "Flush": (15, 2), "Full House": (25, 2), "Four of a Kind": (30, 3),
@@ -99,10 +101,12 @@ def _is_playing_card(item):
     return item.get("rank") is not None and item.get("suit") is not None
 
 
-def options_from_state(state):
+def options_from_state(state, packs=False):
     """Standard options for the current SHOP or PACK_OPENING state: baseline, every affordable shop joker, shop
     planet, shop playing card, every pack joker/planet/playing card. Jokers that need a slot when the slots are full
-    come with sell='weakest' (the owned non-eternal joker whose loss costs the least, found by simulation)."""
+    come with sell='weakest' (the owned non-eternal joker whose loss costs the least, found by simulation).
+    packs=True (SHOP): also every affordable Buffoon / Celestial booster as {label, pack: {kind, size, choose}, cost,
+    booster_index} (valued by value_options as the expected best pick; adds simulation work)."""
     ph = state.get("phase")
     money = int(state.get("money") or 0)
     full = len(_lst(state.get("jokers"))) >= int(state.get("joker_slots") or 5)
@@ -131,6 +135,13 @@ def options_from_state(state):
             opts.append({"label": tag, "levels": ["*"], "cost": cost})
         elif _is_playing_card(c):
             opts.append({"label": tag, "add_cards": [c], "cost": cost})
+    if packs and ph == "SHOP":
+        for b in _lst((state.get("shop") or {}).get("boosters")):
+            cost = int(b.get("cost") or 0)
+            if b.get("kind") in ("Buffoon", "Celestial") and cost <= money:
+                opts.append({"label": f"buy {b.get('name') or b.get('kind') + ' Pack'} ${cost}", "cost": cost,
+                             "pack": {"kind": b.get("kind"), "size": b.get("size"), "choose": b.get("choose")},
+                             "booster_index": b.get("index")})
     return opts
 
 
@@ -417,20 +428,144 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
     return res
 
 
+_POOL = None
+PACK_REPS = 8  # joker draws from the pool evaluated per Buffoon pack (distinct ones become simulated sub-options)
+PACK_PLANETS = 4  # Celestial: planets of the 4 most played hands are simulated; others count as skipping
+PACK_VIRTUAL = 2000  # virtual packs drawn from the evaluated cards for the expected value
+
+
+def load_pack_pool():
+    """Empirical Gold pools for pack options (pack_pool.json next to this file, built by
+    `python -m balatro_env.analysis.pack_pool`); None when missing."""
+    global _POOL
+    if _POOL is None:
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pack_pool.json")
+        try:
+            with open(p, encoding="utf-8") as f:
+                _POOL = json.load(f)
+        except OSError:
+            _POOL = {}
+    return _POOL or None
+
+
+def _is_base(o):
+    return not {k for k in o if not k.startswith("_")} - {"label", "cost"} and not o.get("cost")
+
+
+def _expand_packs(state, options, seed):
+    """Simulated sub-options for pack options: (sub-options, plan per pack option index)."""
+    pool = load_pack_pool()
+    rng = random.Random(f"{seed}:packs")
+    subs, plans, reps = [], {}, {}
+    full = len(_lst(state.get("jokers"))) >= int(state.get("joker_slots") or 5)
+    owned = {j.get("name") for j in _lst(state.get("jokers"))}
+    hl = state.get("hand_levels") or {}
+    for oi, o in enumerate(options):
+        pk = o.get("pack")
+        if not pk:
+            continue
+        kind = pk.get("kind")
+        if not pool or kind not in ("Buffoon", "Celestial"):
+            plans[oi] = {"error": "no pack pool" if not pool else f"{kind} packs are not simulated"}
+            continue
+        if kind not in reps:
+            if kind == "Buffoon":
+                cands = [j for j in pool["jokers"] if j.get("name") not in owned]
+                draws = rng.choices(cands, weights=[j["count"] for j in cands], k=PACK_REPS) if cands else []
+                labels = []
+                for j in draws:
+                    lab = f"_pack Buffoon: {j.get('name')}" + "".join(
+                        f" {{{s}}}" for s in ("eternal", "perishable", "rental") if j.get(s)) + (
+                        f" ({j['edition']})" if j.get("edition") else "")
+                    if lab not in {s["label"] for s in subs}:
+                        so = {"label": lab, "add_joker": j, "cost": 0}
+                        if full and j.get("edition") != "negative":
+                            so["sell"] = "weakest"
+                        subs.append(so)
+                    labels.append(lab)
+                reps[kind] = {"draws": labels}
+            else:
+                planets = pool["planets"]
+                top = sorted(hl, key=lambda h: (-int((hl[h] or {}).get("played") or 0), -int((hl[h] or {}).get("level") or 1)))
+                top = [h for h in top if h in PLANET_HAND.values() and int((hl[h] or {}).get("played") or 0) > 0]
+                top = top[:PACK_PLANETS] or ["Pair"]  # unplayed hands' planets count as skipping
+                names = [n for n in planets if n in PLANET_HAND]
+                for n in names:
+                    if PLANET_HAND[n] in top:
+                        subs.append({"label": f"_pack Celestial: {n}", "levels": [PLANET_HAND[n]], "cost": 0})
+                tele = "v_telescope" in [str(v.get("key") if isinstance(v, dict) else v)
+                                         for v in _lst(state.get("used_vouchers"))]
+                main = next((n for n, h in PLANET_HAND.items() if top and h == top[0]), None)
+                reps[kind] = {"names": names, "weights": [planets[n] for n in names], "telescope": main if tele else None}
+        plans[oi] = dict(reps[kind], kind=kind, size=int(pk.get("size") or 2), choose=int(pk.get("choose") or 1))
+    return subs, plans
+
+
+def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
+    """Expected outcome of opening the pack: best card (or skip) per virtual pack, averaged."""
+    r = {"label": o.get("label") or "pack", "option": o, "feasible": True, "error": None, "notes": [],
+         "money_after": money - int(o.get("cost") or 0)}
+    if plan.get("error") or base is None or base.get("p_next") is None:
+        return dict(r, feasible=False, error=plan.get("error") or "no baseline", p_next=None)
+    if r["money_after"] < 0:
+        return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
+    rng = random.Random(f"{seed}:virtual:{r['label']}")
+    keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round")
+    acc = dict.fromkeys(keys, 0.0)
+    acc_bl = [0.0] * len(base["p_blinds"])
+    picks = Counter()
+    for _ in range(PACK_VIRTUAL):
+        if plan["kind"] == "Buffoon":
+            cards = [by_label.get(lab) for lab in rng.sample(plan["draws"], min(plan["size"], len(plan["draws"])))]
+        else:
+            names = []
+            if plan["telescope"]:
+                names.append(plan["telescope"])
+            while len(names) < min(plan["size"], len(plan["names"])):
+                n = rng.choices(plan["names"], weights=plan["weights"])[0]
+                if n not in names:
+                    names.append(n)
+            cards = [by_label.get(f"_pack Celestial: {n}") for n in names]
+        cands = [c for c in cards if c is not None and c.get("p_next") is not None] + [base]
+        best = max(cands, key=lambda c: (c["p_next"], c["score_ratio"], c.get("money_after") or 0))
+        picks[best["label"]] += 1
+        for k in keys:
+            acc[k] += best.get(k) or 0.0
+        for i, p in enumerate(best["p_blinds"]):
+            acc_bl[i] += p
+    for k in keys:
+        r[k] = acc[k] / PACK_VIRTUAL
+    r["p_blinds"] = [p / PACK_VIRTUAL for p in acc_bl]
+    r["money_after_rent"] = r["money_after"] - r["rent_per_round"] * n_blinds
+    subs = [by_label[k] for k in by_label if k.startswith(f"_pack {plan['kind']}:")]
+    r["n"] = min([s["n"] for s in subs if s.get("n")] + [base["n"]])
+    top = ", ".join(f"{('skip' if lab == base['label'] else lab.split(': ', 1)[1])} {c / PACK_VIRTUAL:.0%}"
+                    for lab, c in picks.most_common(4))
+    r["notes"] = [f"expected value of the best pick over {PACK_VIRTUAL} virtual packs ({plan['size']} cards) drawn "
+                  f"from {len(subs)} simulated {plan['kind']} cards (empirical Gold pool); picks: {top}"]
+    if plan["choose"] > 1:
+        r["notes"].append(f"choose {plan['choose']}: only the best single pick is counted (lower bound)")
+    return r
+
+
 def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=None, seed=0, min_samples=24):
     """Value shop/pack options by P(survive the next `blinds` blinds).
 
     options: list of dicts (default options_from_state(state)); each may contain
       label: str; cost: $ spent; add_joker: joker dict (shop/pack item); sell: [owned joker indices] or 'weakest';
       levels: [hand names] (+1 level each; '*' = every hand, Black Hole); add_cards: [playing card dicts];
-      remove_cards: [deck card ids]; enhance: {deck card id: 'm_glass'...}.
+      remove_cards: [deck card ids]; enhance: {deck card id: 'm_glass'...};
+      pack: {kind: 'Buffoon'|'Celestial', size, choose} (unopened booster: expected value of its best pick, see
+      options_from_state(packs=True)). Keys starting with '_' are the caller's and are ignored.
     A baseline option (no edits) is added first when missing.
     Returns options best first: {label, option, feasible, error, p_next (P(survive all simulated blinds): product
     of the per-blind p_blinds, each mapped by solver.calibrate to the clear rate Gold players achieve), p_next_model /
     p_blinds_model (raw rollout frequencies under the solver's greedy policy; p_next_model is the joint frequency),
     delta (p_next - baseline), score_ratio (mean min(1, scored/need) per blind), dollars (unused hands $ over the
     blinds), money_after, rent_per_round, money_after_rent, n, notes, blinds}. Ranking: p_next (options within
-    TIE_P are tied), then score_ratio, then money_after."""
+    TIE_P are tied), then score_ratio, then money_after.
+    Pack options cost extra simulation: up to PACK_REPS jokers per Buffoon and PACK_PLANETS planets per Celestial
+    are simulated as hidden sub-options sharing the budget; their p is an upper-biased max over noisy estimates."""
     sv = _solver()
     est = estimate_fn or sv.default_estimate()
     cli = sys.modules.get(getattr(est, "__module__", "") or "")
@@ -438,8 +573,11 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
     if not bl:
         return []
     options = list(options_from_state(state) if options is None else options)
-    if not any(not (set(o) - {"label", "cost"}) and not o.get("cost") for o in options):
+    if not any(_is_base(o) for o in options):
         options.insert(0, {"label": "baseline (no change)"})
+    subs, plans = _expand_packs(state, options, seed)
+    packs = [(i, o) for i, o in enumerate(options) if o.get("pack")]
+    options = [o for o in options if not o.get("pack")] + subs
     t0 = time.perf_counter()
     if any(o.get("sell") == "weakest" for o in options):
         w = _resolve_weakest(sv, est, state, bl, budget_s * 0.25, seed)
@@ -447,8 +585,13 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
         options = [dict(o, sell=[w], label=f"{o.get('label')} (sell {names.get(w)})") if o.get("sell") == "weakest" and w
                    else o for o in options if not (o.get("sell") == "weakest" and not w)]
     res = _run(sv, est, state, options, bl, max(0.1, budget_s - (time.perf_counter() - t0)), seed, min_samples)
-    base = next((r for r in res if r["feasible"] and not (set(r["option"]) - {"label", "cost"})
-                 and not r["option"].get("cost")), None)
+    base = next((r for r in res if r["feasible"] and _is_base(r["option"])), None)
+    if packs:
+        by_label = {r["label"].split(" (sell ")[0]: r for r in res if r["label"].startswith("_pack ")}
+        res = [r for r in res if not r["label"].startswith("_pack ")]
+        money = int(state.get("money") or 0)
+        res += [_pack_result(o, plans[i], by_label, base, money, len(bl), seed) for i, o in packs]
+    base = next((r for r in res if r["feasible"] and _is_base(r["option"])), None)
     bp = base["p_next"] if base else None
     for r in res:
         r["blinds"] = [f"a{b['ante']} {b['name']} {b['chips']}" for b in bl]

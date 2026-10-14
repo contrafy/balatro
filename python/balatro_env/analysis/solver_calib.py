@@ -153,10 +153,11 @@ def report(rows, module):
              table([r for r in ok if r["ante"] >= 3], "Ante 3+"), "",
              table([dict(r, p=r["p_model"]) for r in ok], "All decisions, raw model p (p_model)"), "",
              table([dict(r, p=r["p_model"]) for r in ok if not r["jokers"]], "No active joker, raw p_model"), "",
-             table(out_of_fold([r for r in ok if r["jokers"]]),
-                   "With jokers: p_model recalibrated out-of-fold (isotonic, 2-fold by run)"), "",
-             "Isotonic knots fitted on decisions with an active joker (solver.CALIBRATION; jokerless rounds use "
-             f"the raw p): {isotonic_knots([r for r in ok if r['jokers']])}"]
+             table(out_of_fold([r for r in ok if r["jokers"] and r["h"] > 1]),
+                   "With jokers, 2+ hands: p_model recalibrated out-of-fold (isotonic, 2-fold by run)"), "",
+             table([dict(r, p=r["p_model"]) for r in ok if r["h"] <= 1], "Final hand (raw p_model, reported as is)"), "",
+             "Isotonic knots fitted on decisions with an active joker and 2+ hands (solver.CALIBRATION; jokerless and "
+             f"final-hand decisions use the raw p): {isotonic_knots([r for r in ok if r['jokers'] and r['h'] > 1])}"]
     worst = sorted((r for r in ok if not r["cleared"]), key=lambda r: -r["p"])[:15]
     parts += ["", "## Lost blinds with the highest predicted p", "", "| run step | action | p | boss | jokers |",
               "|---|---|---|---|---|"]

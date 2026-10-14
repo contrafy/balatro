@@ -165,9 +165,13 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   your rounds show `AVOID(-N% round est)`; Negative jokers bring their own slot.
 - AMBER ACORN: the CLI caches your face-up jokers per port; under Acorn `advise` estimates with them, shows the range
   over joker orders, suggests a 1-card High Card probe (it infers the order from the score) and then a `b order`.
-- THROWBACK owned: skip $0 Small Blinds whenever one hand reaches half the Big Blind (+x0.25 per skip, permanent).
-- SIM (`shopadvise`): each affordable buy is played through the next 3 blinds; use the delta for ranking only. It
-  breaks ties the rules scored within 5 points and prints `SIM disagrees` otherwise.
+- THROWBACK owned: see WINNING LINE (skip Small and Big while your rounds beat the boss by 1.3x+; `s` says when).
+- SIM IS PRIMARY (`shopadvise`, pack `advise`): every affordable joker/planet/playing card (or pack pick) is played
+  through the next 3 blinds; the ADVICE takes the best SIM gain over buying nothing (score ratio when every p < 0.05).
+  Rule scores only break SIM ties (within 0.03) and decide what the SIM cannot model: packs, vouchers, tarots, boss
+  counters, sells first, main-hand planets (they level forever). Hard rules stay: no eternal rental before ante 7, no
+  second rental before ante 6, the $ floor unless TIGHT/EMERGENCY or a +0.15 SIM gain. A free planet in a pack is
+  never skipped.
 - THE MOUTH: the first played hand locks the type for all 3 hands. Open with a type you can repeat (main hand / Pair),
   never a one-off Straight/Flush/Full House unless that one hand clears the whole blind; keep a discard until the lock.
   A locked High Card is any single card. Owning Burglar (0 discards) before The Mouth: sell it or lock High Card.
