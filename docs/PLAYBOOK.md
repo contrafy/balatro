@@ -103,6 +103,12 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   now (Skip/Garbage/Economy money, Boss Tag rerolled The Wall), one blind fought per ante. Obelisk grows on every hand
   whose type is NOT strictly your most played (after +1, ties keep it growing): rotate types, never throw away a card of
   the max type. `s` recommends the skips when Throwback is owned and your rounds beat the boss by 1.3x+.
+- WINNING LINE 2 (7807 2WEJC1IS, second Gold win, docs/runs/7807_2WEJC1IS.md): ante 1-2 additive stack, Blueprint copying
+  Half Joker (+20 twice on <= 3 cards): even a 1-card High Card cleared antes 1-3 (play single junk cards). From ante 3
+  it skipped Small AND Big every ante: the tags paid (Skip $20-35, Economy doubles money at the skip, max +$40) and the
+  perishables never ticked. With the cash, 4 rerolls at ante 5 found Throwback. Order: the best flat joker (Stuntman
+  +250) LEFTMOST for Brainstorm, Blueprint directly left of Throwback (x4.25 twice). Re-run `order` after every buy.
+  Cerulean Bell: every play includes the forced card (`advise` adds it).
 - SMALL BLIND SKIP: ante 1 only for a tag that gives jokers NOW (Buffoon = Mega Buffoon pack, Top-up = 2 jokers; needs a
   free slot). Ante 2-4: other useful tags need 2+ scoring jokers, and at ante 3-4 your typical hand must reach half this
   ante's boss (skippers died 40-46% vs 25-33%). Rare/Uncommon/Polychrome/Negative/Coupon tags pay in the NEXT shop,

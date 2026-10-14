@@ -3196,14 +3196,26 @@ def _shop_rules(d):
             import itertools
             cands_o += [[i + 1 for i in p] for p in itertools.permutations(range(len(jokers)))]
         else:
-            # 6+ jokers: every single move of a copy joker to every slot
-            base_o = list(range(1, len(jokers) + 1))
-            for ci, cj in enumerate(jokers):
-                if cj.get("name") in ("Blueprint", "Brainstorm"):
-                    for pos in range(len(jokers)):
-                        o = [x for x in base_o if x != ci + 1]
-                        o.insert(pos, ci + 1)
-                        cands_o.append(o)
+            # 6+ jokers: hill-climb over single moves of ANY joker from the current order (up to 3 passes), so two-step
+            # orders like "Blue, Brainstorm, Even, Blueprint, Throwback" are reachable (7807 2WEJC1IS: a single copier move
+            # left Brainstorm copying nothing, 24420 vs 30850)
+            cur_o = list(range(1, len(jokers) + 1))
+            cur_v = round_est(d, mh, [jokers[i - 1] for i in cur_o])
+            for _pass in range(3):
+                best_mv = None
+                for src in range(len(cur_o)):
+                    for pos in range(len(cur_o)):
+                        if pos == src:
+                            continue
+                        o = cur_o[:src] + cur_o[src + 1:]
+                        o.insert(pos, cur_o[src])
+                        v = round_est(d, mh, [jokers[i - 1] for i in o])
+                        if v > cur_v * 1.001 and (best_mv is None or v > best_mv[0]):
+                            best_mv = (v, o)
+                if best_mv is None:
+                    break
+                cur_v, cur_o = best_mv
+            cands_o.append(cur_o)
         cur_e = round_est(d, mh)
         best_o = max(cands_o, key=lambda o: round_est(d, mh, [jokers[i - 1] for i in o]))
         best_e = round_est(d, mh, [jokers[i - 1] for i in best_o])
@@ -4129,7 +4141,10 @@ def _resolve_target(cmd, rest, ints, d):
     name_arg = " ".join(x for x in rest if not re.sub(r"^[A-Za-z]+", "", x).isdigit()) if not ints else None
     want = (name_arg or _EXPECT or "").strip().lower()
     if not ints and want:
-        hits = [x for x in items if str(x.get("name") or "").lower().startswith(want) or want in str(x.get("name") or "").lower()]
+        nm_l = lambda x: str(x.get("name") or (card_str(x) if x.get("rank") else "")).lower()
+        # exact name, then a whole-word match ("blue" -> Blue Joker, not Blueprint: 7807 2WEJC1IS), then any substring
+        hits = ([x for x in items if nm_l(x) == want] or [x for x in items if want in nm_l(x).split() or nm_l(x).startswith(want + " ")]
+                or [x for x in items if want in nm_l(x)])
         if len(hits) != 1:
             print(f"REFUSED (nothing sent): '{want}' matches {len(hits)} item(s) in {area}: {[x.get('name') for x in items]}"); sys.exit(1)
         ints = [hits[0].get("index")]

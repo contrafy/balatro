@@ -69,7 +69,11 @@ def _note_action(d, typ, params=None):
     if typ in ("SELL_JOKER", "SELL_CONSUMABLE") and params:
         area = "jokers" if typ == "SELL_JOKER" else "consumables"
         it = next((x for x in lst(d.get(area)) if x.get("index") == params.get("index")), None)
-        gone = [area, it.get("id")] if it is not None and it.get("id") is not None else None
+        gone = [area, [it.get("id")]] if it is not None and it.get("id") is not None else None
+    elif typ in ("PLAY_HAND", "DISCARD") and params:
+        # played / discarded cards must have left the hand (7817 JGH4NQBH: stale advise once after a discard)
+        ids = [x.get("id") for x in lst(d.get("hand")) if x.get("index") in (params.get("card_indices") or []) and x.get("id") is not None]
+        gone = ["hand", ids] if ids else None
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         with open(_last_action_file(), "w", encoding="utf-8") as f:
@@ -101,7 +105,8 @@ def _await_action_effect(d, timeout=5.0):
     timeout = 2.0 if noop_ok else (15.0 if trans else timeout)
 
     def pending(x):
-        return (_digest(x) == la.get("sig_before") or (gone and any(y.get("id") == gone[1] for y in lst(x.get(gone[0]))))
+        gone_ids = (gone[1] if isinstance(gone[1], list) else [gone[1]]) if gone else []
+        return (_digest(x) == la.get("sig_before") or (gone and any(y.get("id") in gone_ids for y in lst(x.get(gone[0]))))
                 or (trans and x.get("phase") == la.get("phase_before")))
     while pending(d) and time.time() - t0 < timeout:
         time.sleep(0.2)
@@ -214,6 +219,15 @@ def _dead_perishable(j):
     """A perishable joker whose tally ran out: debuffed for the rest of the run (scores nothing, still sellable)."""
     s = _stk(j)
     return s["perishable"] and s["perish_tally"] == 0
+
+
+def _bad_swap(d, opt):
+    """A sell-for-pick/buy that trades a permanent xMult for a perishable joker (7803 6UYKULXZ: The Tribe for Flower Pot)."""
+    sold = opt.get("sell") if isinstance(opt.get("sell"), list) else []
+    if not sold or not _stk(opt.get("add_joker") or {})["perishable"]:
+        return False
+    return any(j.get("index") in sold and not _stk(j)["perishable"] and classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT")
+               for j in lst(d.get("jokers")))
 
 
 def _sells_boss_carrier(d, opt):
@@ -529,16 +543,34 @@ def _fd_bounds(hand):
     """Face-down cards in a rank-sorted hand (descending: the game sorts by the real rank whatever the facing) lie between
     their visible neighbours: {index: (lo, hi)} in RANK_VAL units; {} when the visible cards are not in rank order
     (7806 BK2G3JSQ)."""
+    path = os.path.join(CACHE_DIR, f"{PORT}_fdbounds.json")
     vis = [RANK_VAL.get(_r(c), 0) for c in hand if c.get("rank") is not None]
-    if len(vis) < 2 or any(a < b for a, b in zip(vis, vis[1:])) or not any(c.get("rank") is None for c in hand):
+    if not any(c.get("rank") is None for c in hand):
         return {}
-    out = {}
+    if len(vis) < 2 or any(a < b for a, b in zip(vis, vis[1:])):
+        # not rank-sorted (a manual `move hand`): reuse the bounds computed while it was sorted, keyed by card id
+        # (7817 JGH4NQBH lost them after a move)
+        try:
+            with open(path, encoding="utf-8") as f:
+                by_id = json.load(f)
+        except Exception:
+            return {}
+        return {c.get("index"): tuple(by_id[str(c.get("id"))]) for c in hand if c.get("rank") is None and str(c.get("id")) in by_id}
+    out, by_id = {}, {}
     for p, c in enumerate(hand):
         if c.get("rank") is not None:
             continue
         hi = next((RANK_VAL.get(_r(x), 14) for x in reversed(hand[:p]) if x.get("rank") is not None), 14)
         lo = next((RANK_VAL.get(_r(x), 2) for x in hand[p + 1:] if x.get("rank") is not None), 2)
         out[c.get("index")] = (lo, hi)
+        if c.get("id") is not None:
+            by_id[str(c.get("id"))] = [lo, hi]
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(by_id, f)
+    except Exception:
+        pass
     return out
 
 
@@ -891,8 +923,9 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
             hpc = ab.get("hands_played_at_create")
             if hp is not None and hpc is not None:
                 # recompute from the counters (the stored loyalty_remaining is only refreshed when the joker scores; 7802
-                # LFBTMULM read "5" for 4 hands): this hand is hands_played + 1, it fires when the result equals `every`
-                rem_n = (every - 1 - (int(hp) + 1 - int(hpc))) % (every + 1)
+                # LFBTMULM read "5" for 4 hands). Calibrated on 7803 6UYKULXZ: the observed hands_played_total already counts
+                # the hand about to be scored the way card.lua sees it (fired at hp=16, create=11, every=5)
+                rem_n = (every - 1 - (int(hp) - int(hpc))) % (every + 1)
                 rem = 0 if rem_n == every else (rem_n + 1) % (every + 1)
             else:
                 rem = ab.get("loyalty_remaining")
@@ -1416,6 +1449,17 @@ def advise(d):
             adv = f"ADVICE: {top['action']} -> {cmd}   (solver: {why}; {top['note']})"
         lines = lines[:adv_i] + sol + [adv] + lines[adv_i + 1:]
     tip = _copy_order_tip(d) if d.get("phase") == "SELECTING_HAND" and d.get("hands_played", 0) == 0 else None
+    forced = [c.get("index") for c in lst(d.get("hand")) if c.get("forced")]
+    if forced:
+        # The Cerulean Bell keeps one card selected: every play / discard must include it (7807 2WEJC1IS: NOT LEGAL)
+        for k, ln in enumerate(lines):
+            mf = re.match(r"(ADVICE: (?:PLAY|DISCARD) -> b (?:play|disc)(?: [A-Z]+)?)((?: \d+)+)(.*)$", ln)
+            if mf:
+                ix = [int(x) for x in mf.group(2).split()]
+                miss = [f for f in forced if f not in ix]
+                if miss:
+                    ix = (ix + miss) if len(ix) + len(miss) <= 5 else (ix[:5 - len(miss)] + miss)
+                    lines[k] = f"{mf.group(1)} {' '.join(map(str, ix))}{mf.group(3)} [Cerulean Bell: forced card {miss} included]"
     print("\n".join([x for x in (_obelisk_tie_note(d), tip) if x] + lines))
 
 
@@ -2805,7 +2849,9 @@ def shop_advise_sim(d, budget_s=6.0):
         if st["rental"] and own_rent and ante_s < 6:
             both_x = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") and \
                 all(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in owned_r)
-            if not (both_x or sells_r):
+            # exception: a SIM jump of +0.30 whose money path stays >= 0 (Main 12:0x: 0.20 -> 0.83 at ante 1 was barred)
+            jump = key(r) - key0 >= 0.30 and (r.get("shop_money") is None or r["shop_money"] >= 0)
+            if not (both_x or sells_r or jump):
                 return False
         # a buy whose own money path goes negative before a later shop (rent) is a dead-shop buy, never NEEDED NOW
         if r.get("shop_money") is not None and r["shop_money"] < 0 <= ((base0 or {}).get("shop_money") if (base0 or {}).get("shop_money") is not None else 0) \
@@ -2860,6 +2906,9 @@ def shop_advise_sim(d, budget_s=6.0):
         cls_b = classify_joker(aj_b.get("name"), 0, main_hand(d))[0]
         if swap and "other hand" in cls_b:
             return 9.0  # a sell-for-buy swap into a joker that does not fire on the main hand is never advised (7804 K4GMJRB5)
+        if swap and _stk(aj_b)["perishable"] and any(j.get("index") in r["option"]["sell"] and not _stk(j)["perishable"]
+                                                     and classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))):
+            return 9.0  # never swap a permanent xMult for a perishable one (7803 6UYKULXZ: The Tribe for Flower Pot)
         # a swap (sell X, buy Y) must win by 0.10: the sale is permanent and boss locks / sell-value jokers move it
         return (0.10 if swap else 0.02) + (0.05 if _stk(aj_b)["perishable"] else 0) + (0.05 if cls_b.startswith("XMULT(conditional") else 0)
     if not keep_rule:
@@ -2947,7 +2996,7 @@ def pack_advise_sim(d, budget_s=3.5):
         # 0.84 vs 0.00 was skipped)
         big = base_p is not None and not all_zero and key(r) - key(base_p) >= 0.15
         return ((big or not (st["eternal"] and st["rental"] and ante_s < 7)) and (big or not (st["rental"] and own_rent and ante_s < 6))
-                and not _eternal_bar(d, aj) and not _sells_boss_carrier(d, r["option"]))
+                and not _eternal_bar(d, aj) and not _sells_boss_carrier(d, r["option"]) and not _bad_swap(d, r["option"]))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
                                     f"P(clear next 3 blinds) {r.get('p_next') or 0:.2f}" + (f", vs {r['terminal']} {r.get('p_term') or 0:.2f}" if r.get("terminal") else "")
@@ -3076,7 +3125,8 @@ def _shop_rules(d):
         # the boss's own constraint: The Water 0 discards, normal hands (a deal's median best per hand, not the 75th pct;
         # 7802 KLV4P2RZ lost The Water by 18: projected ~9280/hand vs 5.7-6.5k real); The Needle 1 hand but all discards
         # (the best hand after digging: the 90th pct of a deal; 7806 J3REMTSE scored 7952 vs a 0.44x projection)
-        per = deck_best_est(d, pct=0.9 if bn_t == "The Needle" else 0.5) or best_hand
+        burg = any(j.get("name") == "Burglar" and not j.get("debuff") for j in jokers)  # Burglar: 0 discards, so no dig
+        per = deck_best_est(d, pct=0.9 if (bn_t == "The Needle" and not burg) else 0.5) or best_hand
         # The Needle sets 1 hand; Burglar's +3 is added at blind select after it (7813 7FVPDIEW: 4 hands)
         proj = int(per * ((1 + _hands_pr(d) - int(d.get("hands_per_round") or 3)) if bn_t == "The Needle" else _hands_pr(d)))
     elif bn_t == "The Manacle" and deck_best and best_hand:
@@ -3146,14 +3196,26 @@ def _shop_rules(d):
             import itertools
             cands_o += [[i + 1 for i in p] for p in itertools.permutations(range(len(jokers)))]
         else:
-            # 6+ jokers: every single move of a copy joker to every slot
-            base_o = list(range(1, len(jokers) + 1))
-            for ci, cj in enumerate(jokers):
-                if cj.get("name") in ("Blueprint", "Brainstorm"):
-                    for pos in range(len(jokers)):
-                        o = [x for x in base_o if x != ci + 1]
-                        o.insert(pos, ci + 1)
-                        cands_o.append(o)
+            # 6+ jokers: hill-climb over single moves of ANY joker from the current order (up to 3 passes), so two-step
+            # orders like "Blue, Brainstorm, Even, Blueprint, Throwback" are reachable (7807 2WEJC1IS: a single copier move
+            # left Brainstorm copying nothing, 24420 vs 30850)
+            cur_o = list(range(1, len(jokers) + 1))
+            cur_v = round_est(d, mh, [jokers[i - 1] for i in cur_o])
+            for _pass in range(3):
+                best_mv = None
+                for src in range(len(cur_o)):
+                    for pos in range(len(cur_o)):
+                        if pos == src:
+                            continue
+                        o = cur_o[:src] + cur_o[src + 1:]
+                        o.insert(pos, cur_o[src])
+                        v = round_est(d, mh, [jokers[i - 1] for i in o])
+                        if v > cur_v * 1.001 and (best_mv is None or v > best_mv[0]):
+                            best_mv = (v, o)
+                if best_mv is None:
+                    break
+                cur_v, cur_o = best_mv
+            cands_o.append(cur_o)
         cur_e = round_est(d, mh)
         best_o = max(cands_o, key=lambda o: round_est(d, mh, [jokers[i - 1] for i in o]))
         best_e = round_est(d, mh, [jokers[i - 1] for i in best_o])
@@ -3415,8 +3477,8 @@ def _shop_rules(d):
             mh_p, sh2 = (sh2, mh) if (ob_g and sh2) else (mh, sh2)
             good = name == PLANET_FOR.get(mh_p)
             if not good and sh2 and name == PLANET_FOR.get(sh2):
-                options.append(((20, "PLANET", f"buy {c['index']}", f"{name} ${cost} [planet for {sh2}, your Obelisk max type: you avoid playing it]", cost, False, False)) if ob_g else
-                               (66, "PLANET", f"buy {c['index']}", f"{name} ${cost} [planet for your second-most-played hand {sh2}: boss insurance]", cost, True, False))
+                options.append(((20, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [planet for {sh2}, your Obelisk max type: you avoid playing it]", cost, False, False)) if ob_g else
+                               (66, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [planet for your second-most-played hand {sh2}: boss insurance]", cost, True, False))
                 continue
             feeds = any(j.get("name") in ("Constellation", "Satellite", "Astronomer") for j in jokers)
             const = any(j.get("name") == "Constellation" and not j.get("debuff") for j in jokers)
@@ -3430,8 +3492,9 @@ def _shop_rules(d):
                 psc = max(psc, 82)  # Constellation: every planet used is +0.1x on every hand forever; $3 beats a $5+ reroll
             if ante <= 2 and (scoring_now <= 1 or not owns_mult) and not const and not (good and 0.85 <= sc_ratio <= 1.15 and ante >= 2):
                 psc = min(psc, 20)  # 0-1 scoring jokers at ante 1-2: a level on a jokerless hand is +10-20 points; buy a scorer
-            # planets are used on purchase: `buyuse` needs no consumable slot and feeds Constellation immediately
-            options.append((psc, "PLANET", f"{'buyuse' if feeds else 'buy'} {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
+            # planets are used on purchase: `buyuse` needs no consumable slot (full slots never block them: 7817 JGH4NQBH)
+            # and feeds Constellation immediately
+            options.append((psc, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
         elif name == "Judgement":
             jsc = (75 if scoring_now < 2 else 62) if free > 0 else 5
             if any(j.get("name") == "Joker Stencil" for j in jokers):
@@ -3868,7 +3931,8 @@ def pack_advise(d):
         money = int(d.get("money") or 0)
         SPEC = {"The Soul": (100 if n_j < slots else 5, None, "a Legendary joker"),
                 "Black Hole": (90, None, "+1 level to every hand"),
-                "Wraith": ((max(5, 75 - 3 * max(money, 0)) if n_j < slots else 5) if not any(j.get("name") == "Joker Stencil" for j in jokers) else 15, None,
+                # 0 xMult and a free slot: a Rare is often the xMult the run lacks (7811 SH1F9PV5 took Cryptid over it)
+                "Wraith": ((max(5, 75 - 3 * max(money, 0), 72 if not strong_j else 0) if n_j < slots else 5) if not any(j.get("name") == "Joker Stencil" for j in jokers) else 15, None,
                            "a random Rare joker, money set to $0" + ("; it fills a slot your Joker Stencil counts" if any(j.get("name") == "Joker Stencil" for j in jokers) else "")),
                 "Aura": (70, tgt, "Foil/Holo/Polychrome on the target card"),
                 "Cryptid": (65 if glass else 45, glass or tgt, "2 copies of the target card"),
@@ -4077,7 +4141,10 @@ def _resolve_target(cmd, rest, ints, d):
     name_arg = " ".join(x for x in rest if not re.sub(r"^[A-Za-z]+", "", x).isdigit()) if not ints else None
     want = (name_arg or _EXPECT or "").strip().lower()
     if not ints and want:
-        hits = [x for x in items if str(x.get("name") or "").lower().startswith(want) or want in str(x.get("name") or "").lower()]
+        nm_l = lambda x: str(x.get("name") or (card_str(x) if x.get("rank") else "")).lower()
+        # exact name, then a whole-word match ("blue" -> Blue Joker, not Blueprint: 7807 2WEJC1IS), then any substring
+        hits = ([x for x in items if nm_l(x) == want] or [x for x in items if want in nm_l(x).split() or nm_l(x).startswith(want + " ")]
+                or [x for x in items if want in nm_l(x)])
         if len(hits) != 1:
             print(f"REFUSED (nothing sent): '{want}' matches {len(hits)} item(s) in {area}: {[x.get('name') for x in items]}"); sys.exit(1)
         ints = [hits[0].get("index")]
