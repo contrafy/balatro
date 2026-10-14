@@ -950,3 +950,13 @@ def test_buy_pack_n_never_buys_a_joker(tmp_path, monkeypatch):
         except SystemExit:
             pass
     assert "SHOP_BUY" not in sent
+
+
+def test_baseball_card_ignores_copies_of_uncommons():
+    # 7813 L28P5GTT: Blueprint copying Ramen (Uncommon) added a third x1.5 to Baseball Card (est 1.4-2.6x high)
+    cards = [_card("King", "Spades", 1), _card("King", "Hearts", 2)]
+    lv = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
+    base = [joker("Ramen", 2, rarity=2, ability={"x_mult": 1}), joker("Baseball Card", 3, rarity=3)]
+    plain = cli.estimate("Pair", cards, [], {"jokers": [joker("Joker", 1, rarity=1)] + base, "hand_levels": lv})[0]
+    copied = cli.estimate("Pair", cards, [], {"jokers": [joker("Blueprint", 1, rarity=3)] + base, "hand_levels": lv})[0]
+    assert copied <= plain * 1.2  # the copy is x1 here (Ramen x1); a third x1.5 would make it 1.5x

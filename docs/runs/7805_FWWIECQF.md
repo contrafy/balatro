@@ -2,3 +2,5 @@
 
 Ante 1 (Polychrome/Economy/The Head 600, $4): Small: spade Flush 256 + Pair JJ. Shop $5: Buffoon -> Onyx Agate{P} (over Hiker{P,R}). Big: disc KK J (keep clubs + 55), 2P AA55 468 one-shot. Shop $7: Raised Fist $5. Head: disc 5 junk/debuffed, 2P QQ66 cleared.
 Ante 2 (Uncommon/Double/The Goad 2000, $9): EMERGENCY 0.34 -> Misprint $4, Judgement $3 -> Shoot the Moon (clean). Skipped Small (Uncommon tag, $2 wallet). Big: Straight Flush 9-5 S 1755 one-shot. Shop: free Seeing Double. Goad: Pair 88 (club+heart) 1404 + Pair JJ 840.
+Ante 3 (Skip/Standard/The Wall 12800, $15): ratio 0.43; reroll -> Wily $4 (SIM +0.20). Skipped Small (Skip tag +$10). Big: 2P QQTT 4320 + Pair JJ. Shop $27: sold perished Onyx, Sly{ETERNAL} $3 (SIM +0.43), Mega Arcana -> Devil (gold QS) + Hanged Man (4C 3S). Wall: disc, Trips 999 8073 + Straight A-T cleared.
+Ante 4 (Investment/Uncommon/The Wheel 18000, $25): Buffoon (Juggler/Red Card{E,R}) skipped, reroll, sold Wily -> Ice Cream $5. Skipped Small (Investment +$25 after boss). Big: 2 discards, Trips 777 one-shot. Reroll (nothing). Wheel: 2 discards, Pair AA 6372 (Misprint 0) + FH 888KK cleared.

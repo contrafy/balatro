@@ -312,11 +312,13 @@ def show(d):
         NOW_TAGS = {"tag_buffoon": "a free MEGA Buffoon pack opens right now (take 2 of 4 jokers before the Big Blind)",
                     "tag_top_up": "up to two free Common jokers right now (only into free joker slots)",
                     "tag_charm": "a free Mega Arcana pack right now", "tag_meteor": "a free Mega Celestial pack right now (levels before the Big Blind)",
-                    "tag_ethereal": "a free Spectral pack right now"}
+                    "tag_ethereal": "a free Spectral pack opens right now (Spectral cards can cost money or hand size)",
+                    "tag_standard": "a free Mega Standard pack opens right now (playing cards)"}
         LATER_TAGS = {"tag_uncommon": "a free Uncommon joker in the NEXT SHOP (after the Big Blind)", "tag_rare": "a free Rare joker in the NEXT SHOP (after the Big Blind)",
                       "tag_negative": "the next shop's joker becomes Negative (paid AFTER the Big Blind)", "tag_foil": "the next shop's joker becomes Foil (paid AFTER the Big Blind)",
                       "tag_holo": "the next shop's joker becomes Holographic (paid AFTER the Big Blind)", "tag_polychrome": "the next shop's joker becomes Polychrome (paid AFTER the Big Blind)",
-                      "tag_coupon": "the next shop's jokers and packs are free (paid AFTER the Big Blind)", "tag_investment": "$25 after the boss is beaten"}
+                      "tag_coupon": "the next shop's jokers and packs are free (paid AFTER the Big Blind)", "tag_investment": "$25 after the boss is beaten",
+                      "tag_double": "the NEXT tag you take is duplicated (worth it only before a strong tag: Orbital = +6 levels)"}
         small = ch.get("Small") or {}
         stake_n = int(d.get("stake") or 1)
         ante_n = int(d.get("ante") or 1)
@@ -926,7 +928,9 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Yorick":
             mult *= float(ab.get("x_mult") or 1)
         elif n == "Baseball Card":
-            unc = sum(1 for j2 in jokers if int(j2.get("rarity") or 0) == 2)
+            # x1.5 per Uncommon joker CARD owned: a Blueprint/Brainstorm copy of an Uncommon is a Rare card and does not
+            # count (7813 L28P5GTT: Blueprint copying Ramen added a third x1.5, est 1.4-2.6x high)
+            unc = sum(1 for j2 in lst(state.get("jokers")) if int(j2.get("rarity") or 0) == 2)
             mult *= 1.5 ** unc
         elif n == "Loyalty Card":
             # card.lua: rem = (every-1-hands_since_create) % (every+1) is recomputed DURING scoring and fires when it reaches
@@ -1482,7 +1486,10 @@ def advise(d):
         gap = top["p_clear"] - (mine or {}).get("p_clear", 0)
         conf_ok = not top.get("low_n") and (not top.get("low_confidence") or (gap >= 0.20 and int(top.get("n") or 0) >= 300))
         # breaking a made pair-family hand needs a full sample (n >= 300) at every ante (7806 HA3Z5VN7: n=64 at The Tooth)
-        better_p = mine and conf_ok and gap > (0.10 if breaks else 0.05) and not (breaks and int(top.get("n") or 0) < 300)
+        # a full-sample solver lead (n >= 300) of +0.02 wins unless the made-hand gate applies (Main 15:xx: the rule pick
+        # kept discarding against its own solver, 7801 LIH39HVG / 7806 M4XX7Z7H)
+        req_p = 0.10 if breaks else (0.02 if int(top.get("n") or 0) >= 300 else 0.05)
+        better_p = mine and conf_ok and gap > req_p and not (breaks and int(top.get("n") or 0) < 300)
         better_c = mine and conf_ok and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
         cert = next((r for r in plan if r.get("certain") and r["action"] == "PLAY"), None)
         if mine and cert is not None and m and m.group(1) == "DISCARD" and not (better_p or better_c) and cert["p_clear"] >= mine["p_clear"] - 0.01:
@@ -1492,7 +1499,7 @@ def advise(d):
             why_k = (f"the solver's best is low-confidence (n={top.get('n')}; it switches only on +0.20 with n >= 300; lead {gap:+.2f})" if gap > 0.05 and not conf_ok else
                      f"breaking your made {made_pf[0]} needs +0.10 (the solver leads by {gap:+.2f})" if breaks and 0.05 < gap <= 0.10 else
                      f"breaking your made {made_pf[0]} needs a full solver sample (n >= 300; this lead {gap:+.2f} is on n={top.get('n')})" if breaks and gap > 0.10 else
-                     f"the solver's best leads by only {gap:+.2f} (needs > 0.05 calibrated p)")
+                     f"the solver's best leads by only {gap:+.2f} (needs > {req_p:.2f} calibrated p at n={top.get('n')})")
             sol.append(f"  (rule pick kept: {why_k})")
         if better_p or better_c:
             idxs = " ".join(map(str, top["cards"]))
