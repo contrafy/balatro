@@ -381,3 +381,15 @@ def test_value_keeps_a_signal_when_a_far_blind_is_hopeless():
     assert shop_sim._value(mad) > shop_sim._value(base)
     sure = {"p_blinds": [1.0, 1.0, 1.0], "p_next": 1.0, "p_term": 1.0}
     assert shop_sim._value(sure) == pytest.approx(1.0)
+
+
+def test_terminal_build_looks_past_perishables_dying_soon_after_it():
+    # 7808 NE4L52DR: perishable Blue Joker / Abstract picks at ante 1-2 read +0.4 and died at the ante-3 cliff
+    st = shop_state(jokers=[joker("Joker", ability={"mult": 4}, perishable=True, perish_tally=5)])
+    term = shop_sim.terminal_blind(st, 3, BLIND_BASE)
+    assert term["perish_ahead"] == shop_sim.TERM_PERISH_AHEAD
+    assert shop_sim._round_state(st, st, term, 3, set())["jokers"][0].get("debuff")  # 5 - (3 + 3) <= 0
+    plain = dict(term, perish_ahead=0)
+    assert not shop_sim._round_state(st, st, plain, 3, set())["jokers"][0].get("debuff")
+    assert shop_sim._term_w(shop_state(ante=1)) == shop_sim.TERM_EARLY
+    assert shop_sim._term_w(shop_state(ante=3)) == (shop_sim.TERM_A, shop_sim.TERM_B)

@@ -49,6 +49,8 @@ INCOME_MAX = 1.5  # income jokers can raise the post-horizon rent factor up to t
 # next-ante strength.
 TERM_A = 0.5
 TERM_B = 0.5
+TERM_EARLY = (0.3, 0.7)  # antes 1-2: (depth, terminal) weights
+TERM_PERISH_AHEAD = 3  # the terminal build drops perishables dying within this many rounds after it
 # Spectral cards that destroy 1 random card in hand and add random enhanced cards (card.lua; Stone excluded)
 SPECTRAL_ADDS = {"Grim": (["Ace"], 2), "Familiar": (["Jack", "Queen", "King"], 3),
                  "Incantation": (["2", "3", "4", "5", "6", "7", "8", "9", "10"], 4)}
@@ -326,11 +328,12 @@ def _active(j):
     return not j.get("debuff")
 
 
-def _jokers_at(jokers, k, removed, growth=()):
+def _jokers_at(jokers, k, removed, growth=(), perish_k=None):
     """Jokers as they will be at blind k (k round-ends from now): perished ones debuffed, decayed values applied,
     removed ids (Gros Michel died, Mr. Bones used, Seltzer/Popcorn/Ice Cream used up, destroyed by Madness or
     Ceremonial Dagger) dropped; growth = ((index, gain), ...) adds Dagger mult / Madness xMult gained so far."""
     grow = dict(growth)
+    pk = k if perish_k is None else perish_k  # round count used for perishing (terminal lookahead)
     out = []
     for i, j in enumerate(jokers):
         if i in removed:
@@ -344,7 +347,7 @@ def _jokers_at(jokers, k, removed, growth=()):
             elif n == "Madness":
                 ab["x_mult"] = max(1.0, float(ab.get("x_mult") or 1)) + grow[i]
         tally = j.get("perish_tally", ab.get("perish_tally"))
-        if (j.get("perishable") or ab.get("perishable")) and tally is not None and int(tally) - k <= 0:
+        if (j.get("perishable") or ab.get("perishable")) and tally is not None and int(tally) - pk <= 0:
             j["debuff"] = True
         if k:
             if n == "Popcorn":
@@ -383,7 +386,9 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss
     created since (Riff-raff); ob = (Obelisk x_mult, hand-type play counts) carried from the previous rounds;
     boss_passed: a boss was beaten since (Campfire resets to x1)."""
     jokers = _lst(st.get("jokers"))
-    now = _jokers_at(jokers, k, removed, growth) + [dict(j, index=len(jokers) + i + 1) for i, j in enumerate(added)]
+    # the terminal round's build also loses the perishables that die soon after it (blind["perish_ahead"] rounds)
+    now = _jokers_at(jokers, k, removed, growth, perish_k=k + int(blind.get("perish_ahead") or 0)) + [
+        dict(j, index=len(jokers) + i + 1) for i, j in enumerate(added)]
     feeders = [j.get("name") for j in now if _active(j)]
     if k:
         # cards added to the deck by owned jokers over k rounds feed Hologram (+x0.25 each): Certificate (1 per
@@ -642,7 +647,8 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
     for opt in options:
         st, err, notes = apply_option(state, opt)
         r = {"label": opt.get("label") or "option", "option": opt, "feasible": err is None, "error": err,
-             "notes": notes, "money_after": int(st.get("money") or 0) if err is None else None}
+             "notes": notes, "money_after": int(st.get("money") or 0) if err is None else None,
+             "term_w": _term_w(state)}
         if err is None:
             sim = _OptionSim(sv, est, st, blinds + ([term] if term else []), seed, n_eval=len(blinds))
             sim.base = state
@@ -866,7 +872,7 @@ def _pick_value(c, base, plan):
 def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
     """Expected outcome of opening the pack: best card (or skip) per virtual pack, averaged."""
     r = {"label": o.get("label") or "pack", "option": o, "feasible": True, "error": None, "notes": [],
-         "money_after": money - int(o.get("cost") or 0)}
+         "money_after": money - int(o.get("cost") or 0), "term_w": (base or {}).get("term_w")}
     if plan.get("error") or base is None or base.get("p_next") is None:
         return dict(r, feasible=False, error=plan.get("error") or "no baseline", p_next=None)
     if r["money_after"] < 0:
@@ -999,7 +1005,7 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
         o = r["option"]
         if _depth(r) >= _depth(base) + SURVIVE_GAIN:
             # invariant: an option that clearly raises survival over the horizon never ranks below buying nothing
-            r["value"] = max(r["value"], bv + TERM_A * (_depth(r) - _depth(base)))
+            r["value"] = max(r["value"], bv + (r.get("term_w") or (TERM_A, TERM_B))[0] * (_depth(r) - _depth(base)))
         elif o.get("levels") and not (o.get("add_joker") or o.get("sell") or o.get("add_cards")) \
                 and r["value"] < bv:
             # a hand level-up cannot lower the best score of any hand: a lower value is sampling noise
@@ -1066,24 +1072,34 @@ def _place_copy(state, opt, cli):
 
 def terminal_blind(state, n, blind_base):
     """The first boss after the n simulated blinds (next ante's boss when the horizon ends on a boss), unknown
-    effect: the requirement the end-of-horizon build must meet next."""
+    effect: the requirement the end-of-horizon build must meet next. perish_ahead: its build already drops the
+    perishables that die within TERM_PERISH_AHEAD more rounds (the build has to carry the ante after it too)."""
     if not blind_base:
         return None
     ahead = upcoming_blinds(state, n + 6, blind_base)
-    return next((dict(b, name="Boss (unknown)", boss=False) for b in ahead[n:] if b["kind"] == "Boss"), None)
+    return next((dict(b, name="Boss (unknown)", boss=False, perish_ahead=TERM_PERISH_AHEAD) for b in ahead[n:]
+                 if b["kind"] == "Boss"), None)
+
+
+def _term_w(state):
+    """(depth weight, terminal weight): antes 1-2 weigh the build's later strength more (TERM_EARLY), since early
+    perishables / decays die before the run's critical antes (7808 NE4L52DR)."""
+    return TERM_EARLY if int(state.get("ante") or 1) <= 2 else (TERM_A, TERM_B)
 
 
 def _value(r):
-    """Ranking value: TERM_A x depth + TERM_B x P(survive the horizon) x rent factor x P(the end-of-horizon build
-    clears the next boss). depth = mean over the horizon of P(alive after blind k) (= (p1 + p1p2 + p1p2p3) / 3): it
-    keeps a signal when a far blind is hopeless for every option (7806 FYEJZFFU: The Wall made P(all 3) 0 everywhere,
-    hiding the Mad Joker that cleared the next blind); it equals p_next when every blind is sure. Rent is money the
-    LATER shops lose, and dead runs pay none: it only discounts the post-horizon term, never the survival itself.
-    Fading jokers stop looking free once the horizon is survived anyway. Without a terminal check: p_adj."""
+    """Ranking value: a x depth + b x P(survive the horizon) x rent factor x P(the end-of-horizon build clears the
+    next boss), (a, b) = r["term_w"] (default TERM_A / TERM_B; _term_w). depth = mean over the horizon of P(alive
+    after blind k) (= (p1 + p1p2 + p1p2p3) / 3): it keeps a signal when a far blind is hopeless for every option (7806
+    FYEJZFFU: The Wall made P(all 3) 0 everywhere, hiding the Mad Joker that cleared the next blind); it equals p_next
+    when every blind is sure. Rent is money the LATER shops lose, and dead runs pay none: it only discounts the
+    post-horizon term, never the survival itself. Fading jokers stop looking free once the horizon is survived
+    anyway. Without a terminal check: p_adj."""
     p_term = r.get("p_term")
     if p_term is None:
         return _p_adj(r)
-    return TERM_A * _depth(r) + TERM_B * r["p_next"] * p_term * _rent_factor(r)
+    a, b = r.get("term_w") or (TERM_A, TERM_B)
+    return a * _depth(r) + b * r["p_next"] * p_term * _rent_factor(r)
 
 
 def _depth(r):
