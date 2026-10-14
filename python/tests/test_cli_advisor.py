@@ -313,7 +313,8 @@ def test_arcana_pack_respects_8_dollar_floor():
 def test_flat_rental_sold_when_two_others_carry():
     owned = [joker("Joker", 1), joker("Jolly Joker", 2), joker("Zany Joker", 3, rental=True)]
     d = shop(jokers=owned, money=10, ante=3)
-    assert _advice(_out(cli.shop_advise, d)).startswith("ADVICE: SELL -> b sell 3")
+    out = _out(cli.shop_advise, d)
+    assert _advice(out).startswith("ADVICE: SELL FIRST -> b sell 3") and "Shop advisor:" in out  # ranking printed too
 
 
 def test_gros_michel_bought_as_only_mult_source():
@@ -692,3 +693,16 @@ def test_throwback_skips_big_with_margin():
     d["blind_select"]["choices"]["Boss"]["chips"] = 10
     d["hands_per_round"] = 3
     assert "ADVICE: b skip" in _out(cli.show, d)
+
+
+def test_main_hand_invariant_twice_the_plays():
+    # 7809: 'Flush' from ante 3 despite ~14 Pair plays at Pair L10
+    d = shop(jokers=[joker("Droll Joker", 1)], ante=4)
+    d["hand_levels"] = {"Pair": {"played": 14, "level": 10, "chips": 100, "mult": 20}, "Flush": {"played": 6, "level": 2, "chips": 50, "mult": 6}}
+    assert cli.main_hand(d) == "Pair"
+
+
+def test_main_hand_prefers_much_higher_level():
+    d = shop(ante=4)
+    d["hand_levels"] = {"Pair": {"played": 6, "level": 7, "chips": 70, "mult": 14}, "Two Pair": {"played": 5, "level": 2, "chips": 40, "mult": 3}}
+    assert cli.main_hand(d) == "Pair"
