@@ -351,6 +351,7 @@ class _OptionSim:
                 ok = True
                 removed.add(bones_left[0])
                 self.bones_used += 1
+            st[1] += ok
             all_ok = all_ok and ok
         self.joint += all_ok
         self.n += 1
@@ -399,8 +400,13 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
     for r, sim in sims:
         n = max(1, sim.n)
         r["n"] = sim.n
-        r["p_next"] = sim.joint / n
-        r["p_blinds"] = [st[1] / max(1, st[0]) for st in sim.stats]
+        r["p_next_model"] = sim.joint / n
+        r["p_blinds_model"] = [st[1] / max(1, st[0]) for st in sim.stats]
+        cal = getattr(sv, "calibrate", lambda p: p)  # the solver's map from greedy-policy p to players' clear rate
+        r["p_blinds"] = [cal(p) for p in r["p_blinds_model"]]
+        r["p_next"] = 1.0
+        for p in r["p_blinds"]:
+            r["p_next"] *= p
         r["score_ratio"] = sum(st[2] / max(1, st[0]) for st in sim.stats) / max(1, len(sim.stats))
         r["dollars"] = sum(st[3] / max(1, st[0]) for st in sim.stats)
         if sim.bones_used:
@@ -418,10 +424,12 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
       levels: [hand names] (+1 level each; '*' = every hand, Black Hole); add_cards: [playing card dicts];
       remove_cards: [deck card ids]; enhance: {deck card id: 'm_glass'...}.
     A baseline option (no edits) is added first when missing.
-    Returns options best first: {label, option, feasible, error, p_next (P(survive all simulated blinds)), p_blinds
-    [per blind], delta (p_next - baseline), score_ratio (mean min(1, scored/need) per blind), dollars (unused hands $
-    over the blinds), money_after, rent_per_round, money_after_rent, n, notes, blinds}. Ranking: p_next (options
-    within TIE_P are tied), then score_ratio, then money_after."""
+    Returns options best first: {label, option, feasible, error, p_next (P(survive all simulated blinds): product
+    of the per-blind p_blinds, each mapped by solver.calibrate to the clear rate Gold players achieve), p_next_model /
+    p_blinds_model (raw rollout frequencies under the solver's greedy policy; p_next_model is the joint frequency),
+    delta (p_next - baseline), score_ratio (mean min(1, scored/need) per blind), dollars (unused hands $ over the
+    blinds), money_after, rent_per_round, money_after_rent, n, notes, blinds}. Ranking: p_next (options within
+    TIE_P are tied), then score_ratio, then money_after."""
     sv = _solver()
     est = estimate_fn or sv.default_estimate()
     cli = sys.modules.get(getattr(est, "__module__", "") or "")

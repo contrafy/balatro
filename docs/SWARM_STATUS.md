@@ -16,20 +16,21 @@ _Interim, 02:45 (updated as the night goes on)._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 02:49:55 by `balatro-data status` (edits inside this block are overwritten). Player runs: 120 (112 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 03:07:54 by `balatro-data status` (edits inside this block are overwritten). Player runs: 127 (118 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (8)
+### Live runs (9)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7802 | port-7802 | claude-fable-5-1 | 4J47S7PD | 8 | SHOP | 2 | 3 | 4 | Small Blind (1000) | SHOP_END | left; Juggler/Standard pack add no score; leave | 2s |
-| 7803 | port-7803 | claude-opus-5-5 | 8IWKQM3R | 8 | SHOP | 4 | 9 | 26 | Small Blind (9000) | SHOP_BUY_BOOSTER {"slot":2} | EMERGENCY 0.22: Jumbo Arcana (5 tarots): Justice on a face = Glass retriggered 3x by Chad (x8 on hi… | 1s |
-| 7804 | port-7804 | claude-opus-5-5 | CEBZIMZI | 8 | SHOP | 2 | 4 | 7 | Big Blind (1500) | SELL_JOKER {"index":2} | sell free Delayed Gratification for before rent; -/round outweighs its /discard | 5s |
-| 7805 | port-7805 | claude-opus-5-5 | E57ZB14D | 8 | SELECTING_HAND | 3 | 8 | 4 | The Mark 3800/6400 | PLAY_HAND {"card_indices":[6,7,8,5,1]} | Pair 99 est 3680 vs 2600 remaining: clears The Mark | 3s |
-| 7806 | port-7806 | claude-opus-5-5 | 22DQ1IV4 | 8 | SHOP | 2 | 4 | 3 | Big Blind (1500) | SHOP_BUY_BOOSTER {"slot":1} | Free (Coupon) Jumbo Arcana: chance at Justice/Empress on pair ranks or Hermit $ | 15s |
-| 7807 | port-7807 | claude-opus-5-5 | B6KZC39M | 8 | SHOP | 7 | 17 | 8 | Small Blind (110000) | SHOP_BUY_BOOSTER {"slot":1} | ante 7, floor off: Arcana -> for Chariot (Steel held x1.5) / Justice (Glass) / Death on my cards | 4s |
-| 7809 | port-7809 | claude-opus-5-5 | Z6ZJWRC4 | 8 | SELECTING_HAND | 6 | 14 | 10 | Small Blind 59528/60000 | PLAY_HAND {"card_indices":[6,7]} | need 472, Pair 6 ~27k clears | 8s |
-| 7810 | port-7810 | claude-sonnet-5-5 | 53UERUM3 | 8 | BLIND_SELECT | 5 | 11 | 5 | The House (50000) | SELECT_BLIND | The House 50000 boss, first hand face down; plan Queens held + club flush like Big | 5s |
+| 7801 | port-7801 | claude-fable-5-1 | 4UQQD6BE | 8 | SELECTING_HAND | 3 | 5 | 8 | The Head 0/6400 | PLAY_HAND {"card_indices":[1,7,6,5,4]} | Lone AS at High Card L2 est 1014 beats Pair 5 (5H debuffed) est 660; fillers 5H 6C 7C 8D cycle junk… | 18s |
+| 7802 | port-7802 | claude-fable-5-1 | 4J47S7PD | 8 | PACK_OPENING | 4 | 7 | 12 | Small Blind (9000) | SELECT_PACK_CARD {"index":2,"targets":[8]} | Chariot: Steel 7S (x1.5 mult while held, a card I never play in a face engine) = a permanent condit… | 13s |
+| 7803 | port-7803 | claude-opus-5-5 | RHYICWF8 | 8 | BLIND_SELECT | 3 | 7 | 12 | Big Blind (4800) | SELECT_BLIND | Big 4800 never skip | 22s |
+| 7804 | port-7804 | claude-opus-5-5 | A5LJXXMW | 8 | SHOP | 4 | 8 | 18 | Small Blind (9000) | SHOP_BUY_BOOSTER {"slot":1} | Jumbo Arcana (2 left, above floor): pick of 5 tarots for Glass/Steel/Mult on pair cards or Hermit; … | 18s |
+| 7805 | port-7805 | claude-opus-5-5 | E57ZB14D | 8 | SHOP | 6 | 15 | 19 | Big Blind (90000) | SHOP_BUY_BOOSTER {"slot":1} | TIGHT 1.09x for House 120000: Celestial = guaranteed Mercury (Pair L6); 9->5 | 10s |
+| 7806 | port-7806 | claude-opus-5-5 | I9RJP8E5 | 8 | BLIND_SELECT | 1 | 1 | 1 | Big Blind (450) | SKIP_BLIND | override: skip Big for Coupon (free jokers+packs in the shop right before ante 2); now so the post-… | 8s |
+| 7807 | port-7807 | claude-opus-5-5 | 6TC4XVTG | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[5,6,7,8]} | pair 7 est 48 vs 300 need; keep JT97 gutshot to 8, solver p 0.99 | 4s |
+| 7809 | port-7809 | claude-opus-5-5 | 45J81AYQ | 8 | BLIND_SELECT | 2 | 4 | 9 | The Flint (2000) | SELECT_BLIND | boss The Flint 2000 | 7s |
+| 7810 | port-7810 | claude-sonnet-5-5 | 2GRKCB8X | 8 | SELECTING_HAND | 4 | 10 | 1 | The Plant 0/18000 | PLAY_HAND {"card_indices":[6,7,8,1,2]} | Best est 3738 FH of 18000 needed; run cannot clear, maximize score | 12s |
 
 ### Results by model x stake x deck
 
@@ -38,28 +39,29 @@ _Generated 2026-10-14 02:49:55 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 14 | 0 | 14 | 0 | 0 | 3.86 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 60 | 0 | 60 | 0 | 0 | 3.53 | 7 |
-| claude-sonnet-5-5 | 8 | Black | 32 | 0 | 31 | 0 | 1 | 3.0 | 8 |
+| claude-opus-5-5 | 8 | Black | 65 | 0 | 65 | 0 | 0 | 3.66 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 33 | 0 | 32 | 0 | 1 | 3.06 | 8 |
 
 ### Deepest runs
 
 | # | seed | model | stake | deck | outcome | ante | blind | post-mortem |
 |---|---|---|---|---|---|---|---|---|
-| 1 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
-| 2 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
-| 3 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
-| 4 | 3IDYS1SA | claude-fable-5-1 | 8 | Black | loss | 6 | Big Blind 87529/90000 | [7802_3IDYS1SA.md](runs/7802_3IDYS1SA.md) |
-| 5 | 26ARMPG1 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 48586/90000 | [7807_26ARMPG1.md](runs/7807_26ARMPG1.md) |
-| 6 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
-| 7 | 76GDJXLS | claude-opus-5-5 | 8 | Black | loss | 6 | The Mouth 80352/120000 | [7809_76GDJXLS.md](runs/7809_76GDJXLS.md) |
-| 8 | PZ67LB31 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 28434/90000 | [7803_PZ67LB31.md](runs/7803_PZ67LB31.md) |
-| 9 | M5SRCH3B | claude-sonnet-5-5 | 8 | Black | loss | 5 | The Mark 29380/50000 | [7810_M5SRCH3B.md](runs/7810_M5SRCH3B.md) |
-| 10 | AJAKNU2C | claude-fable-5-1 | 8 | Black | loss | 5 | The Eye 14823/50000 | [7801_AJAKNU2C.md](runs/7801_AJAKNU2C.md) |
+| 1 | B6KZC39M | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 207920/400000 | [7807_B6KZC39M.md](runs/7807_B6KZC39M.md) |
+| 2 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
+| 3 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
+| 4 | Z6ZJWRC4 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 146453/165000 | [7809_Z6ZJWRC4.md](runs/7809_Z6ZJWRC4.md) |
+| 5 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
+| 6 | 3IDYS1SA | claude-fable-5-1 | 8 | Black | loss | 6 | Big Blind 87529/90000 | [7802_3IDYS1SA.md](runs/7802_3IDYS1SA.md) |
+| 7 | 26ARMPG1 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 48586/90000 | [7807_26ARMPG1.md](runs/7807_26ARMPG1.md) |
+| 8 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
+| 9 | 76GDJXLS | claude-opus-5-5 | 8 | Black | loss | 6 | The Mouth 80352/120000 | [7809_76GDJXLS.md](runs/7809_76GDJXLS.md) |
+| 10 | PZ67LB31 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 28434/90000 | [7803_PZ67LB31.md](runs/7803_PZ67LB31.md) |
 
 ### Data validity
 
-- Player runs: 120 files in manifest; schema_ok 120, schema invalid 0; replay_ok 85, replay failed 0, awaiting replay 24, open/unended 11; quarantined 0; not yet in manifest 0.
-- All files (incl. fuzz + replays): 274; schema_ok 272; replay_ok 91; replay failed 0; awaiting replay 169; quarantined 2.
+- Player runs: 123 files in manifest; schema_ok 123, schema invalid 0; replay_ok 110, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 4.
+- Player-run replay verdicts by host: headless ok 19 / failed 0; gui (live) ok 93 / failed 0; cross-checked by both 2, disagreeing 0.
+- All files (incl. fuzz + replays): 283; schema_ok 281; replay_ok 116 (headless 19, gui 99); replay failed 0; awaiting replay 153; quarantined 2.
 
 ### Rejects per agent
 
@@ -67,18 +69,18 @@ _Generated 2026-10-14 02:49:55 by `balatro-data status` (edits inside this block
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
 | port-7778 | 1 | 1 | 0 |
-| port-7805 | 1 | 1 | 839 |
-| port-7807 | 1 | 1 | 1038 |
+| port-7805 | 1 | 1 | 915 |
+| port-7807 | 1 | 1 | 1108 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 489 |
-| port-7802 | 0 | 0 | 582 |
-| port-7803 | 0 | 0 | 923 |
-| port-7804 | 0 | 0 | 570 |
-| port-7806 | 0 | 0 | 988 |
+| port-7801 | 0 | 0 | 528 |
+| port-7802 | 0 | 0 | 619 |
+| port-7803 | 0 | 0 | 1002 |
+| port-7804 | 0 | 0 | 643 |
+| port-7806 | 0 | 0 | 1058 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 857 |
-| port-7810 | 0 | 0 | 1079 |
+| port-7809 | 0 | 0 | 917 |
+| port-7810 | 0 | 0 | 1163 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

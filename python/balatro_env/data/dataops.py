@@ -195,6 +195,7 @@ class HeadlessVerifier:
             p.start()
         self.pending = 0
         self.closed = False
+        self.stopping = False
 
     def boot(self, timeout_s: float = 300.0) -> tuple[str | None, list[str]]:
         """Wait for every worker's boot report: (bridge_hash of the engines or None, boot errors)."""
@@ -220,8 +221,14 @@ class HeadlessVerifier:
         for p in paths:
             self.tasks.put(str(p))
         self.pending += len(paths)
-        for _ in self.procs:  # one stop sentinel per worker: they exit once the queue is drained
-            self.tasks.put(None)
+        self._stop()
+
+    def _stop(self) -> None:
+        """One stop sentinel per worker: they exit once the task queue is drained."""
+        if not self.stopping:
+            self.stopping = True
+            for _ in self.procs:
+                self.tasks.put(None)
 
     def active(self) -> bool:
         return self.pending > 0 and any(p.is_alive() for p in self.procs)
@@ -243,6 +250,7 @@ class HeadlessVerifier:
         if self.closed:
             return
         self.closed = True
+        self._stop()
         for p in self.procs:
             p.join(timeout=30 if self.pending <= 0 else 1)
             if p.is_alive():
@@ -362,6 +370,7 @@ class DataOps:
         self.known_invalid: set[str] = set()
         self._gui_hash: str | None = None
         self._gui_up: bool | None = None  # per iteration: None = not checked yet
+        self._headless_hash: str | None = None  # the engine's bridge_hash, known after the first boot
 
     def status(self) -> None:
         path, _, st = update_status_file(self.root, self.status_out, self.runs_dir, self.scanner, self.pm_index,
@@ -422,10 +431,13 @@ class DataOps:
         return done
 
     def _start_headless(self, rows: list[dict[str, Any]]) -> HeadlessVerifier | None:
+        if self._headless_hash is not None and not split_by_hash(rows, self._headless_hash)[0]:
+            return None  # only runs from other bridge versions are pending: don't boot workers for nothing
         n = min(self.headless_workers, len(rows))
         t0 = time.monotonic()
         verifier = HeadlessVerifier(n)
         bridge_hash, errors = verifier.boot()
+        self._headless_hash = bridge_hash or self._headless_hash
         for e in errors:
             self.log.error(f"headless: worker boot failed: {e}")
         if bridge_hash is None:

@@ -88,7 +88,7 @@ $D replay data/trajectories/<date>/<file>.jsonl.gz --port <idle port> --update-m
 Unattended alternative (run as long-lived services; the replay port must not belong to any player):
 
 ```bash
-python/.venv/Scripts/balatro-data dataops --replay-port 7820 --interval 300   # compress/validate/manifest/replay/status loop -> data/dataops.log
+python/.venv/Scripts/python -m balatro_env.data dataops --replay-port 7820 --headless-workers 3 --interval 300   # compress/validate/manifest/replay (headless + live spot-check)/status -> data/dataops.log
 python/.venv/Scripts/balatro-data dashboard --port 8765                       # http://127.0.0.1:8765/
 python/.venv/Scripts/balatro-data status --print                              # one-off refresh of docs/SWARM_STATUS.md
 ```

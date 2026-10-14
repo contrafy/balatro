@@ -16,7 +16,13 @@ from balatro_env.data.dataops import (
     split_by_hash,
     superseded_files,
 )
-from balatro_env.data.manifest import ReplayVerdict, load_manifest, record_replays, write_manifest
+from balatro_env.data.manifest import (
+    ReplayVerdict,
+    load_manifest,
+    quarantine_reason,
+    record_replays,
+    write_manifest,
+)
 from balatro_env.data.status import (
     BEGIN,
     END,
@@ -261,22 +267,30 @@ def test_per_host_replay_verdicts(swarm):
     row = load_manifest(root)[key]
     assert (row["replay_ok"], row["replay_host"], row["headless_replay_ok"]) == (False, "gui", True)
     assert row["replay_detail"].startswith("gui: obs divergence step 0; headless/gui disagree")
-    assert row["quarantined_reason"].startswith("replay: gui: obs divergence")
+    assert quarantine_reason({**row, "schema_ok": True}).startswith("replay: gui: obs divergence")
     assert row["replayed_at_ms"] == 20 and row["replay_path"] == "r.jsonl"
     build_manifest(root)  # verdicts survive a rebuild
     assert load_manifest(root)[key]["gui_replay_ok"] is False
 
     record_replays(root, [ReplayVerdict(path, "gui", True, None, 1, 30, "hX")])
     row = load_manifest(root)[key]
-    assert row["replay_ok"] is True and row["replay_detail"] is None and row["quarantined_reason"] is None
+    assert row["replay_ok"] is True and row["replay_detail"] is None
+    assert quarantine_reason({**row, "schema_ok": True}) is None
 
     # Legacy row (replay_ok without replay_host) + a headless verdict: the old verdict becomes the gui one.
+    rows = load_manifest(root)
+    rows["AAAA1111_7801_1000"].update(replay_ok=True, replay_detail=None, replayed_at_ms=5)
+    write_manifest(root, rows)
     a = root / DAY / "AAAA1111_7801_1000.jsonl.gz"
     record_replays(root, [ReplayVerdict(a, "headless", True, None, 2, 40, "hX")])
     row = load_manifest(root)["AAAA1111_7801_1000"]
     assert (row["gui_replay_ok"], row["headless_replay_ok"], row["replay_host"]) == (True, True, "gui")
 
-    st = _status(root, runs)
+    # (the synthetic fixture headers are not schema-valid; count verdicts as if they were)
+    rows = load_manifest(root)
+    for r in rows.values():
+        r["schema_ok"] = True
+    st = aggregate(RunScanner(root, persist=False).scan(), rows, PostMortemIndex(runs).scan(), now_s=time.time())
     v = st["validity"]
     assert (v["gui_ok"], v["headless_ok"], v["cross_checked"], v["disagree"]) == (2, 2, 2, 0)
     assert "headless ok 2 / failed 0; gui (live) ok 2 / failed 0" in render_markdown(st)

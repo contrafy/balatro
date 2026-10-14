@@ -226,6 +226,13 @@ JSON objects are written with sorted keys; integers without exponent. Line types
 `data/manifest.jsonl` has one row per trajectory: path, seed, deck, stake, outcome, steps, `bridge_hash`,
 `schema_ok`, `replay_ok`, `quarantined_reason`. Only rows with `schema_ok && replay_ok` feed training.
 
+Replay verdicts are kept per host: `gui_replay_ok/_detail/_replayed_at_ms/_replay_bridge_hash` (a live instance)
+and `headless_replay_*` (the headless engine, `docs/HEADLESS.md`). `replay_ok` is the gui verdict when there is one
+(the live game is the reference), else the headless one; `replay_host` (`gui`|`headless`) and `replay_bridge_hash`
+name where it came from. A gui/headless disagreement is spelled out in `replay_detail`. Rows from before per-host
+columns (`replay_ok` without `replay_host`) are gui verdicts. Writers take `<data>/manifest.lock` around their
+read-modify-write.
+
 ## Dataset tooling
 
 `python/balatro_env/data/` implements the checks above; CLI `balatro-data` (or `python -m balatro_env.data`),
@@ -241,7 +248,7 @@ data root `--data-dir`, else `$BALATRO_RL_DATA_DIR`, else `./data`.
 | `balatro-data seeds --count N` / `--check SEED` | Fresh training seeds / reserved-seed check. |
 | `balatro-data status [--print]` | Regenerates the block between `<!-- AUTO:BEGIN -->` / `<!-- AUTO:END -->` in `docs/SWARM_STATUS.md` (everything outside is kept; the file is created with *Morning summary* / *Orchestrator log* sections if missing): live runs, results per model x stake x deck (runs, wins, mean/max ante), 10 deepest runs with post-mortem links (`docs/runs/<port>_<seed>.md`), manifest validity counts and quarantine reasons, rejects per agent. Model = `meta.model` of the steps (post-mortem title as fallback). Excludes `FUZZ*` seeds, `test-*` agents, replays and debug-tainted runs. A run is *live* while it is its port's newest file, has no `end` line and was written in the last 30 min. Per-file summaries are cached in `<data>/.status_cache.json` (by size + mtime). |
 | `balatro-data dashboard [--port 8765]` | Stdlib-only local web page (auto-refresh, no external assets): live runs (phase, ante, round, money, blind progress, jokers, last action + why, idle time), results, wins, ante histogram per model (inline SVG), validity counts, post-mortems (served at `/runs/<file>`); `/status.json` has the same data. Open files are read incrementally (only appended bytes). |
-| `balatro-data dataops --replay-port P [--interval 300] [--once]` | Unattended loop, logging to `<data>/dataops.log`: `compress --include-superseded`, validate + manifest (changed files only), replay (one at a time, oldest first) every closed `schema_ok` player run without a verdict whose `bridge_hash` matches the replay instance, then `status`. If port P's `/health` is down it launches an instance there with `launch_instance.ps1`; a crashed/hung replay instance is killed by the PID whose command line names `balatro-instances\<P>`. Bridge-level replay failures are retried (3 attempts) before the verdict is stored. Never touches other ports. |
+| `balatro-data dataops --replay-port P [--headless-workers 3] [--gui-every 10] [--interval 300] [--once]` | Unattended loop, logging to `<data>/dataops.log`: `compress --include-superseded`, validate + manifest (changed files only), replay verification, then `status`. Every closed `schema_ok` player run without a verdict whose `bridge_hash` matches the engine is replayed headlessly on `--headless-workers` processes (`replay_host:"headless"`). Concurrently, one at a time on port P, the live instance replays a stable ~1-in-`--gui-every` sample (crc32 of `run_key`) plus every run the headless engine found divergent (`replay_host:"gui"`). `--headless-workers 0` replays every run live as before. If port P's `/health` is down it launches an instance there with `launch_instance.ps1`; a crashed/hung replay instance is killed by the PID whose command line names `balatro-instances\<P>`. Live bridge-level failures are retried (3 attempts) before the verdict is stored. Never touches other ports. |
 
 Seed ranges are disjoint: the 500 held-out eval seeds in `python/balatro_env/data/eval_seeds.txt` are never
 played by any data producer (swarm, rule agents, fuzzer); `FUZZ????` seeds belong to the fuzzer; training runs

@@ -12,8 +12,8 @@ realized clear rate; a bin is calibrated when |mean predicted - realized| < 0.05
 from __future__ import annotations
 
 import argparse
-import json
 import importlib
+import json
 import math
 import multiprocessing as mp
 import statistics
@@ -66,56 +66,55 @@ def _work(args):
     except Exception as e:  # noqa: BLE001 - one odd observation must not stop the sweep
         return {"run": job["run"], "i": job["i"], "error": f"{type(e).__name__}: {e}"}
     p = r["p_clear"]
-    b = job["obs"].get("blind") or {}
-    need = max(1.0, float((b.get("chips_needed") or 0) - (b.get("chips_scored") or 0)))
     return {k: job[k] for k in ("run", "i", "kind", "cleared", "first", "boss", "jokers")} | {
-        "p": p, "p_model": r.get("p_model", p), "ratio": r["exp_score"] / need,
+        "p": p, "p_model": r.get("p_model", p),
         "h": int(job["obs"].get("hands_remaining") or 0), "d": int(job["obs"].get("discards_remaining") or 0)}
 
 
-def _logit(p):
-    q = min(0.995, max(0.005, p))  # same clipping as solver.calibrate
-    return math.log(q / (1 - q))
+def isotonic_knots(rows, min_block=60):
+    """Monotone map p_model -> realized clear rate for solver.CALIBRATION: pool-adjacent-violators on the 0/1
+    outcomes sorted by p_model, adjacent blocks merged until each holds min_block decisions; knots are
+    (mean p_model, realized) per block, extended flat to p=0 and p=1."""
+    blocks = []  # [sum p_model, sum cleared, n]
+    for x, y in sorted((r["p_model"], 1.0 if r["cleared"] else 0.0) for r in rows):
+        blocks.append([x, y, 1])
+        while len(blocks) > 1 and blocks[-2][1] / blocks[-2][2] >= blocks[-1][1] / blocks[-1][2]:
+            b = blocks.pop()
+            blocks[-1] = [u + v for u, v in zip(blocks[-1], b)]
+    merged = []
+    for b in blocks:
+        if merged and merged[-1][2] < min_block:
+            merged[-1] = [u + v for u, v in zip(merged[-1], b)]
+        else:
+            merged.append(list(b))
+    if len(merged) > 1 and merged[-1][2] < min_block:
+        b = merged.pop()
+        merged[-1] = [u + v for u, v in zip(merged[-1], b)]
+    knots = [(round(sx / n, 4), round(sy / n, 4)) for sx, sy, n in merged]
+    if knots[0][0] > 0:
+        knots.insert(0, (0.0, knots[0][1]))
+    if knots[-1][0] < 1:
+        knots.append((1.0, knots[-1][1]))
+    return knots
 
 
-def fit_platt(rows, l2=1e-3, iters=60):
-    """Platt scaling: logistic regression of the realized clear on (1, logit(p_model)) by Newton-Raphson;
-    returns (a, b) for solver.CALIBRATION."""
-    a, b = 0.0, 1.0
-    xs = [_logit(r["p_model"]) for r in rows]
-    ys = [1.0 if r["cleared"] else 0.0 for r in rows]
-    for _ in range(iters):
-        ga, gb = -l2 * a, -l2 * b
-        haa, hab, hbb = l2, 0.0, l2
-        for x, y in zip(xs, ys):
-            pz = 1 / (1 + math.exp(-max(-30.0, min(30.0, a + b * x))))
-            ga += y - pz
-            gb += (y - pz) * x
-            v = pz * (1 - pz)
-            haa += v
-            hab += v * x
-            hbb += v * x * x
-        det = haa * hbb - hab * hab
-        da, db = (hbb * ga - hab * gb) / det, (haa * gb - hab * ga) / det
-        a, b = a + da, b + db
-        if max(abs(da), abs(db)) < 1e-9:
-            break
-    return round(a, 4), round(b, 4)
-
-
-def apply_platt(w, p):
-    return 1 / (1 + math.exp(-max(-30.0, min(30.0, w[0] + w[1] * _logit(p)))))
+def apply_knots(knots, p):
+    """Piecewise-linear interpolation through the knots (same as solver.calibrate)."""
+    for (x0, y0), (x1, y1) in zip(knots, knots[1:]):
+        if p <= x1:
+            return y0 if x1 <= x0 else y0 + (y1 - y0) * (p - x0) / (x1 - x0)
+    return knots[-1][1]
 
 
 def out_of_fold(rows):
-    """2-fold by run: each half is recalibrated with Platt coefficients fitted on the other half."""
+    """2-fold by run: each half is recalibrated with knots fitted on the other half."""
     folds = ([r for r in rows if zlib.crc32(r["run"].encode()) % 2 == 0],
              [r for r in rows if zlib.crc32(r["run"].encode()) % 2 == 1])
     out = []
     for test, train in ((folds[0], folds[1]), (folds[1], folds[0])):
         if train:
-            w = fit_platt(train)
-            out += [dict(r, p=apply_platt(w, r["p_model"])) for r in test]
+            k = isotonic_knots(train)
+            out += [dict(r, p=apply_knots(k, r["p_model"])) for r in test]
     return out
 
 
@@ -129,7 +128,8 @@ def table(rows, title):
         mp_ = statistics.mean(r["p"] for r in b)
         re_ = statistics.mean(1.0 if r["cleared"] else 0.0 for r in b)
         se2 = 2 * math.sqrt(max(mp_ * (1 - mp_), 1e-4) / len(b))
-        ok = "yes" if abs(mp_ - re_) < 0.05 else ("n<30" if len(b) < 30 else ("NO (within 2 SE)" if abs(mp_ - re_) < se2 else "NO"))
+        ok = "yes" if abs(mp_ - re_) < 0.05 else "n<30" if len(b) < 30 else \
+            "NO (within 2 SE)" if abs(mp_ - re_) < se2 else "NO"
         out.append(f"| {lo:.2f}-{min(hi, 1.0):.2f} | {len(b)} | {mp_:.3f} | {re_:.3f} | {re_ - mp_:+.3f} | {se2:.3f} | {ok} |")
     if rows:
         brier = statistics.mean((r["p"] - (1.0 if r["cleared"] else 0.0)) ** 2 for r in rows)
@@ -146,8 +146,8 @@ def report(rows, module):
              table([r for r in ok if r["first"]], "First decision of each blind"), "",
              table([r for r in ok if r["boss"]], "Boss blinds"), "",
              table([dict(r, p=r["p_model"]) for r in ok], "All decisions, raw model p (p_model)"), "",
-             table(out_of_fold(ok), "p_model Platt-recalibrated out-of-fold (2-fold by run)"), "",
-             f"Platt coefficients fitted on all decisions (solver.CALIBRATION): {fit_platt(ok)}"]
+             table(out_of_fold(ok), "p_model recalibrated out-of-fold (isotonic, 2-fold by run)"), "",
+             f"Isotonic knots fitted on all decisions (solver.CALIBRATION): {isotonic_knots(ok)}"]
     worst = sorted((r for r in ok if not r["cleared"]), key=lambda r: -r["p"])[:15]
     parts += ["", "## Lost blinds with the highest predicted p", "", "| run step | action | p | boss | jokers |",
               "|---|---|---|---|---|"]

@@ -618,3 +618,19 @@ def test_mark_face_down_held_cards_count_for_shoot_the_moon():
     base = cli.estimate("Pair", d["hand"][:2], d["hand"][2:], dict(d, blind={"name": "Small Blind"}))[0]
     mark = cli.estimate("Pair", d["hand"][:2], d["hand"][2:], dict(d, blind={"name": "The Mark", "boss": True}))[0]
     assert mark > base
+
+
+def test_half_joker_rental_not_sold_when_it_carries():
+    # 7803: told to sell Half Joker{RENTAL} as a flat rental though it gave +20 of ~22 mult
+    deck = {"cards": [{"rank": r, "suit": s} for r in ("2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace")
+                      for s in ("Spades", "Hearts", "Clubs", "Diamonds")]}
+    d = shop(jokers=[joker("Half Joker", 1, rental=True), joker("Joker", 2), joker("Sly Joker", 3), joker("Jolly Joker", 4, rental=True)], ante=3, money=10)
+    d["deck"] = deck
+    d["hand_levels"] = {"Pair": {"level": 2, "chips": 25, "mult": 3, "played": 6}, "Two Pair": {"level": 1, "chips": 20, "mult": 2, "played": 2}}
+    assert "b sell 1" not in _advice(_out(cli.shop_advise, d))
+
+
+def test_high_card_always_listed():
+    d = _hand_state([("King", "Spades"), ("7", "Hearts"), ("7", "Clubs"), ("5", "Diamonds"), ("4", "Spades")],
+                    jokers=[joker("Half Joker", 1), joker("Hanging Chad", 2)], need=5000)
+    assert "HIGH CARD" in _out(cli.show_hands, d)
