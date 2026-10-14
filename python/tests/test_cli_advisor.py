@@ -735,9 +735,10 @@ def test_main_hand_hysteresis_keeps_previous_until_two_shops():
 
 
 def test_sim_veto_covers_needed_now(monkeypatch):
-    # 7810: Banner{ETERNAL} 'NEEDED NOW' advised although its own SIM was 0.71 vs baseline 0.72 (a chips-only joker is no
-    # longer NEEDED NOW at all, so the case is kept with a +mult joker)
-    d = shop(jokers=[], shop_jokers=[{"index": 1, "name": "Jolly Joker", "set": "Joker", "cost": 5, "eternal": True}], money=8, ante=1)
+    # 7810: Banner{ETERNAL} 'NEEDED NOW' advised although its own SIM was 0.71 vs baseline 0.72 (chips-only jokers are no
+    # longer NEEDED NOW; the veto path is kept under test by clearing that set)
+    monkeypatch.setattr(cli, "CHIPS_ONLY_J", set())
+    d = shop(jokers=[], shop_jokers=[{"index": 1, "name": "Banner", "set": "Joker", "cost": 5, "eternal": True}], money=8, ante=1)
     d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
 
     class FakeSim:

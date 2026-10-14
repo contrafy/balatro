@@ -2932,7 +2932,14 @@ def shop_advise_sim(d, budget_s=6.0):
             x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or \
                 (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
             # a copier of an owned xMult is an xMult (7810 UIL7HPIQ: Blueprint doubling the only xMult Ramen was barred)
-            if not (x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
+            # exception: 0 scoring jokers at ante 1-2 and no other scorer on offer: an eternal-rental scorer is the only way
+            # through (7809 S634VB4Y died jokerless at ante 2; mirrors the players' rule)
+            jokerless = ante_s <= 2 and not any(is_scorer(d, j, main_hand(d)) for j in lst(d.get("jokers"))) and \
+                _is_scoring_cls(classify_joker(aj.get("name"), 0, main_hand(d))[0]) and \
+                not any(_is_scoring_cls(classify_joker((x["option"].get("add_joker") or {}).get("name"), 0, main_hand(d))[0])
+                        and not (_stk(x["option"].get("add_joker") or {})["eternal"] and _stk(x["option"].get("add_joker") or {})["rental"])
+                        for x in feas if x["option"].get("add_joker"))
+            if not ((x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15) or jokerless):
                 return False
         # A second rental: before ante 5 only bundled with selling the first (the players' hard rule; 7816 FVPWB9XC ended
         # with five $1 rentals); at ante 5 also when both are xMults or the SIM gains +0.15 with the money path >= 0

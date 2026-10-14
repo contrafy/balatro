@@ -11543,3 +11543,72 @@
 7810	a5	-	Pair	KC KD	Spare Trousers,Smiley Face,Raised Fist,Acrobat(holo),Golden Joker	est=2655	actual=2655	OK
 7805	a5	The Pillar	Flush	AS(DEBUFF) QS 8S 7S 3S(DEBUFF)	Shoot the Moon,Scary Face,Popcorn,Abstract Joker,Ramen,Hit the Road	est=11484	actual=11484	OK
 7817	a5	-	Pair	KH KC	Banner,Red Card,Green Joker,Wrathful Joker,Hanging Chad,Photograph	est=10220	actual=10220	OK
+7804	a4	-	Straight	9S 8D 7C 6C 5H(mult)	Supernova,Even Steven,Turtle Bean,Credit Card,Popcorn,Walkie Talkie	est=5250	actual=5250	OK
+7808	a4	-	High Card	TH	Mr. Bones,Abstract Joker,Riff-raff,Mystic Summit,Card Sharp,Scary Face	est=510	actual=510	OK
+7816	a2	The Psychic	Full House	6S 6H 6C 3C 3D	Half Joker,Sly Joker,Joker,Mr. Bones,Vagabond	est=912	actual=912	OK
+7806	a3	-	Flush	QS 9S 8S 7S 4S	Wrathful Joker,Drunkard,Sock and Buskin,Chaos the Clown,Popcorn,Gluttonous Joker	est=3154	actual=3154	OK
+7812	a8	Crimson Heart	Two Pair	6S 6D 3H 3D	Swashbuckler,Brainstorm,Blue Joker,Odd Todd,Blueprint,Card Sharp	est=77724	actual=77724	OK
+7817	a5	-	High Card	QS(glass)	Banner,Red Card,Green Joker,Wrathful Joker,Hanging Chad,Photograph	est=22040	actual=22040	OK
+7808	a4	-	High Card	KH	Mr. Bones,Abstract Joker,Riff-raff,Mystic Summit,Card Sharp,Scary Face	est=4590	actual=4590	OK
+7805	a5	The Pillar	Pair	KH KD	Shoot the Moon,Scary Face,Popcorn,Abstract Joker,Ramen,Hit the Road	est=19955	actual=19955	OK
+7810	a5	-	Full House	QS QC QD JC JD	Spare Trousers,Smiley Face,Raised Fist,Acrobat(holo),Golden Joker	est=23805	actual=23805	OK
+7808	a4	-	High Card	JH	Mr. Bones,Abstract Joker,Riff-raff,Mystic Summit,Card Sharp,Scary Face	est=4590	actual=4590	OK
+7816	a2	The Psychic	Two Pair	AS AC 9S 9C	Half Joker,Sly Joker,Joker,Mr. Bones,Vagabond	est=660	actual=660	OK
+7809	a1	-	Full House	TH TC 8S 8H 8D		est=336	actual=336	OK
+7818	a1	The Goad	Pair	JS(DEBUFF) JH	Crafty Joker,Abstract Joker,Gros Michel	est=520	actual=520	OK
+7807	a3	-	Flush	QD TD 9D 5D 4D	Droll Joker,Half Joker,Abstract Joker,Swashbuckler,Ramen	est=5402	actual=5402	OK
+7804	a4	-	Straight	8C 7D 6S 5C 4D	Supernova,Even Steven,Turtle Bean,Credit Card,Popcorn,Walkie Talkie	est=6110	actual=6110	OK
+7812	a8	Crimson Heart	Two Pair	AS AH 7S 7C	Blueprint,Card Sharp,Brainstorm,Blue Joker,Odd Todd,Swashbuckler	est=52812	actual=52812	OK
+7801	a5	-	High Card	AH	Fibonacci,Odd Todd,Shoot the Moon,Devious Joker(foil),Hanging Chad,Mr. Bones	est=9231	actual=9231	OK
+7818	a1	The Goad	Full House	AC AD 8S(DEBUFF) 8C 8D	Crafty Joker,Abstract Joker,Gros Michel	est=2184	actual=2184	OK
+7802	a5	-	Two Pair	6C 6D 4S 4D	Ice Cream(foil),Hanging Chad(holo),Even Steven,Lusty Joker,Brainstorm,Odd Todd	est=12996	actual=12996	OK
+7804	a4	-	Two Pair	JH JD TS TD(mult)	Supernova,Even Steven,Turtle Bean,Credit Card,Popcorn,Walkie Talkie	est=3040	actual=3040	OK
+7814	a2	-	Straight	TH 9C 8H 7H 6S	Abstract Joker,Fibonacci	est=1260	actual=1260	OK
+7806	a3	-	Two Pair	KH KC 5C 5D	Wrathful Joker,Sock and Buskin,Chaos the Clown,Popcorn,Gluttonous Joker,Ice Cream	est=3910	actual=3910	OK
+7802	a5	-	Full House	TS TH TD 5C 5D	Ice Cream(foil),Hanging Chad(holo),Even Steven,Lusty Joker,Brainstorm,Odd Todd	est=14874	actual=14874	OK
+7801	a5	-	Straight	5D 9D 8S 7S 6C	Fibonacci,Odd Todd,Shoot the Moon,Devious Joker(foil),Hanging Chad,Mr. Bones	est=29920	actual=29920	OK
+7806	a3	-	Pair	9S 9C	Wrathful Joker,Sock and Buskin,Chaos the Clown,Popcorn,Gluttonous Joker,Ice Cream	est=2460	actual=2460	OK
+7817	a5	-	Pair	QS(glass) QH	Banner,Red Card,Green Joker,Wrathful Joker,Hanging Chad,Photograph	est=46640	actual=46640	OK
+7809	a1	-	Straight	6S 5H 4D 3H 2C	Odd Todd	est=448	actual=448	OK
+7813	a3	-	Straight	8S 7D 6S 5C 4D	Mystic Summit,Misprint,Ramen,Seltzer	est=7597	actual=10206	MISS
+7818	a2	-	Pair	JH JD	Crafty Joker,Abstract Joker,Gros Michel	est=780	actual=780	OK
+7814	a2	-	Two Pair	9S 9H 8S 8D	Abstract Joker,Fibonacci	est=1296	actual=1296	OK
+7809	a1	-	Pair	6H 6C	Odd Todd	est=44	actual=44	OK
+7805	a1	-	Flush	QS JS 4S 3S 2S		est=256	actual=256	OK
+7807	a3	The Flint	Pair	JS JC	Droll Joker,Half Joker,Abstract Joker,Swashbuckler,Ramen	est=2145	actual=2145	OK
+7818	a2	-	Flush	AH QH TH 9H 2H	Crafty Joker,Abstract Joker,Gros Michel	est=4396	actual=4396	OK
+7814	a2	-	Pair	8H 8C	Abstract Joker,Fibonacci	est=624	actual=624	OK
+7811	a5	-	Pair	TS TH	Half Joker,Gros Michel,Photograph(holo),Misprint,Joker,Popcorn	est=9187	actual=8295	OK
+7805	a1	-	Pair	JC JD		est=60	actual=60	OK
+7812	a1	-	Straight	TS 9S 8H 7C 6S		est=280	actual=280	OK
+7804	a4	The Water	Straight	AC KS QC JD TD(mult)	Supernova,Turtle Bean,Credit Card,Popcorn,Walkie Talkie,Burglar	est=5436	actual=5436	OK
+7812	a1	-	Three of a Kind	3S 3H 3D		est=117	actual=117	OK
+7811	a5	-	Pair	QS QD	Half Joker,Gros Michel,Photograph(holo),Misprint,Joker,Popcorn	est=9922	actual=9345	OK
+7807	a3	The Flint	Three of a Kind	TH TC TD	Droll Joker,Half Joker,Abstract Joker,Swashbuckler,Ramen	est=3781	actual=3867	OK
+7808	a4	The Eye	Four of a Kind	AS AC(mult) AD AD(gold)	Mr. Bones,Abstract Joker,Riff-raff,Mystic Summit,Card Sharp,Scary Face	est=4576	actual=4576	OK
+7809	a1	The Psychic	Two Pair	AS AC 3S 3D	Odd Todd	est=344	actual=344	OK
+7810	a5	-	Two Pair	AH AD 4H 4C	Spare Trousers,Smiley Face,Raised Fist,Acrobat(holo),Golden Joker	est=3710	actual=3710	OK
+7811	a5	-	Pair	JS JC	Half Joker,Gros Michel,Photograph(holo),Misprint,Joker,Popcorn	est=9922	actual=8820	OK
+7807	a3	The Flint	High Card	AC	Droll Joker,Half Joker,Abstract Joker,Swashbuckler,Ramen	est=1092	actual=1176	OK
+7808	a4	The Eye	Two Pair	KS(gold) KC(wild) JS JC	Mr. Bones,Abstract Joker,Riff-raff,Mystic Summit,Card Sharp,Scary Face	est=6300	actual=6300	OK
+7810	a5	-	High Card	TS	Spare Trousers,Smiley Face,Raised Fist,Acrobat(holo),Golden Joker	est=765	actual=765	OK
+7804	a4	The Water	Pair	AH(wild) AD	Supernova,Turtle Bean,Credit Card,Popcorn,Walkie Talkie,Burglar	est=564	actual=564	OK
+7808	a4	The Eye	Pair	QH QD	Mr. Bones,Abstract Joker,Riff-raff,Mystic Summit,Card Sharp,Scary Face	est=3780	actual=3780	OK
+7813	a3	The Arm	Full House	AH AC AD 6H 6C	Mystic Summit,Misprint,Ramen,Seltzer	est=7414	actual=4862	MISS
+7803	a5	-	Full House	QS(bonus) QC QD JS JH	Egg(foil),Bootstraps,Wily Joker,Mr. Bones(holo),Abstract Joker,Turtle Bean	est=10260	actual=10260	OK
+7806	a3	The Mark	Pair	4S 4D	Wrathful Joker,Sock and Buskin,Chaos the Clown,Gluttonous Joker,Ice Cream,Half Joker(foil)	est=3950	actual=3950	OK
+7818	a2	-	Flush	AS KS QS 9S 7S	Crafty Joker,Abstract Joker,Gros Michel	est=4536	actual=4536	OK
+7814	a2	The Mouth	Flush	AD JD TD 4D 3D	Abstract Joker,Fibonacci	est=1898	actual=1898	OK
+7810	a5	-	Full House	KS KH KC JH JD	Spare Trousers,Smiley Face,Raised Fist,Acrobat(holo),Golden Joker	est=27945	actual=27945	OK
+7806	a3	The Mark	High Card	8S	Wrathful Joker,Sock and Buskin,Chaos the Clown,Gluttonous Joker,Ice Cream,Half Joker(foil)	est=3552	actual=3552	OK
+7804	a4	The Water	High Card	KH	Supernova,Turtle Bean,Credit Card,Popcorn,Walkie Talkie,Burglar	est=150	actual=150	OK
+7809	a1	The Psychic	Straight	9D 8H 7S 6D 5S	Odd Todd	est=632	actual=632	OK
+7805	a1	-	Two Pair	AC AD 5H 5D	Onyx Agate	est=468	actual=468	OK
+7813	a3	The Arm	Pair	9S 9D	Mystic Summit,Misprint,Ramen,Seltzer	est=2451	actual=3010	OK
+7815	a4	The Wall	Two Pair	JC JD 5S 5D	Ice Cream,Riff-raff(foil),Smiley Face,Photograph,Abstract Joker,Card Sharp	est=5920	actual=5920	OK
+7804	a4	The Water	Straight	TC 9C 8H 7D 6H	Supernova,Turtle Bean,Credit Card,Popcorn,Walkie Talkie,Burglar	est=4620	actual=4620	OK
+7814	a2	The Mouth	Flush	KC 7C 6C 3C 2C	Abstract Joker,Fibonacci	est=1638	actual=1638	OK
+7804	a4	The Water	Pair	2S 2H	Supernova,Turtle Bean,Credit Card,Popcorn,Walkie Talkie,Burglar	est=377	actual=377	OK
+7812	a1	-	Full House	JS JH TS TH TD	Supernova	est=450	actual=450	OK
+7816	a3	-	Full House	2H 2D QS QH 2S	Sly Joker,Joker,Mr. Bones,Vagabond(foil),Wily Joker,Gros Michel	est=6118	actual=6118	OK
+7803	a5	-	Full House	KS(bonus) KH 7S 7H 7D	Egg(foil),Bootstraps,Wily Joker,Mr. Bones(holo),Abstract Joker,Turtle Bean	est=9918	actual=9918	OK
