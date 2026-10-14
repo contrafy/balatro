@@ -50,7 +50,9 @@ INCOME_MAX = 1.5  # income jokers can raise the post-horizon rent factor up to t
 TERM_A = 0.5
 TERM_B = 0.5
 TERM_EARLY = (0.3, 0.7)  # antes 1-2: (depth, terminal) weights
-TERM_PERISH_AHEAD = 3  # the terminal build drops perishables dying within this many rounds after it
+TERM_PERISH_AHEAD = 3  # the stretch build drops perishables dying within this many rounds after the terminal one
+STRETCH_X = 3.0  # stretch check: the end build against STRETCH_X x the terminal boss's chips (about 2 antes later)
+STRETCH_W = 0.4  # share of the terminal term from the stretch check (its p, and both score ratios)
 # Spectral cards that destroy 1 random card in hand and add random enhanced cards (card.lua; Stone excluded)
 SPECTRAL_ADDS = {"Grim": (["Ace"], 2), "Familiar": (["Jack", "Queen", "King"], 3),
                  "Incantation": (["2", "3", "4", "5", "6", "7", "8", "9", "10"], 4)}
@@ -386,7 +388,7 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss
     created since (Riff-raff); ob = (Obelisk x_mult, hand-type play counts) carried from the previous rounds;
     boss_passed: a boss was beaten since (Campfire resets to x1)."""
     jokers = _lst(st.get("jokers"))
-    # the terminal round's build also loses the perishables that die soon after it (blind["perish_ahead"] rounds)
+    # the stretch round's build also loses the perishables that die soon after it (blind["perish_ahead"] rounds)
     now = _jokers_at(jokers, k, removed, growth, perish_k=k + int(blind.get("perish_ahead") or 0)) + [
         dict(j, index=len(jokers) + i + 1) for i, j in enumerate(added)]
     feeders = [j.get("name") for j in now if _active(j)]
@@ -650,7 +652,11 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
              "notes": notes, "money_after": int(st.get("money") or 0) if err is None else None,
              "term_w": _term_w(state)}
         if err is None:
-            sim = _OptionSim(sv, est, st, blinds + ([term] if term else []), seed, n_eval=len(blinds))
+            # the terminal boss, and the same build against STRETCH_X x its chips: keeps a signal when the next
+            # boss is a sure clear for every option (7812 BRILA2MW: all +0.00, Abstract's +75% est ignored)
+            extra = [term, dict(term, chips=term["chips"] * STRETCH_X, name="Boss (stretch)",
+                                perish_ahead=TERM_PERISH_AHEAD)] if term else []
+            sim = _OptionSim(sv, est, st, blinds + extra, seed, n_eval=len(blinds))
             sim.base = state
             sims.append((r, sim))
             rentals = sum(1 for j in _lst(st.get("jokers")) if j.get("rental"))
@@ -708,6 +714,9 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
             tst = sim.stats[nb]
             r["p_term"] = sv.calibrate(tst[1] / max(1, tst[0]), sim.solver(nb, frozenset()).jokerless)
             r["score_ratio_term"] = tst[2] / max(1, tst[0])
+            sst = sim.stats[nb + 1]
+            r["p_stretch"] = sv.calibrate(sst[1] / max(1, sst[0]), sim.solver(nb + 1, frozenset()).jokerless)
+            r["score_ratio_stretch"] = sst[2] / max(1, sst[0])
         if sim.bones_used:
             r["notes"].append(f"Mr. Bones saved {sim.bones_used / n:.2f} blinds per run")
         if sim.destroyed:
@@ -879,7 +888,7 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
     rng = random.Random(f"{seed}:virtual:{r['label']}")
     keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money",
-            "p_term", "score_ratio_term", "income", "depth")
+            "p_term", "score_ratio_term", "income", "depth", "p_stretch", "score_ratio_stretch")
     cost = int(o.get("cost") or 0)
     dead = 0.0
     acc = dict.fromkeys(keys, 0.0)
@@ -912,6 +921,8 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
     if base.get("p_term") is None:  # terminal check off
         r.pop("p_term")
         r.pop("score_ratio_term")
+        r.pop("p_stretch")
+        r.pop("score_ratio_stretch")
     r["p_blinds"] = [p / PACK_VIRTUAL for p in acc_bl]
     r["money_after_rent"] = r["money_after"] - r["rent_per_round"] * n_blinds
     r["shop_money"] -= cost  # sub-options were simulated with the pack's cost unpaid
@@ -1074,13 +1085,11 @@ def _place_copy(state, opt, cli):
 
 def terminal_blind(state, n, blind_base):
     """The first boss after the n simulated blinds (next ante's boss when the horizon ends on a boss), unknown
-    effect: the requirement the end-of-horizon build must meet next. perish_ahead: its build already drops the
-    perishables that die within TERM_PERISH_AHEAD more rounds (the build has to carry the ante after it too)."""
+    effect: the requirement the end-of-horizon build must meet next."""
     if not blind_base:
         return None
     ahead = upcoming_blinds(state, n + 6, blind_base)
-    return next((dict(b, name="Boss (unknown)", boss=False, perish_ahead=TERM_PERISH_AHEAD) for b in ahead[n:]
-                 if b["kind"] == "Boss"), None)
+    return next((dict(b, name="Boss (unknown)", boss=False) for b in ahead[n:] if b["kind"] == "Boss"), None)
 
 
 def _term_w(state):
@@ -1101,7 +1110,12 @@ def _value(r):
     if p_term is None:
         return _p_adj(r)
     a, b = r.get("term_w") or (TERM_A, TERM_B)
-    return a * _depth(r) + b * r["p_next"] * p_term * _rent_factor(r)
+    # end-build strength: P(clear the next boss), softened by the share of the boss and of the stretch boss it
+    # scores (a hopeless or a sure next boss for every option still ranks score gains: 7812 BRILA2MW)
+    q = (0.5 * (r.get("p_stretch") or 0.0) + 0.25 * (r.get("score_ratio_term") or 0.0)
+         + 0.25 * (r.get("score_ratio_stretch") or 0.0))
+    p_end = (1 - STRETCH_W) * p_term + STRETCH_W * q
+    return a * _depth(r) + b * r["p_next"] * p_end * _rent_factor(r)
 
 
 def _depth(r):

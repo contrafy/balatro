@@ -548,3 +548,13 @@ def test_quantiles_keep_the_pillars_played_cards_debuffed():
     hit = solver.round_score_quantiles(st, estimate, n=20, boss="The Pillar", debuff_ids=played)
     free = solver.round_score_quantiles(st, estimate, n=20, boss="The Pillar")
     assert hit["round"][1] < free["round"][1]
+
+
+def test_raised_fist_plays_low_fillers_and_holds_high_cards():
+    # 7807 ELNXY7D1: Raised Fist doubles the lowest HELD rank; KK + low fillers keeps Q J 5 held (5 -> +10 mult)
+    st = state(["KS", "KD", "QC", "JH", "5S", "4C", "3D", "2H"], need=10 ** 9, hands=3, discards=0,
+               jokers=["Raised Fist"])
+    rs = solver.RoundSolver(st, estimate)
+    s, play, t = rs.best_play(rs.slots, 3, 0, rs.ctx0)
+    held = [c for c in rs.slots if c not in play]
+    assert t == "Pair" and min(c.rank for c in held) >= 5 and len(play) == 5

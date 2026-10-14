@@ -5301,6 +5301,10 @@ class _PortLock:
 
 if __name__ == "__main__":
     try:
+        if len(sys.argv) > 1 and sys.argv[1].lower() in FREE:
+            # a read launched together with an action (parallel tool calls: 7802 9MDR5R1N ran `cash` + `shopadvise` in one
+            # turn) must not take the lock first and print the pre-action state: let the action start, then wait for it
+            time.sleep(0.8)
         with _PortLock():
             main()
     except requests.exceptions.ConnectionError:
