@@ -412,7 +412,7 @@ def test_order_note_moves_mult_left_of_xmult():
     d = shop(jokers=[joker("Cavendish", 1), joker("Joker", 2, ability={"mult": 4}), joker("Jolly Joker", 3, ability={"t_mult": 8, "type": "Pair"})], shop_jokers=[], money=4)
     d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2, "played": 3}}
     line = next(l for l in _out(cli.shop_advise, d).splitlines() if "ORDER FIRST" in l)
-    order = [int(x) for x in line.split("b order ")[1].split("   ")[0].split()]
+    order = [int(x) for x in line.split("b order ")[1].split(" --expect")[0].split("   ")[0].split()]
     assert order[-1] == 1 and set(order[:2]) == {2, 3}
 
 
@@ -438,7 +438,7 @@ def test_order_keeps_holo_xmult_with_xmults():
     d = shop(jokers=owned, money=4)
     d["hand_levels"] = {"Flush": {"played": 6, "level": 2}}
     line = next(l for l in _out(cli.shop_advise, d).splitlines() if "ORDER FIRST" in l)
-    order = [int(x) for x in line.split("b order ")[1].split("   ")[0].split()]
+    order = [int(x) for x in line.split("b order ")[1].split(" --expect")[0].split("   ")[0].split()]
     assert order[-1] == 4 and order.index(5) < order.index(4)
 
 

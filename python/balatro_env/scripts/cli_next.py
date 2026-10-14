@@ -1437,7 +1437,7 @@ def _copy_order_tip(d):
     best_e = round_est(d, mh, [jokers[i - 1] for i in best_o])
     if best_o == base_o or best_e < 1.03 * cur_e:
         return None
-    return (f"ORDER FIRST (free): b order {' '.join(map(str, best_o))}   (copy joker re-targeted; left to right AFTER: "
+    return (f"ORDER FIRST (free): b order {' '.join(map(str, best_o))} --expect \"{','.join(str(j.get('name')) for j in jokers)}\"   (copy joker re-targeted; left to right AFTER: "
             f"{', '.join(str(jokers[i - 1].get('name')) for i in best_o)}; round est {cur_e} -> {best_e})")
 
 
@@ -1638,7 +1638,7 @@ def _advise_rules(d):
             k_best = max(range(len(perms)), key=lambda k: ests[k])
             cur = estimate(bc[0], sc_cards, held_c, d, played_n=len(bc[1]))[0]
             if ests[k_best] > 1.05 * cur:
-                print(f"ADVICE: REORDER -> b order {' '.join(str(i + 1) for i in perms[k_best])}   (inferred order scores {bc[0]} {cur}; this order scores {ests[k_best]}; reordering is free)")
+                print(f"ADVICE: REORDER -> b order {' '.join(str(i + 1) for i in perms[k_best])} --expect \"{','.join(names)}\"   (inferred order scores {bc[0]} {cur}; this order scores {ests[k_best]}; reordering is free)")
                 return
     if not cands:
         fd_all = [c.get("index") for c in hand if c.get("rank") is None]
@@ -3328,18 +3328,23 @@ def _shop_rules(d):
     # (7815 4798FA1L lost The Wall 32375/36000 while SCORE CHECK compared against a regular 18000 boss)
     # ... and with its own rule (DrawSolver's round under that boss: Flint halves, Arm -1 level, Plant/suit debuffs,
     # Psychic 5 cards, Eye/Mouth types, Hook, Serpent; Water/Needle/Manacle round shape) (7812 U3F6V6SP: The Flint)
+    # THIS ante's boss is fought with the jokers alive now (perishables included); the next ante without the ones that
+    # perish before it. Both ratios are printed; the worse one sets the band (7807 PKWI29QQ: one 0.03 ratio misled)
     bn_this = (ch_now.get("Boss") or {}).get("name") if boss_this else None
-    rq_t = _round_q(dict(d, jokers=[j for j in jokers if alive_next(j)], _misprint_roll=11.5, _plan_fillers=True), **_boss_kw(d, bn_this)) if bn_this else None
-    if boss_this:
-        sc_ratio = min(sc_ratio, (rq_t["round"][1] / boss_this) if rq_t else surv / (boss_this / _hands_pr(d)))
+    rq_t = _round_q(dict(d, _misprint_roll=11.5, _plan_fillers=True), **_boss_kw(d, bn_this)) if bn_this else None
+    r_next = sc_ratio if boss_next else None
+    r_this = ((rq_t["round"][1] / boss_this) if rq_t else surv / (boss_this / _hands_pr(d))) if boss_this else None
+    if r_this is not None:
+        sc_ratio = min(sc_ratio, r_this)
     emergency = ante >= 2 and bool(boss_next or boss_this) and sc_ratio < 0.35
     if ante >= 2:
         band = "84%" if sc_ratio < 0.35 else "65%" if sc_ratio < 0.7 else "38%" if sc_ratio < 1 else "31%" if sc_ratio < 1.5 else "18%"
         print(f"  SCORE CHECK: " + (f"a simulated round with discards (median of {rq['n']} rounds, jokers alive next ante) ~{int(rq['round'][1])} = ~{surv}/hand"
                                     if rq else f"best hand of a deal from your deck (75th pct of 40 deals, current jokers/levels) ~{deck_best}" if deck_best is not None
                                     else f"best {mh if mh != 'undecided' else 'Pair'} of a round (KK, current jokers/levels) ~{best_hand}")
-              + (f" vs {bn_this or 'boss'} {boss_this} this ante (/3 = {boss_this // 3}" + (f"; its round under its own rule ~{int(rq_t['round'][1])}" if rq_t else "") + ")" if boss_this else "")
-              + (f", boss/3 {boss_next // 3} next ante" if boss_next else "") + (f" (ratio {sc_ratio:.2f} vs the harder one; recorded Gold runs at this ratio died {band} by the next ante)" if (boss_next or boss_this) else "")
+              + (f"; THIS ANTE {bn_this or 'boss'} {boss_this}" + (f" vs your round under its rule ~{int(rq_t['round'][1])}" if rq_t else "") + f" (ratio {r_this:.2f})" if r_this is not None else "")
+              + (f"; NEXT ANTE boss/3 {boss_next // 3} (ratio {r_next:.2f})" if r_next is not None else "")
+              + (f"; the worse ratio {sc_ratio:.2f}: recorded Gold runs at this ratio died {band} by the next ante" if (boss_next or boss_this) else "")
               + (": EMERGENCY: buy the cheapest multiplier, through the money floor (reliable/growth xMult > conditional xMult > Buffoon pack > main-hand planet)" if emergency else ""))
     # TIGHT: the next blind's projected round (ordinary hands + the final hand, scaled to your deck) under 1.2x its need
     # -> money floor off: interest is worth nothing if the run ends (7805 lost the ante-5 boss by 132 holding $12)
@@ -3456,7 +3461,7 @@ def _shop_rules(d):
         best_o = max(cands_o, key=lambda o: round_est(d, mh, [jokers[i - 1] for i in o]))
         best_e = round_est(d, mh, [jokers[i - 1] for i in best_o])
         if best_e >= 1.03 * cur_e and best_o != list(range(1, len(jokers) + 1)):
-            print(f"  ORDER FIRST (free): b order {' '.join(map(str, best_o))}   (left to right AFTER: {', '.join(str(jokers[i - 1].get('name')) for i in best_o)}; "
+            print(f"  ORDER FIRST (free): b order {' '.join(map(str, best_o))} --expect \"{','.join(str(j.get('name')) for j in jokers)}\"   (left to right AFTER: {', '.join(str(jokers[i - 1].get('name')) for i in best_o)}; "
                   f"now: {', '.join(str(j.get('name')) for j in jokers)}; round est {cur_e} -> {best_e}, both orders measured); then follow the ADVICE below")
     _is_scoring = _is_scoring_cls
     # planning unit: scorers alive next ante; a holographic/foil edition makes any joker a flat scorer (+10 mult / +50 chips)
@@ -4463,6 +4468,14 @@ def build_action(cmd, rest, ints, d):
         return typ, params
     if cmd in ("order", "move"):
         area = AREAS.get(rest[0].lower()) if rest and not rest[0].isdigit() else None
+        if _EXPECT:
+            # `order ... --expect "A,B,C"`: the left-to-right names the order was computed on; refused when they moved
+            # (7807 PKWI29QQ: an ORDER line with pre-sell indices put Blueprint on the wrong joker)
+            now_n = [str(x.get("name")) for x in lst(d.get(area or "jokers"))]
+            want_n = [x.strip() for x in _EXPECT.split(",") if x.strip()]
+            if [x.lower() for x in now_n] != [x.lower() for x in want_n]:
+                print(f"REFUSED (nothing sent): the {area or 'jokers'} are now {', '.join(now_n)}, not {', '.join(want_n)}: the order was computed on another state; re-run advise/shopadvise")
+                sys.exit(1)
         if cmd == "order":
             return "REORDER", {"area": area or "jokers", "order": ints}
         if not area or len(ints) != 2:
