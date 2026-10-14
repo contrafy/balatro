@@ -1524,8 +1524,13 @@ def advise(d):
             sol.append(f"  (rule advice was: {adv[8:]})")
             pt, pr_ = top["p_clear"], mine["p_clear"]
             dv = top.get("value", 0) - mine.get("value", 0)
+            # "clears now" only when this play's own est reaches the need; a CERTAIN line clears with the later hands
+            # (7803 2798TTIY / 7814 5QRAK62D: 'clears the blind now' on 960 vs 1000 and 616 vs 840)
+            m_e2 = re.search(r"est (\d+)", top.get("note") or "")
+            now_ok = top["action"] == "PLAY" and m_e2 is not None and need_now > 0 and int(m_e2.group(1)) >= need_now
+            lead_w = "this play clears the blind now; " if now_ok else ("certain to clear the round with the later hands; " if top.get("certain") else "")
             why = (f"clears {pt:.0%} vs {pr_:.0%} (calibrated) for the rule pick" if better_p else
-                   "this play clears the blind now; " + (f"tied clear chance, +{dv:.1f} value ($ left / growth)" if tied else f"{pt:.0%} vs {pr_:.0%}"))
+                   lead_w + (f"tied clear chance, +{dv:.1f} value ($ left / growth)" if tied else f"{pt:.0%} vs {pr_:.0%}"))
             adv = f"ADVICE: {top['action']} -> {cmd}   (solver: {why}; {top['note']})"
         # held hand-changing tarots (Strength, Death, Justice...): DrawSolver's consumable_options plays each USE through
         # the round; switch when a USE clears clearly more often than the best line without it
@@ -2901,6 +2906,8 @@ def shop_advise_sim(d, budget_s=6.0):
                 lab = next((L for p, L in (("b buy", "BUY"), ("b buyuse", "BUY"), ("b endshop", "LEAVE"), ("b reroll", "REROLL"), ("b pack", "PACK"),
                                            ("b vouch", "VOUCHER"), ("b sell", "SELL"), ("b use", "USE")) if rest.startswith(p)), None)
                 lines[adv_i] = f"ADVICE: {lab} -> {rest}" if lab else f"ADVICE: {rest}"
+                # the rules' SELL FIRST line goes too: one source of truth (7807 X62GSYR8 saw both)
+                lines = [f"  (rules' SELL FIRST withdrawn: the SIM keeps {sold_j.get('name')})" if ln.startswith("  SELL FIRST: ") else ln for ln in lines]
                 lines.insert(adv_i, f"  SIM: keep {sold_j.get('name')}: selling it changes P(clear, rent-adjusted) {kf(s_s) - kf(b_s):+.2f}; its rent is worth paying")
                 adv_i += 1
     except Exception as e:
@@ -3044,7 +3051,7 @@ def shop_advise_sim(d, budget_s=6.0):
                 f"   (SIM: {best['label']} {'score ratio' if all_zero else 'value'} {key(best):.2f} vs {key(base):.2f} buying nothing" + \
                 (f"; rule score {rank.get(new_cmd)}" if new_cmd in rank else "") + ")"
             if new.split("   ")[0] != adv.split("   ")[0]:
-                sim.append(f"  (rule advice was: {adv[8:]})")
+                sim.append(f"  (rule advice was{' [BARRED: hard sticker rule]' if mine0 is not None and not allowed(mine0) else ''}: {adv[8:]})")
                 adv = new
         elif adv_cmd in sim_cmds and int(next((r["option"].get("cost") or 0 for r in feas if r["option"].get("_cmd") == adv_cmd), 1)) > 0:
             # LEAVE only when the SIM says the rule pick HURTS (< -0.02); a neutral pick (Egg, Fortune Teller) stays with the
@@ -3885,7 +3892,10 @@ def _shop_rules(d):
             # 0 scorers: keep $5 for a $5 scorer (7806); but TIGHT at stake 8 a $1 rental scorer is the out, so reroll down
             # to $1 (7805 THD1ZBW7 left the ante-1 boss shop with $6 and no scorer)
             # keep the price of a typical joker after the reroll ($5-6 at Gold; 7801 YRXUVUPU rerolled $10 -> $5)
-            keep_min = 1 if (tight and stake >= 8 and scoring_now == 0) else 6
+            # ... only while a rental may still be bought: with one owned before ante 5 a 2nd is barred, so the target is a
+            # $5+ joker (7811 4S1TWZ36 rerolled $19 away at ante 4)
+            rental_ok = ante >= 5 or not any(_stk(j)["rental"] for j in jokers)
+            keep_min = 1 if (tight and stake >= 8 and scoring_now == 0 and rental_ok) else 6
             if money + credit_e - reroll0 - rent_due >= keep_min:
                 print(f"ADVICE: REROLL -> b reroll   (no scoring joker in this shop and you own {scoring_now}: at ante {ante} a joker matters more than any pack; ${money - reroll0} left after"
                       + (", Credit Card debt allowed" if credit_e and money - reroll0 < 4 else "")

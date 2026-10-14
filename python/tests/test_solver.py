@@ -500,3 +500,23 @@ def test_tarot_use_options_change_hand_cards_then_plan():
 
 def hand_rank(st, index):
     return next(c["rank"] for c in st["hand"] if c["index"] == index)
+
+
+def test_held_card_jokers_get_low_single_card_plays():
+    # 7810 R5DXHPXU: Shoot the Moon (+13 mult per Queen HELD) - the round policy played its Queens as High Card
+    st = state(["QS", "QH", "QC", "9D", "7S", "5C", "3H", "2D"], need=5000, hands=3, discards=0,
+               jokers=["Shoot the Moon"])
+    rs = solver.RoundSolver(st, estimate)
+    s, play, t = rs.best_play(rs.slots, 3, 0, rs.ctx0)
+    assert all(c.rank != 12 for c in play)  # every Queen stays held
+
+
+def test_tower_targets_a_junk_card_not_a_joker_scorer():
+    # 7817 8KNB2U3T: The Tower stoned a valuable card instead of junk; equal best plays now -> the target that loses
+    # the least on its own (here a Mult card 4C vs a plain 2S)
+    st = state(["KS", "KC", "4C", "9S", "8D", "6H", "2S", "JH"], need=5000, hands=1, discards=0)
+    st["hand"][2]["enhancement"] = "m_mult"
+    st["consumables"] = [{"index": 1, "key": "c_tower", "name": "The Tower", "set": "Tarot"}]
+    res = solver.consumable_options(st, estimate, time_budget_s=2, samples=20)
+    four = next(c["index"] for c in st["hand"] if c["rank"] == "4")
+    assert res and four not in res[0]["targets"]

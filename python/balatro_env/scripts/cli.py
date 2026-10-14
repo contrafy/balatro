@@ -74,11 +74,21 @@ def _note_action(d, typ, params=None):
         # played / discarded cards must have left the hand (7817 JGH4NQBH: stale advise once after a discard)
         ids = [x.get("id") for x in lst(d.get("hand")) if x.get("index") in (params.get("card_indices") or []) and x.get("id") is not None]
         gone = ["hand", ids] if ids else None
+    want_order, noop = None, False
+    if typ == "REORDER" and params:
+        area_r = params.get("area") or "jokers"
+        cur_ids = [x.get("id") for x in lst(d.get(area_r))]
+        try:
+            want = [cur_ids[o - 1] for o in params.get("order") or []]
+        except IndexError:
+            want = None
+        if want and None not in want:
+            want_order, noop = [area_r, want], want == cur_ids
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         with open(_last_action_file(), "w", encoding="utf-8") as f:
             json.dump({"step_before": d.get("step"), "sig_before": _digest(d), "type": typ, "ts": time.time(), "confirmed": False, "gone": gone,
-                       "phase_before": d.get("phase")}, f)
+                       "phase_before": d.get("phase"), "want_order": None if noop else want_order, "noop": noop}, f)
     except Exception:
         pass
 
@@ -98,13 +108,16 @@ def _await_action_effect(d, timeout=5.0):
     gone = la.get("gone")
     # a sort / reorder can legitimately change nothing (already in that order; face-down cards): wait briefly, no warning
     # (7803 C5AF29KG: `sort rank` printed the warning twice)
-    noop_ok = la.get("type") in ("SORT_HAND", "REORDER")
+    noop_ok = la.get("type") == "SORT_HAND" or bool(la.get("noop"))
+    want_order = la.get("want_order")  # REORDER: the exact id order it must produce (7802 PFMSHPC7: `sel` after `move hand`)
     # phase transitions (select/skip a blind, leave the shop, cash out, skip a pack) are done only when the phase changes
     # (UDRRTZQ9: `advise` right after `blind` showed the blind-select screen twice)
     trans = la.get("type") in ("SELECT_BLIND", "SHOP_END", "CASH_OUT", "SKIP_PACK", "SHOP_BUY_BOOSTER")
     timeout = 2.0 if noop_ok else (15.0 if trans else timeout)
 
     def pending(x):
+        if want_order and [y.get("id") for y in lst(x.get(want_order[0]))] != want_order[1]:
+            return True
         gone_ids = (gone[1] if isinstance(gone[1], list) else [gone[1]]) if gone else []
         return (_digest(x) == la.get("sig_before") or (gone and any(y.get("id") in gone_ids for y in lst(x.get(gone[0]))))
                 or (trans and x.get("phase") == la.get("phase_before")))
@@ -3043,7 +3056,7 @@ def shop_advise_sim(d, budget_s=6.0):
             barred_rule = mine is not None and not allowed(mine)
             weak_fade = mine is not None and _req(mine) > 0.02 and g_m < _req(mine)
             if g_m < -0.02 or (forced and g_m <= 0.0) or (sim_top_nothing and g_m <= 0.0) or barred_rule or weak_fade:
-                sim.append(f"  (rule advice was: {adv[8:]})")
+                sim.append(f"  (rule advice was{' [BARRED: hard sticker rule]' if barred_rule else ''}: {adv[8:]})")
                 adv = ("ADVICE: LEAVE -> b endshop   (the rule pick is barred by a hard sticker rule: a 2nd permanent rental before ante 6 (unless both are xMults or you sell the first), an eternal rental, or an eternal non-scorer; nothing else raises P(clear) by more than 0.02)"
                        if barred_rule else
                        f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick is perishable/type-conditional and gains only {g_m:+.2f} (needs {_req(mine):+.2f}); nothing else clearly helps)"
