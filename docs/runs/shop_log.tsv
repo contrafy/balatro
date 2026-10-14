@@ -4657,3 +4657,4 @@
 7807	a1	$7	jokers=1/6	xmult_owned=0	PLUS:NEEDED NOW: a scorer for the next blinds; survival beats the sticker cost at ante 1-2 -> Misprint{RENTAL(-$3/round)} $1 | VOUCHER:Blank $10 | PACK:Arcana Pack $4 | PACK:Jumbo Standard Pack $6 | PLUS(weak/conditional):Bull{ETERNAL,RENTAL(-$3/round)} $1
 7807	a1	$6	jokers=2/6	xmult_owned=0	VOUCHER:Blank $10 | PACK:Arcana Pack $4 | PACK:Jumbo Standard Pack $6 | PLUS(weak/conditional):Bull{ETERNAL,RENTAL(-$3/round)} $1
 7801	a1	$1	jokers=1/6	xmult_owned=0	VOUCHER:Magic Trick $10 | TAROT:The Chariot $3 | PACK:Jumbo Standard Pack $6 | UTIL:Hallucination{ETERNAL,RENTAL(-$3/round)} $1
+7807	a2	$10	jokers=2/6	xmult_owned=0	PLUS:Arrowhead $7 | PACK:Jumbo Celestial Pack $6 | VOUCHER:Director's Cut $10 | PACK:Jumbo Arcana Pack $6 | ECON:Egg{RENTAL(-$3/round)} $1

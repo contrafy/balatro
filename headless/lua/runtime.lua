@@ -86,7 +86,9 @@ local function steam_stub()
 end
 
 -- Identifies this loader in place of Lovely (trajectory header `lovely_version`).
-H.LOADER_VERSION = "headless-1.0.0"
+-- 1.1.0: fast path (headless/lua/fastpath.lua). A non-default fastpath set is appended by the host
+-- (cfg.loader_tag, e.g. "+fastpath=none") so recordings say which configuration produced them.
+H.LOADER_VERSION = "headless-1.1.0"
 
 -- Trajectory files the bridge opens for writing get `"host":"headless"` in their header line. The bridge
 -- writes objects with sorted keys and every header key before "host" is a scalar, so the first top-level
@@ -152,7 +154,7 @@ function H.boot(c, host)
     socket = dofile(lua_dir .. "/socket_stub.lua")
     package.loaded.socket = socket
     package.preload.luasteam = steam_stub
-    package.preload.lovely = function() return {version = H.LOADER_VERSION} end
+    package.preload.lovely = function() return {version = H.LOADER_VERSION .. (cfg.loader_tag or "")} end
 
     -- Bridge configuration comes only from the host (never from this process's environment).
     local env = cfg.env or {}
@@ -168,6 +170,23 @@ function H.boot(c, host)
     end
 
     package.path = cfg.source_dir .. "/?.lua;" .. package.path
+    -- Fast path (headless/lua/fastpath.lua): cfg.fastpath is the set of enabled optimization names.
+    local fp, fp_on = nil, {}
+    for _, name in ipairs(cfg.fastpath or {}) do fp_on[name] = true end
+    if next(fp_on) then
+        fp = dofile(lua_dir .. "/fastpath.lua")
+        for name in pairs(fp_on) do
+            local known = false
+            for _, n in ipairs(fp.NAMES) do known = known or n == name end
+            assert(known, "unknown fastpath optimization '" .. tostring(name) .. "'")
+        end
+        -- Patched game modules load ahead of the stock file loader (same path and chunk name).
+        table.insert(package.loaders, 2, function(name)
+            if not fp.patches[name] then return nil end
+            local path = cfg.source_dir .. "/" .. name .. ".lua"
+            return assert(loadstring(fp.apply(name, read_file(path), fp_on), "@" .. path))
+        end)
+    end
     package.preload.balatro_rl_bridge = function()
         return assert(loadstring(read_file(cfg.bridge_dir .. "/main.lua"), "@balatro_rl_bridge"))()
     end
@@ -179,6 +198,7 @@ function H.boot(c, host)
         love.conf(t)
     end
     assert(loadstring(patch_main(read_file(cfg.source_dir .. "/main.lua")), "@main.lua"))()
+    if fp then fp.install(fp_on) end
     love.load({}, {})
     if love.timer then love.timer.step() end
 end
