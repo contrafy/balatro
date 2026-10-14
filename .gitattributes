@@ -1,0 +1,4 @@
+# The bridge's bridge_hash is a sha256 of the deployed files, so their bytes must not depend on the
+# platform's checkout settings (core.autocrlf). Shell scripts break with CRLF.
+game_mod/BalatroRLBridge/** text eol=lf
+*.sh text eol=lf
