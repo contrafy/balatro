@@ -108,13 +108,27 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   a joker with perish_tally <= blinds left this ante does not count, so buy its permanent replacement NOW. A perished
   joker (`PERISHED`) scores nothing: sell it. Growth jokers (Hologram, Constellation...) are never worth it perishable.
 - ETERNAL: fine on a core scorer/xMult you would keep anyway; a weak/conditional Eternal joker is a lost slot for the
-  whole run (heavily penalised). Eternal jokers can never be sold: `sell` aborts, sell advice skips them.
+  whole run (heavily penalised, near-unbuyable once you own 3+ jokers). Eternal jokers can never be sold: `sell` aborts.
+- FIRST SCORERS ADD MULT: with no +mult/xMult source, chips-only jokers (Sly, Clever, Scary...) barely scale on a base
+  mult of 2-3; `shopadvise` prefers +mult jokers then. Hand-gated xMults (The Order, Trio, Family, Tribe) and suit-gated
+  ones (Bloodstone, Ancient, Flower Pot, Seeing Double) only count when they fit your main hand / a Flush build.
+- MAIN HAND = most played hand (recent plays break ties); before 3 plays an owned hand-gated joker decides it (Clever
+  -> Two Pair). With Card Sharp it is the most played pair-family hand (Pair on ties): the type you can repeat each round.
+  Obelisk resets to x1 whenever you play your most played hand; `est` models that.
 - NO SCORER ALIVE NEXT ANTE: scoring jokers come first (rerolls included), everything else is capped below them.
 - BUFFOON PACKS are discounted (most Gold pack jokers carry a sticker). Inside a pack run `advise`: it ranks the jokers
   with stickers, takes a decaying bridge (Popcorn, Ice Cream, Gros Michel) when you own no scorer, and says SKIP when
   everything is sticker junk.
 - PLAN FOR THE NEXT ANTE: `shopadvise` prints its Small/Big/Boss. Ante 2 -> 3 is the steepest step (1000 -> 3200): leave
-  ante 2 with an xMult or a leveled main hand, not with cash.
+  ante 2 with an xMult or a leveled main hand, not with cash. By ante 4 you need a second LASTING xMult or the main hand
+  at L6+, and $10 kept for the next one. With no xMult offered at ante 3-4, money goes to main-hand planets before
+  rerolls (deep runs that rerolled instead stalled at ante 4-5).
+- `RIFF-RAFF` owned (and a free slot): never skip a blind, it makes 2 Common jokers when the blind is selected.
+- JOKER ORDER only matters between a +mult/+chips joker (or holo/foil edition) and a joker-main xMult; card-trigger
+  xMults (Photograph, Triboulet...) and xMults among themselves can sit anywhere. `shopadvise` prints an `ORDER FIRST`
+  note only when the order changes the score.
+- ACROBAT (x3 on the final hand): when the best hand clears as the final hand, `advise` spends the earlier hands on
+  spare cards and keeps the best one for last. MYSTIC SUMMIT (+15 mult at 0 discards): spend discards early.
 
 ## 3. Scoring facts (verified in-game)
 

@@ -1,9 +1,10 @@
 """Headless replay verifier: re-run a trajectory's seed + actions in the headless engine and compare every
 obs/legal with the recording, using the same normalization and diff code as the live verifier
-(`balatro_env.data.replay`)."""
+(`balatro_env.data.replay`): ids relabeled by first appearance, volatile envelope keys dropped."""
 
 from __future__ import annotations
 
+import gc
 import shutil
 import tempfile
 import time
@@ -11,43 +12,68 @@ from pathlib import Path
 from typing import Any
 
 from balatro_env.data.replay import END_PHASE, ReplayResult, _compare_files, _Sides
-from balatro_env.data.trajectory import Trajectory, find_trajectories, read_trajectory
+from balatro_env.data.trajectory import Trajectory, find_trajectories, read_trajectory, run_key
 from balatro_env.headless.engine import Engine, EngineError
 
 SETTLE_FRAMES = 60_000
+REPLAY_AGENT = "test-headless-replay"
 
 
-def replay(path: str | Path, engine: Engine | None = None, compare_legal: bool = True,
-           check_file: bool = True, log=print, **engine_kw: Any) -> ReplayResult:
-    """Replay one file. With check_file, the replay is recorded to a temporary data dir and its file is
-    compared step-for-step with the original, including `hidden` (draw order, face-down cards)."""
-    traj = read_trajectory(path)
-    res = ReplayResult(path=str(path), steps_total=len(traj.steps))
-    t0 = time.monotonic()
-    tmp = Path(tempfile.mkdtemp(prefix="balatro-headless-replay-")) if check_file else None
-    try:
-        if engine is None or check_file:
-            engine = Engine(data_dir=tmp, **engine_kw)
-        _run(traj, engine, res, compare_legal, log)
-        if res.ok and check_file and res.replay_path:
-            _finish_recording(engine)
-            _compare_files(traj, res, log)
-    except EngineError as exc:
-        res.ok = False
-        res.divergence_kind = res.divergence_kind or "bridge"
-        res.message = str(exc)
-    finally:
-        if tmp is not None:
-            shutil.rmtree(tmp, ignore_errors=True)
-    if tmp is not None:
-        res.replay_path = None  # temporary file, already deleted
-    res.seconds = time.monotonic() - t0
-    return res
+class Replayer:
+    """One engine reused for many replays. Its recordings go to a private temporary data dir, are compared
+    with the originals (including `hidden`) and deleted; the dir is removed on close()."""
+
+    def __init__(self, check_file: bool = True, **engine_kw: Any):
+        self.check_file = check_file
+        self.tmp = Path(tempfile.mkdtemp(prefix="balatro-headless-replay-")) if check_file else None
+        self.engine = Engine(data_dir=self.tmp, **engine_kw)
+
+    def replay(self, path: str | Path, compare_legal: bool = True, log=print) -> ReplayResult:
+        traj = read_trajectory(path)
+        res = ReplayResult(path=str(path), steps_total=len(traj.steps))
+        t0 = time.monotonic()
+        try:
+            _run(traj, self.engine, res, compare_legal, log)
+            if res.ok and self.check_file and res.replay_path:
+                self.engine.frames(2)  # the recorder closes + gzips the file on the frame after the run ends
+                _compare_files(traj, res, log)
+        except EngineError as exc:
+            res.ok = False
+            res.divergence_kind = res.divergence_kind or "bridge"
+            res.message = str(exc)
+        self._discard(res.replay_path)
+        res.replay_path = None  # temporary recording, deleted
+        res.seconds = time.monotonic() - t0
+        return res
+
+    def _discard(self, replay_path: str | None) -> None:
+        if not replay_path or self.tmp is None:
+            return
+        p = Path(replay_path)
+        for cand in (p.with_name(run_key(p) + ".jsonl.gz"), p.with_name(run_key(p) + ".jsonl")):
+            try:
+                cand.unlink()
+            except OSError:
+                pass  # still open (run without an end line): removed with the temp dir on close()
+
+    def close(self) -> None:
+        self.engine = None
+        gc.collect()  # closes the Lua state and with it any open trajectory file
+        if self.tmp is not None:
+            shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def __enter__(self) -> Replayer:
+        return self
+
+    def __exit__(self, *exc: Any) -> None:
+        self.close()
 
 
-def _finish_recording(engine: Engine) -> None:
-    # The recorder closes (and gzips) the file on the frame after GAME_OVER / win.
-    engine.frames(2)
+def replay(path: str | Path, compare_legal: bool = True, check_file: bool = True, log=print,
+           **engine_kw: Any) -> ReplayResult:
+    """Replay one file in a fresh engine."""
+    with Replayer(check_file=check_file, **engine_kw) as r:
+        return r.replay(path, compare_legal=compare_legal, log=log)
 
 
 def _settled(engine: Engine, res: ReplayResult, i: int | None) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -64,7 +90,7 @@ def _run(traj: Trajectory, engine: Engine, res: ReplayResult, compare_legal: boo
         return
     key = traj.key
     params = {k: v for k, v in traj.start_params.items() if v is not None}
-    meta = {"why": f"headless replay verification of {key}", "agent": "test-headless-replay", "replay_of": key}
+    meta = {"why": f"headless replay verification of {key}", "agent": REPLAY_AGENT, "replay_of": key}
     engine.settle(SETTLE_FRAMES)
     started = engine.action("START_RUN", params, meta)
     if not started.get("ok"):
@@ -88,7 +114,7 @@ def _run(traj: Trajectory, engine: Engine, res: ReplayResult, compare_legal: boo
                 return
         action = step["action"]
         out = engine.action(action["type"], action.get("params") or {},
-                            {"why": f"replay step {i} of {key}", "agent": "test-headless-replay",
+                            {"why": f"replay step {i} of {key}", "agent": REPLAY_AGENT,
                              "replay_of": key, "replay_step": i})
         if not out.get("ok"):
             res.divergence_step, res.divergence_kind = i, "rejected"
@@ -108,8 +134,8 @@ def _run(traj: Trajectory, engine: Engine, res: ReplayResult, compare_legal: boo
     res.ok = True
 
 
-def replay_many(paths: list[str], log=print, **kw: Any) -> list[ReplayResult]:
+def expand(paths: list[str]) -> list[Path]:
     files: list[Path] = []
     for p in paths:
         files.extend(find_trajectories(p))
-    return [replay(f, log=log, **kw) for f in files]
+    return files

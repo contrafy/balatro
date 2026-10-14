@@ -99,6 +99,10 @@ class HeadlessEnv:
     def done(self) -> bool:
         return self._done
 
+    def stats(self) -> dict[str, int]:
+        """Virtual frames run so far (all runs) and steps in the current run."""
+        return {"frames": self.frames, "steps": self.steps}
+
 
 def random_legal_action(legal: dict[str, Any], rng: random.Random) -> dict[str, Any]:
     """Uniform over legal entries (START_RUN excluded), then uniform params inside the entry's domains."""

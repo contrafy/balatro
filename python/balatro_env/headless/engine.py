@@ -1,8 +1,9 @@
-"""One headless Balatro instance: the real game source + the RL bridge inside an embedded LuaJIT 2.0.
+"""One headless Balatro instance: the real game source + the RL bridge inside an embedded LuaJIT.
 
-The game ships LuaJIT 2.0.5 (`lua51.dll`), so the runtime is lupa's `luajit20` module: same PRNG
+The game ships LuaJIT 2.0.5 (`lua51.dll`), so the default runtime is lupa's `luajit20` module: same PRNG
 (`math.random` / `math.randomseed`), same string hashing (table iteration order) and the same
-CRT-backed number formatting the game's pseudorandom functions depend on.
+CRT-backed number formatting the game's pseudorandom functions depend on. `lua="luajit21"` selects
+lupa's LuaJIT 2.1 instead (see docs/HEADLESS.md for when that is equivalent).
 """
 
 from __future__ import annotations
@@ -19,6 +20,10 @@ from balatro_env.headless.source import BRIDGE_DIR, LUA_DIR, extract_source
 
 # Fixed virtual frame time handed to love.update (LOVE caps its smoothed dt at 0.1 s).
 DEFAULT_DT = 1 / 60
+
+# lupa runtime module: luajit20 matches the game's bundled LuaJIT 2.0.5.
+LUA_FLAVORS = ("luajit20", "luajit21")
+DEFAULT_LUA = "luajit20"
 
 # Profile settings as in the swarm's instance template (game speed 4, tutorial done, English).
 SETTINGS_LUA = (
@@ -71,13 +76,17 @@ class Engine:
 
     def __init__(self, exe: str | None = None, data_dir: str | os.PathLike | None = None,
                  port: int = HEADLESS_PORT, dt: float = DEFAULT_DT, git_sha: str | None = None,
-                 quiet: bool = True, boot_frames: int = 2000):
-        from lupa import luajit20
+                 quiet: bool = True, boot_frames: int = 2000, lua: str = DEFAULT_LUA,
+                 event_passes: int = 1):
+        import importlib
 
+        if lua not in LUA_FLAVORS:
+            raise ValueError(f"lua must be one of {LUA_FLAVORS}, not {lua!r}")
+        runtime = importlib.import_module(f"lupa.{lua}")
         self.source_dir = extract_source(exe)
         self.dt = dt
         self.data_dir = Path(data_dir) if data_dir else None
-        self.lua = luajit20.LuaRuntime(encoding=None, unpack_returned_tuples=True)
+        self.lua = runtime.LuaRuntime(encoding=None, unpack_returned_tuples=True)
         g = self.lua.globals()
         self.H = g.dofile(_b(LUA_DIR / "runtime.lua"))
         env = {b"BALATRO_RL_PORT": str(port).encode(), b"BALATRO_RL_BRIDGE_DIR": _b(BRIDGE_DIR)}
@@ -94,6 +103,7 @@ class Engine:
             b"bridge_dir": _b(BRIDGE_DIR),
             b"dt": float(dt),
             b"quiet": bool(quiet),
+            b"event_passes": int(event_passes),
             b"env": self.lua.table_from(env),
             b"save_files": self.lua.table_from({b"settings.jkr": SETTINGS_LUA.encode()}),
         })

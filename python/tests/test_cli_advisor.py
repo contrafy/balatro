@@ -128,3 +128,59 @@ def test_loyalty_card_fires_when_stored_remaining_is_zero(rem, fires):
 def test_holo_edition_counts_as_floor():
     d = shop(jokers=[joker("Egg", 1, edition="holo")])
     assert "none of your jokers scores on a plain Pair" not in _out(cli.shop_advise, d)
+
+
+def test_order_never_hides_ranking_and_ignores_card_trigger_xmult():
+    # Photograph is a card-trigger xMult: its position does not change the score
+    d = shop(jokers=[joker("Photograph", 1), joker("Jolly Joker", 2)], shop_jokers=[{"index": 1, "name": "Joker", "set": "Joker", "cost": 2}])
+    out = _out(cli.shop_advise, d)
+    assert "ORDER" not in out and "buy 1" in out
+    # a joker-main xMult left of a +mult joker: order note, ranking still printed
+    d = shop(jokers=[joker("Cavendish", 1), joker("Jolly Joker", 2)], shop_jokers=[{"index": 1, "name": "Joker", "set": "Joker", "cost": 2}])
+    out = _out(cli.shop_advise, d)
+    assert "ORDER FIRST (free): b order 2 1" in out and _advice(out)
+
+
+def test_owned_hand_gated_joker_sets_main_hand():
+    d = shop(jokers=[joker("Clever Joker", 1)])
+    assert cli.main_hand(d) == "Two Pair"
+
+
+def test_type_xmult_off_main_hand_is_conditional():
+    cls, score = cli.classify_joker("The Order", 0, "Pair")
+    assert "other hand" in cls and score < 60
+    assert cli.classify_joker("The Trio", 0, "Full House") == ("XMULT", 100)
+
+
+def test_chips_joker_ranked_below_mult_joker_without_mult_source():
+    d = shop(shop_jokers=[{"index": 1, "name": "Sly Joker", "set": "Joker", "cost": 3},
+                          {"index": 2, "name": "Jolly Joker", "set": "Joker", "cost": 3}], money=10, ante=1)
+    assert "b buy 2" in _advice(_out(cli.shop_advise, d))
+
+
+def test_obelisk_resets_on_most_played_hand_and_grows_otherwise():
+    obel = joker("Obelisk", 1, ability={"x_mult": 2.0, "extra": 0.2})
+    hl = {"Pair": {"chips": 10, "mult": 2, "level": 1, "played": 5}, "Flush": {"chips": 35, "mult": 4, "level": 1, "played": 1}}
+    cards = [_card("King", "Spades", 1), _card("King", "Hearts", 2)]
+    base, _ = cli.estimate("Pair", cards, [], {"jokers": [], "hand_levels": hl})
+    est, _ = cli.estimate("Pair", cards, [], {"jokers": [obel], "hand_levels": hl})
+    assert est == base  # Pair is the most played hand: Obelisk resets to x1
+    hl2 = dict(hl, Flush=dict(hl["Flush"], played=9))
+    est2, _ = cli.estimate("Pair", cards, [], {"jokers": [obel], "hand_levels": hl2})
+    assert est2 == int(base * 2.2)
+
+
+def test_card_sharp_main_hand_is_most_played_pair_family():
+    hl = {"Pair": {"played": 9, "level": 1}, "Full House": {"played": 3, "level": 4, "chips": 80, "mult": 8}}
+    d = shop(jokers=[joker("Card Sharp", 1)])
+    d["hand_levels"] = hl
+    assert cli.main_hand(d) == "Pair"
+
+
+def test_all_face_down_hand_discards_them(monkeypatch):
+    hand = [{"index": i, "facing": "back"} for i in range(1, 9)]
+    d = {"phase": "SELECTING_HAND", "stake": 8, "ante": 2, "money": 5, "hands_remaining": 3, "discards_remaining": 2,
+         "hand": hand, "jokers": [], "hand_levels": {}, "blind": {"name": "The House", "boss": True, "chips_needed": 2000, "chips_scored": 0}}
+    assert _advice(_out(cli.advise, d)).startswith("ADVICE: DISCARD -> b disc 1 2 3 4 5")
+    d["discards_remaining"] = 0
+    assert _advice(_out(cli.advise, d)).startswith("ADVICE: PLAY -> b play 1 ")

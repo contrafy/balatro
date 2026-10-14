@@ -4970,10 +4970,8 @@
 7801	a3	-	Two Pair	3S 3C 2S 2H	Egg(holo),Scary Face,Mad Joker,The Trio,Loyalty Card	est=660	actual=660	OK
 7808	a1	-	Full House	AH AC AD 8S 8H	Ice Cream	est=736	actual=736	OK
 7804	a3	The Fish	Pair	JS JD	Golden Joker,Green Joker,Golden Joker,Abstract Joker,Golden Ticket(holo),Card Sharp	est=5805	actual=5805	OK
-7831	a1	-	Two Pair	TH TC 4C 4D		est=96	actual=96	OK
 7807	a4	-	Two Pair	9D 7H 7D 5C 5D	Wrathful Joker(holo),Splash(holo),Mad Joker,Odd Todd,Sly Joker,Joker	est=9288	actual=9288	OK
 7810	a5	-	Pair	KH KC	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=93840	actual=93840	OK
-7831	a1	-	Flush	KC 8C 7C 5C 3C		est=272	actual=272	OK
 7809	a1	-	Flush	KC QC JC TC 7C		est=328	actual=328	OK
 7810	a5	The Tooth	Three of a Kind	4S 4C 4D	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=8060	actual=8060	OK
 7808	a1	The Manacle	Three of a Kind	6S 6C 6D	Ice Cream	est=414	actual=414	OK
@@ -4982,7 +4980,6 @@
 7803	a4	The Goad	Pair	6H 6C	Mystic Summit,Sly Joker,Photograph,Ice Cream,Even Steven,Ramen	est=6394	actual=6394	OK
 7810	a5	The Tooth	Pair	JS JD	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=31280	actual=31280	OK
 7809	a1	-	Pair	QH QD	Sly Joker	est=160	actual=160	OK
-7831	a1	-	Pair	QS QH	Popcorn	est=660	actual=660	OK
 7807	a4	-	Straight	7H 6D 5D 4C 3D	Wrathful Joker(holo),Splash(holo),Odd Todd,Sly Joker,Ice Cream	est=5952	actual=5952	OK
 7808	a1	The Manacle	Pair	KH KC	Ice Cream	est=390	actual=390	OK
 7810	a5	The Tooth	Pair	9S 9H	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=16536	actual=16536	OK
@@ -5034,3 +5031,129 @@
 7807	a5	-	Full House	QH QC QD 9H 9C	Wrathful Joker(holo),Splash(holo),Odd Todd,Sly Joker,Ice Cream,Dusk	est=9000	actual=9000	OK
 7802	a4	-	Three of a Kind	6S 6H 6C	Zany Joker,Half Joker,Banner,Superposition(holo)	est=6336	actual=6336	OK
 7805	a1	The Head	Two Pair	KS KH(DEBUFF) 3C 3H(DEBUFF)	Clever Joker	est=399	actual=399	OK
+7806	a5	The Head	Full House	QS QS QC JC JD(glass)	Half Joker,Scary Face,Photograph,Joker(holo),Raised Fist,Acrobat	est=30240	actual=30240	OK
+7801	a1	The Hook	Pair	KH KD	Half Joker	est=660	actual=660	OK
+7808	a2	The Flint	Flush	KH JH 9H 4H 2H	Ice Cream,Lusty Joker,Juggler,Golden Joker	est=1989	actual=2006	OK
+7809	a2	The Goad	Full House	5H 5D 5S(DEBUFF) 6C 6D	Sly Joker,Shoot the Moon,Bloodstone(negative)	est=448	actual=672	MISS
+7803	a1	-	Straight	5D 4H 3D 2S AS		est=220	actual=220	OK
+7805	a1	The Head	Straight	AC KC QC JD TS	Clever Joker	est=324	actual=324	OK
+7803	a1	-	Two Pair	AH AD TS TC		est=124	actual=124	OK
+7804	a4	The Tooth	Two Pair	7S 7H 3H 3C	Green Joker,Golden Joker,Golden Ticket(holo),Space Joker,Card Sharp,Seeing Double	est=9520	actual=9520	OK
+7809	a2	The Goad	High Card	AH TH 9H 8H 7C	Sly Joker,Shoot the Moon,Bloodstone(negative)	est=50	actual=24	MISS
+7805	a2	-	Straight	JC TD 9D 8S 7H	Clever Joker	est=296	actual=296	OK
+7808	a3	-	Two Pair	TC TD 3S 3H	Ice Cream,Lusty Joker,Juggler,Golden Joker,Spare Trousers	est=1022	actual=1314	MISS
+7810	a7	-	Pair	JH JD	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=31280	actual=31280	OK
+7809	a2	The Goad	Full House	3C 3D 3S(DEBUFF) 4C 4D	Sly Joker,Shoot the Moon,Bloodstone(negative)	est=416	actual=416	OK
+7803	a1	-	Two Pair	5S 5C 2H 2D	Odd Todd	est=192	actual=192	OK
+7810	a7	-	Pair	TS TD	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=5720	actual=5720	OK
+7807	a1	-	Three of a Kind	8S 8H 8C		est=162	actual=162	OK
+7803	a1	-	Pair	9H 9D	Odd Todd	est=180	actual=180	OK
+7804	a4	The Tooth	Two Pair	QS QD 9C 9C	Green Joker,Golden Joker,Golden Ticket(holo),Space Joker,Card Sharp,Seeing Double	est=32232	actual=32232	OK
+7808	a3	-	Flush	TH 9H 6H 4H 2H	Ice Cream,Lusty Joker,Juggler,Golden Joker,Spare Trousers	est=2541	actual=2541	OK
+7805	a2	-	Two Pair	AS AC KH KD	Clever Joker	est=486	actual=486	OK
+7803	a1	-	Pair	3S 3D	Odd Todd	est=156	actual=156	OK
+7806	a1	-	Straight	AH KH QS JH TS		est=324	actual=324	OK
+7810	a7	-	Three of a Kind	QC(Redseal) QH QD	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=411600	actual=411600	OK
+7801	a2	-	Pair	6H 6D	Half Joker,Odd Todd	est=484	actual=484	OK
+7805	a2	-	Two Pair	QH QD 8C 8D	Clever Joker	est=468	actual=468	OK
+7807	a1	-	Full House	4S 4C 4D 7S 7D		est=264	actual=264	OK
+7803	a1	The Head	Straight	KH(DEBUFF) QS JC TH(DEBUFF) 9D	Odd Todd	est=360	actual=360	OK
+7808	a3	-	Two Pair	8S 8D 4S 4H	Ice Cream,Lusty Joker,Juggler,Golden Joker,Spare Trousers,Jolly Joker	est=2278	actual=2546	OK
+7803	a1	The Head	Pair	7S 7C	Odd Todd	est=172	actual=172	OK
+7806	a1	-	Four of a Kind	2S 2H 2C 2D	Riff-raff,Jolly Joker,Abstract Joker	est=1632	actual=1632	OK
+7808	a3	-	Pair	5H 5D	Ice Cream,Lusty Joker,Juggler,Golden Joker,Spare Trousers,Jolly Joker	est=1805	actual=1805	OK
+7801	a2	-	Three of a Kind	AS AH AD	Half Joker,Odd Todd	est=3588	actual=3588	OK
+7807	a1	-	Two Pair	TS TC 8S 8D	Mad Joker	est=672	actual=672	OK
+7808	a3	-	Two Pair	KS KC 7S 7C	Ice Cream,Lusty Joker,Juggler,Golden Joker,Spare Trousers,Jolly Joker	est=2144	actual=2412	OK
+7806	a1	The Hook	Two Pair	KS 9H 9D 3H 3C	Riff-raff,Jolly Joker,Abstract Joker,Blue Joker,Popcorn,Splash	est=6816	actual=6816	OK
+7803	a1	The Head	Full House	9H(DEBUFF) 9C 8S 8H(DEBUFF) 8C	Odd Todd	est=384	actual=384	OK
+7805	a2	-	Four of a Kind	5S 5H 5C 5D	Clever Joker,Blue Joker	est=1064	actual=1064	OK
+7807	a1	The Hook	Two Pair	8S 8C 5H 5D	Mad Joker,Sly Joker	est=1152	actual=1152	OK
+7805	a2	-	High Card	JS	Clever Joker,Blue Joker	est=77	actual=77	OK
+7804	a5	-	Two Pair	7S 7C 5S 5H	Green Joker,Golden Joker,Golden Ticket(holo),Space Joker,Card Sharp,Seeing Double	est=10080	actual=10080	OK
+7810	a7	The Pillar	Pair	KH KD	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=31280	actual=31280	OK
+7806	a2	-	Pair	AD 9S 9C 4H	Riff-raff,Jolly Joker,Abstract Joker,Blue Joker,Popcorn,Splash	est=5764	actual=5764	OK
+7805	a2	-	Pair	KS KC	Clever Joker,Blue Joker	est=168	actual=168	OK
+7801	a2	The Club	Pair	5C(DEBUFF) 5D	Half Joker,Odd Todd,Raised Fist(foil)	est=2496	actual=2496	OK
+7802	a4	The House	Pair	9S 9C	Zany Joker,Half Joker,Banner,Superposition(holo)	est=2409	actual=2409	OK
+7803	a2	-	Pair	5C 5D	Odd Todd,Acrobat	est=164	actual=164	OK
+7810	a7	The Pillar	Three of a Kind	7S 7C 7D	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=8990	actual=8990	OK
+7809	a1	-	Flush	KC JC TC 6C 5C		est=304	actual=304	OK
+7804	a5	-	Two Pair	QS QC 9H 9C(glass)	Green Joker,Golden Joker,Golden Ticket(holo),Space Joker,Card Sharp,Seeing Double	est=40764	actual=40764	OK
+7807	a2	-	Two Pair	8H 8C 2H 2C	Mad Joker,Sly Joker,Misprint	est=2090	actual=3300	MISS
+7802	a4	The House	Pair	7S NoneN(facedown) 6S	Zany Joker,Half Joker,Banner,Superposition(holo)	est=2244	actual=2277	OK
+7808	a3	The Mark	Two Pair	5H(lucky) 5D 3S 3H(lucky)	Lusty Joker,Juggler,Golden Joker,Spare Trousers,Jolly Joker,Wrathful Joker	est=2052	actual=2204	OK
+7802	a4	The House	Pair	8S 8D	Zany Joker,Half Joker,Banner,Superposition(holo)	est=2343	actual=2343	OK
+7810	a7	The Pillar	Three of a Kind	QC(mult) QS(mult) QS	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=312480	actual=312480	OK
+7803	a2	-	Straight	QH JS TH 9C 8H	Odd Todd,Acrobat	est=432	actual=432	OK
+7807	a2	-	Flush	KC TC 4C 3C 2C	Mad Joker,Sly Joker,Misprint	est=640	actual=832	MISS
+7806	a2	The Goad	Two Pair	AH AC KH KD 6D	Jolly Joker,Abstract Joker,Blue Joker,Popcorn,Splash,Even Steven(negative)	est=6864	actual=6864	OK
+7809	a1	-	Straight	KC QC JH TD 9S	Card Sharp	est=316	actual=316	OK
+7803	a2	-	Full House	AS AC AD 2C 2D	Odd Todd,Acrobat	est=2040	actual=2040	OK
+7808	a3	The Mark	Two Pair	NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown) 2H	Lusty Joker,Juggler,Golden Joker,Spare Trousers,Jolly Joker,Wrathful Joker	est=1426	actual=1500	OK
+7807	a2	-	Two Pair	8H 8D 7H 7D	Mad Joker,Sly Joker,Misprint	est=2280	actual=3480	MISS
+7809	a1	-	Straight	7D 6H 5H 4H 3D	Card Sharp	est=660	actual=660	OK
+7808	a3	The Mark	Two Pair	5S 5C NoneN(facedown) NoneN(facedown) AH	Lusty Joker,Juggler,Golden Joker,Spare Trousers,Jolly Joker,Wrathful Joker	est=2106	actual=1150	MISS
+7805	a1	-	Pair	2S 2C		est=28	actual=28	OK
+7806	a3	-	Straight	7S 6C 5S 4C 3D	Jolly Joker,Abstract Joker,Blue Joker,Popcorn,Splash,Even Steven(negative),Constellation	est=5863	actual=5863	OK
+7805	a1	-	Full House	QS QH QD 8C 8D		est=344	actual=344	OK
+7807	a2	The Mouth	Full House	JS JC 9S 9H 9C	Mad Joker,Sly Joker,Misprint	est=3564	actual=3240	OK
+7804	a5	The House	Two Pair	QH QD 6H 6D	Green Joker,Golden Joker,Space Joker,Obelisk(foil),Card Sharp,Seeing Double	est=5772	actual=6926	OK
+7803	a2	The Flint	Pair	7S 7H	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar	est=181	actual=181	OK
+7809	a1	The Club	Straight	KH QH JH TC(DEBUFF) 9C(DEBUFF)	Card Sharp,Crafty Joker	est=240	actual=240	OK
+7805	a1	-	Two Pair	AH AD JC JD	Blue Joker	est=300	actual=300	OK
+7802	a1	-	Two Pair	QS QD 9S 9D		est=116	actual=116	OK
+7806	a3	-	Pair	AS 6H 6C 5D 3H	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=10428	actual=10428	OK
+7809	a1	The Club	High Card	AC(DEBUFF)	Card Sharp,Crafty Joker	est=5	actual=5	OK
+7804	a5	The House	Straight	QS JC TS 9C(glass) 8C	Green Joker,Golden Joker,Space Joker,Obelisk(foil),Card Sharp,Seeing Double	est=8229	actual=9601	OK
+7801	a3	-	Straight	TC 9H 8H 7H 6D	Half Joker,Odd Todd,Raised Fist(foil),Devious Joker	est=2256	actual=2256	OK
+7803	a2	The Flint	Full House	QS QH QD 8H 8D	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar	est=322	actual=322	OK
+7805	a1	-	Pair	9H 9C	Blue Joker	est=212	actual=212	OK
+7807	a3	-	Two Pair	8H 8D 6H 6C	Mad Joker,Sly Joker,Misprint	est=2242	actual=1770	MISS
+7809	a1	The Club	Straight	8H 7S 6H 5D 4S	Card Sharp,Crafty Joker	est=720	actual=720	OK
+7808	a1	-	Flush	AC TC 9C 6C 3C		est=296	actual=296	OK
+7804	a5	The House	Pair	5S 5D	Green Joker,Golden Joker,Space Joker,Obelisk(foil),Card Sharp,Seeing Double	est=3359	actual=2400	MISS
+7801	a3	-	High Card	AD	Half Joker,Odd Todd,Raised Fist(foil),Devious Joker	est=2425	actual=2425	OK
+7808	a1	-	High Card	AD		est=16	actual=16	OK
+7803	a2	The Flint	High Card	AD	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar	est=134	actual=135	OK
+7801	a3	-	Pair	6H 6C	Half Joker,Odd Todd,Raised Fist(foil),Devious Joker	est=1872	actual=1872	OK
+7802	a1	-	Two Pair	JC JD 3S 3C		est=92	actual=92	OK
+7807	a3	-	Two Pair	7S 7D 4S 4C	Mad Joker,Sly Joker,Misprint	est=2128	actual=3248	MISS
+7805	a1	The Goad	Full House	JS(DEBUFF) JC JD 7C 7D	Blue Joker	est=616	actual=616	OK
+7803	a2	The Flint	Pair	TS TH	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar	est=110	actual=110	OK
+7802	a1	-	Straight	AS KD QH JH TH		est=324	actual=324	OK
+7806	a3	The Wheel	Pair	KS KH 9H 6D 5H	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=8197	actual=8197	OK
+7810	a8	Crimson Heart	Pair	JH JC	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=31280	actual=15640	MISS
+7809	a2	-	Straight	AS KH QH JH TH	Card Sharp,Crafty Joker,Photograph,Devious Joker	est=2954	actual=2954	OK
+7808	a1	-	Straight	AD KC QH JC TH	Matador	est=324	actual=324	OK
+7810	a8	Crimson Heart	Pair	5S 5D	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=4680	actual=1080	MISS
+7807	a3	The House	Pair	2C(mult) 2D(mult)	Mad Joker,Misprint	est=224	actual=1400	MISS
+7806	a4	-	Two Pair	9H 9D 5D 4S 4H	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=12096	actual=12096	OK
+7803	a2	The Flint	High Card	AS	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar	est=124	actual=125	OK
+7807	a3	The House	Three of a Kind	6S 6C 6D	Mad Joker,Misprint	est=748	actual=1020	MISS
+7806	a4	-	Straight	AC(mult) KD QH JS TD	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=7524	actual=7524	OK
+7803	a2	The Flint	Straight	AC 5C 4C 3S 2S	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar	est=1248	actual=1248	OK
+7807	a3	The House	Pair	7S 7C	Mad Joker,Misprint	est=192	actual=72	MISS
+7809	a2	The House	Flush	AC 9C 7C 4C 3C	Crafty Joker,Devious Joker,Card Sharp,Photograph	est=596	actual=596	OK
+7809	a2	The House	High Card	KS	Crafty Joker,Devious Joker,Card Sharp,Photograph	est=30	actual=30	OK
+7809	a2	The House	Two Pair	TS TH 6S 6H	Crafty Joker,Devious Joker,Card Sharp,Photograph	est=104	actual=104	OK
+7803	a3	-	Two Pair	8C 8D 5C 5D	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar,Photograph	est=356	actual=356	OK
+7803	a3	-	Pair	3S 3C	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar,Photograph	est=286	actual=286	OK
+7806	a4	The Arm	Two Pair	9H 6S 6C 3S 3D	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=12448	actual=12448	OK
+7807	a1	-	Full House	KC KD 5S 5H 5C		est=300	actual=300	OK
+7806	a4	The Arm	Straight	QS JD TC 9S 8S	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=8593	actual=8593	OK
+7803	a3	-	Pair	TH TD	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar,Photograph	est=180	actual=180	OK
+7807	a1	-	Flush	QD JD 6D 5D 4D	Burnt Joker	est=280	actual=280	OK
+7809	a1	-	Two Pair	AS AH KH KC		est=124	actual=124	OK
+7807	a1	-	Flush	QC TC 9C 6C 3C	Burnt Joker	est=292	actual=292	OK
+7803	a3	-	High Card	AC	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar,Photograph	est=102	actual=102	OK
+7807	a1	The Hook	Two Pair	8C 8D 2S 2C	Burnt Joker,Misprint	est=320	actual=440	MISS
+7806	a5	-	Pair	AS(mult) AD 9D 7H 5S	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=22028	actual=22028	OK
+7807	a1	The Hook	Flush	AD QD JD 9D 4D	Burnt Joker,Misprint	est=790	actual=711	OK
+7803	a3	-	High Card	KD	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar,Photograph	est=130	actual=130	OK
+7810	a8	Crimson Heart	Three of a Kind	QC(lucky,Redseal) QC(lucky,Redseal) QD(lucky)	Half Joker,Hanging Chad,Mail-In Rebate(negative),Scary Face,The Duo,Acrobat,Photograph	est=670800	actual=141900	MISS
+7803	a3	-	Full House	AS AH QS QH QD	Odd Todd,Acrobat,Ice Cream,Credit Card,Burglar,Photograph	est=4776	actual=4776	OK
+7801	a3	The Head	High Card	9C(lucky)	Odd Todd,Raised Fist(foil),Devious Joker	est=1995	actual=1995	OK
+7806	a5	-	Pair	QS QC 9S 7C 5C	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=15432	actual=15432	OK
+7809	a1	-	Flush	QS 8S 5S 4S 3S		est=260	actual=260	OK
+7806	a5	-	Pair	KC KD 8S 5H 3H	Jolly Joker,Abstract Joker,Blue Joker,Splash,Even Steven(negative),Constellation,Odd Todd	est=14276	actual=14276	OK

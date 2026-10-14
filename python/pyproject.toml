@@ -28,6 +28,10 @@ dev = [
     "black>=23.0.0",
     "ruff>=0.1.0",
 ]
+# Headless engine (balatro-headless): embedded LuaJIT 2.0 via lupa.luajit20
+headless = [
+    "lupa>=2.0",
+]
 
 [project.scripts]
 balatro-health = "balatro_env.scripts.probe_health:main"
@@ -36,6 +40,7 @@ balatro-legal = "balatro_env.scripts.list_legal_actions:main"
 balatro-smoke = "balatro_env.scripts.do_smoke_actions:main"
 balatro-shell = "balatro_env.scripts.interactive_shell:main"
 balatro-data = "balatro_env.data.cli:main"
+balatro-headless = "balatro_env.headless.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -64,9 +64,9 @@ def ensure_instance(port):
 
 
 def fresh_seed(s):
-    exe = REPO / "python" / ".venv" / "Scripts" / "balatro-data.exe"
+    exe = REPO / "python" / ".venv" / "Scripts" / "python.exe"
     n = len(s["used_seeds"]) + 20
-    seeds = subprocess.run([str(exe), "seeds", "--count", str(n)], capture_output=True, text=True, cwd=REPO).stdout.split()
+    seeds = subprocess.run([str(exe), "-m", "balatro_env.data", "seeds", "--count", str(n)], capture_output=True, text=True, cwd=REPO).stdout.split()
     used = set(s["used_seeds"])
     for sd in seeds:
         if sd not in used:
