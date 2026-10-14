@@ -344,6 +344,9 @@ def show(d):
         # The Big Blind comes BEFORE any shop, so it must be beaten with what you own plus what the tag pays right now.
         # Stake 2-3 data (2026-08-30) and Gold data (2026-10-13: 328/450 and 448/450 with zero jokers after skipping for a
         # Rare/Polychrome tag) show a jokerless deck loses the ante-1 Big Blind; a shop-time tag cannot help it.
+        # 0 xMult at ante 4-6: a free Mega Buffoon is the joker view the run needs, worth the Small's shop (7804 N6ILXWVS)
+        buff_x = (tk == "tag_buffoon" and free_j >= 1 and 4 <= ante_n <= 6
+                  and not any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") and not j.get("debuff") for j in lst(d.get("jokers"))))
         if tk == "tag_buffoon":
             skip_ok = free_j >= 1
         elif tk == "tag_top_up":
@@ -412,7 +415,7 @@ def show(d):
             if boss_c_k and (deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * _hands_pr(d) < boss_c_k:
                 skip_ok = False
                 weak_hand = True
-        if skip_ok and 3 <= ante_n <= 4 and not thr_ok and not poor:
+        if skip_ok and 3 <= ante_n <= 4 and not thr_ok and not poor and not buff_x:
             # GOLD_ANALYSIS.md: ante 3-4 skippers died 40-46% vs players 25-33%: skip only if one hand reaches boss/2; a broke
             # wallet has no shop to lose (7801 FYPFR6AC played the ante-4 Small at $0 with $6 rent)
             boss_c_s = int((ch.get("Boss") or {}).get("chips") or 0)
@@ -435,7 +438,7 @@ def show(d):
             pay_b = ((NOW_TAGS.get(big_tk) if big_tk != tk else None) or LATER_TAGS.get(big_tk) or f"the {big_t}") + pay[len(base_pay):]
             print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss {'with the 1.3x+ margin' if thr else 'with your carrier alive'}, so skip the Big too: {pay_b} ({big_t}); "
                   f"Boss Tag rerolls a Wall/Violet boss, Garbage/Skip/Economy pay money for the post-boss shop. The boss is never skipped.)")
-        elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok) and skip_ok:
+        elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok or buff_x) and skip_ok:
             gold = f" Skipping also avoids one round-end ({sum(1 for j in lst(d.get('jokers')) if _stk(j)['rental'])} rental charge(s), one perishable tick)." if stake_n >= 8 and any(_stk(j)["rental"] or _stk(j)["perishable"] for j in lst(d.get("jokers"))) else ""
             print(f"ADVICE: b skip   (stake {stake_n}: the Small Blind pays $0, so skipping costs one shop visit; tag pays: {pay} ({small.get('tag')}). You own {scoring_j} scoring joker(s) for the Big Blind.{gold}"
                   + (" Skip plan: skip the Big too while your rounds beat the boss by 1.3x+; the boss is never skipped.)" if thr_ok else " Big and Boss blinds are never skipped.)"))
@@ -3600,6 +3603,9 @@ def _shop_rules(d):
         def _emerg(o):
             bump = 30 if (_rg_x(o[1]) and refused not in o[3]) else (20 if o[1].startswith("XMULT(conditional") and "other hand" not in o[1] and "suit" not in o[1]
                                                                     else (15 if "Buffoon" in o[3] else (10 if "MAIN SCALING" in o[3] else 0)))
+            if o[1] == "PACK" and "Buffoon" not in o[3] and not ("Celestial" in o[3] and "MAIN SCALING" in o[3]):
+                # Arcana/Spectral/Standard/Celestial packs are not joker views: below the jokers and Buffoon packs (7804 N6ILXWVS)
+                return (min(o[0], 55),) + tuple(o[1:])
             return (o[0] + bump,) + tuple(o[1:5]) + ((o[5] or bump > 0),) + tuple(o[6:])
         options = [_emerg(o) for o in options]
     if scoring_now == 0 and ante >= 3:

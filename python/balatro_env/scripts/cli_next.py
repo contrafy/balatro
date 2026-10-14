@@ -3679,7 +3679,8 @@ def _shop_rules(d):
             credit_e = 20 if any(j.get("name") == "Credit Card" and not j.get("debuff") for j in jokers) and (emergency or scoring_now < 2) else 0
             # 0 scorers: keep $5 for a $5 scorer (7806); but TIGHT at stake 8 a $1 rental scorer is the out, so reroll down
             # to $1 (7805 THD1ZBW7 left the ante-1 boss shop with $6 and no scorer)
-            keep_min = 1 if (tight and stake >= 8 and scoring_now == 0) else (5 if scoring_now == 0 else 4)
+            # keep the price of a typical joker after the reroll ($5-6 at Gold; 7801 YRXUVUPU rerolled $10 -> $5)
+            keep_min = 1 if (tight and stake >= 8 and scoring_now == 0) else 6
             if money + credit_e - reroll0 - rent_due >= keep_min:
                 print(f"ADVICE: REROLL -> b reroll   (no scoring joker in this shop and you own {scoring_now}: at ante {ante} a joker matters more than any pack; ${money - reroll0} left after"
                       + (", Credit Card debt allowed" if credit_e and money - reroll0 < 4 else "")
@@ -3794,9 +3795,10 @@ def _shop_rules(d):
         return
     scoring = scoring_now
     credit_r = 20 if any(j.get("name") == "Credit Card" and not j.get("debuff") for j in jokers) and (emergency or scoring_now < 2) else 0
-    if (ante <= 2 and scoring < 2 or scoring == 0) and replaceable > 0 and money + credit_r - reroll - rent_due >= 3:
+    keep_r = 1 if (tight and stake >= 8 and scoring == 0) else 5  # a $5 joker stays affordable after the reroll (7801 YRXUVUPU)
+    if (ante <= 2 and scoring < 2 or scoring == 0) and replaceable > 0 and money + credit_r - reroll - rent_due >= keep_r:
         boss_need = f"; the {boss_c.get('name')} needs {boss_c.get('chips')} in {d.get('hands_per_round') or 3} hands" if boss_ahead and boss_c.get("chips") else ""
-        print(f"ADVICE: REROLL -> b reroll   (ante {ante} with only {scoring} scoring joker(s) alive next ante: a reroll leaving ${money - reroll} for a $3-4 joker beats leaving{boss_need})")
+        print(f"ADVICE: REROLL -> b reroll   (ante {ante} with only {scoring} scoring joker(s) alive next ante: a reroll leaving ${money - reroll} for a $4-5 joker beats leaving{boss_need})")
         return
     if free > 0 and ante >= 2 and money - reroll - rent_due >= 20 and rerolls_done < 2 and not buff_ok:
         print(f"ADVICE: REROLL -> b reroll   (nothing worth buying, {free} free joker slot(s), ${money - reroll} left after)")
