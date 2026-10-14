@@ -28,20 +28,20 @@ _Interim, 05:30 (updated as the night goes on)._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 06:55:57 by `balatro-data status` (edits inside this block are overwritten). Player runs: 186 (178 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 07:05:43 by `balatro-data status` (edits inside this block are overwritten). Player runs: 190 (182 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
 
 ### Live runs (8)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | TPUW8U2C | 8 | SHOP | 4 | 9 | 67 | Big Blind (13500) | SHOP_REROLL | Reroll (2): 0 reliable xMult; ante 5 needs ~10k/hand without Stuntman; packs stay through rerolls s… | 16s |
-| 7802 | port-7802 | claude-opus-5-5 | JB7Q6L46 | 8 | SELECTING_HAND | 5 | 10 | 10 | Big Blind 0/37500 | PLAY_HAND {"card_indices":[1,2,3,4,7]} | Pair KK est 14924 (need 12.5k/hand); fillers QS JC 2S keep odd 7S 5H for Odd Todd pairs | 32s |
-| 7803 | port-7803 | claude-opus-5-5 | 81QZU93L | 8 | SELECTING_HAND | 3 | 8 | -8 | The Manacle 0/6400 | DISCARD {"card_indices":[3,4,5]} | keep Pair 55 (club+spade fires Seeing Double) + KC QC to pair; discard JH TD 7H; discards also arm … | 5s |
-| 7804 | port-7804 | claude-opus-5-5 | MLPIM342 | 8 | SHOP | 5 | 10 | 13 | Small Blind (25000) | SELL_JOKER {"index":3} | SIM: sell Seltzer (4 hands left, expiring) for Wily +100 chips on Trips/FH, p_next 0.21 vs 0.15; FT… | 8s |
-| 7806 | port-7806 | claude-opus-5-5 | BQVA4RPV | 8 | PACK_OPENING | 2 | 3 | 2 | Big Blind (1500) | SELECT_PACK_CARD {"index":2} | Stuntman +250 chips, +385% round est; EMERGENCY ratio 0.32, rental accepted as the only big scorer … | 16s |
-| 7807 | port-7807 | claude-opus-5-5 | T8FNZLNG | 8 | BLIND_SELECT | 4 | 7 | 31 | Small Blind (9000) | SELECT_BLIND | Small 9000: Summit last live round + Seltzer, 3 hands at ~5-7k each; play for the shop | 35s |
-| 7809 | port-7809 | claude-opus-5-5 | XRWKX6AS | 8 | BLIND_SELECT | 4 | 8 | 35 | Big Blind (13500) | SELECT_BLIND | Big 13500, est ~7.7k/hand x3 | 26s |
-| 7810 | port-7810 | claude-sonnet-5-5 | EYZV71A2 | 8 | BLIND_SELECT | 6 | 13 | 0 | The Plant (120000) | SELECT_BLIND | The Plant 120000: faces debuffed; 4 hands, burn discards for Summit, Acrobat final x3 | 54s |
+| 7801 | port-7801 | claude-fable-5-1 | TPUW8U2C | 8 | SHOP | 5 | 10 | 29 | Small Blind (25000) | SHOP_REROLL | Reroll (1): Flint needs an xMult or Clever-tier chips (Pair est ~10k/hand halved vs 50000); Telesco… | 9s |
+| 7803 | port-7803 | claude-opus-5-5 | DIQEXXVA | 8 | - | - | - | - | - | - | - | 2s |
+| 7804 | port-7804 | claude-opus-5-5 | GI6YWY8G | 8 | SHOP | 1 | 2 | 4 | Big Blind (450) | SHOP_BUY {"slot":2} | Popcorn rental : +20 mult bridge, SIM p_next 0.10 -> 1.00 for The Club 600; sell once 2 scorers | 2s |
+| 7805 | port-7805 | claude-opus-5-5 | 17B87T9F | 8 | SHOP | 3 | 7 | 32 | Big Blind (4800) | SHOP_BUY_BOOSTER {"slot":1} | Second free Arcana pack | 8s |
+| 7806 | port-7806 | claude-opus-5-5 | BQVA4RPV | 8 | SELECTING_HAND | 4 | 9 | 6 | The House 0/18000 | PLAY_HAND {"card_indices":[1,4,5,6]} | High KC with QH held (+13) est 7630; 8D 6D 3D fillers draw 4 for pairs/2nd Q, keep QH JD | 2s |
+| 7807 | port-7807 | claude-opus-5-5 | T8FNZLNG | 8 | SELECTING_HAND | 5 | 11 | 56 | The Mouth 0/50000 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | lock Straight: K-9 est 33210 of 50000; need one more straight in 2 hands (solver p 0.70) | 10s |
+| 7809 | port-7809 | claude-opus-5-5 | XRWKX6AS | 8 | SHOP | 5 | 11 | 24 | Small Blind (25000) | SHOP_REROLL | reroll for more sell fodder (4 -> 8), Campfire x3.0 short of Plant 50000 | 1s |
+| 7810 | port-7810 | claude-sonnet-5-5 | PPK31EVC | 8 | BLIND_SELECT | 3 | 6 | 12 | Big Blind (4800) | SELECT_BLIND | Big 4800 | 11s |
 
 ### Results by model x stake x deck
 
@@ -50,8 +50,8 @@ _Generated 2026-10-14 06:55:57 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 21 | 0 | 21 | 0 | 0 | 3.76 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 110 | 1 | 109 | 0 | 0 | 3.8 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 41 | 0 | 40 | 0 | 1 | 3.12 | 8 |
+| claude-opus-5-5 | 8 | Black | 113 | 1 | 112 | 0 | 0 | 3.84 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 42 | 0 | 41 | 0 | 1 | 3.19 | 8 |
 
 ### Deepest runs
 
@@ -70,28 +70,28 @@ _Generated 2026-10-14 06:55:57 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 186 files in manifest; schema_ok 186, schema invalid 0; replay_ok 173, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 79 / failed 0; gui (live) ok 105 / failed 0; cross-checked by both 11, disagreeing 0.
-- All files (incl. fuzz + replays): 365; schema_ok 363; replay_ok 179 (headless 79, gui 111); replay failed 0; awaiting replay 173; quarantined 2.
+- Player runs: 189 files in manifest; schema_ok 189, schema invalid 0; replay_ok 177, replay failed 0, awaiting replay 3, open/unended 9; quarantined 0; not yet in manifest 1.
+- Player-run replay verdicts by host: headless ok 83 / failed 0; gui (live) ok 105 / failed 0; cross-checked by both 11, disagreeing 0.
+- All files (incl. fuzz + replays): 368; schema_ok 366; replay_ok 183 (headless 83, gui 111); replay failed 0; awaiting replay 173; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 1454 |
+| port-7805 | 2 | 2 | 1507 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1129 |
-| port-7803 | 1 | 1 | 1536 |
-| port-7804 | 1 | 1 | 1173 |
-| port-7807 | 1 | 1 | 1634 |
+| port-7802 | 1 | 1 | 1173 |
+| port-7803 | 1 | 1 | 1575 |
+| port-7804 | 1 | 1 | 1206 |
+| port-7807 | 1 | 1 | 1675 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 864 |
-| port-7806 | 0 | 0 | 1584 |
+| port-7801 | 0 | 0 | 893 |
+| port-7806 | 0 | 0 | 1629 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 1430 |
-| port-7810 | 0 | 0 | 1720 |
+| port-7809 | 0 | 0 | 1471 |
+| port-7810 | 0 | 0 | 1768 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

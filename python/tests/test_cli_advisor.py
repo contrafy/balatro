@@ -768,3 +768,12 @@ def test_sim_primary_picks_sim_best_joker(monkeypatch):
                     {"label": opts[2]["label"], "option": opts[2], "feasible": True, "p_next": 0.55, "delta": 0.05, "money_after": 17}]
     monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
     assert "b buy 1" in _advice(_out(cli.shop_advise_sim, d))
+
+
+def test_reorder_with_hanging_chad_and_photograph():
+    # 7805: est sorted cards by index, so moving the King first never changed the est and REORDER never fired
+    d = _hand_state([("9", "Spades"), ("10", "Hearts"), ("Jack", "Clubs"), ("Queen", "Diamonds"), ("King", "Spades"), ("4", "Hearts"), ("3", "Clubs"), ("2", "Diamonds")],
+                    jokers=[joker("Hanging Chad", 1), joker("Photograph", 2)], need=5000)
+    d["hand_levels"]["Straight"] = {"level": 1, "chips": 30, "mult": 4}
+    e, mv = cli._order_gain(d, "Straight", [1, 2, 3, 4, 5])
+    assert mv in (3, 4, 5) and e > cli.estimate("Straight", cli._cards_by_idx(d, [1, 2, 3, 4, 5]), cli._held(d, [1, 2, 3, 4, 5]), d, played_n=5)[0]
