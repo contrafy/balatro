@@ -163,6 +163,39 @@ def test_acrobat_x3_only_on_final_hand_and_forced_dig_is_reported_raw():
     assert abs(r["p_model"] - exact) < 0.06 and r["p_clear"] == r["p_model"]
 
 
+def test_obelisk_resets_inside_the_round():
+    # 7802 YZMAQVI2: Pair was strictly the most played type; playing it resets Obelisk to x1 for the later hands
+    st = state(["6S", "6D", "KC", "9H", "7S", "5D", "3H", "2C"], need=2000, hands=3, discards=0, jokers=["Obelisk"])
+    st["jokers"][0]["ability"] = {"x_mult": 4.2, "extra": 0.2}
+    st["hand_levels"]["Pair"]["played"] = 10
+    st["hand_levels"]["High Card"]["played"] = 3
+    rs = solver.RoundSolver(st, estimate)
+    ob = rs.ctx0[3]
+    after_pair = rs._obelisk_after(ob, "Pair")
+    after_high = rs._obelisk_after(ob, "High Card")
+    assert after_pair[0] == 1.0 and after_high[0] == pytest.approx(4.4)
+    kk = [rs.slots[2]]
+    s_before, _t = rs.score(kk, [], 3, 0, rs.ctx0)
+    s_after, _t = rs.score(kk, [], 2, 0, rs.ctx0[:3] + (after_pair,))
+    assert s_after < s_before / 3
+
+
+def test_banner_plays_on_pace_instead_of_discarding():
+    st = state(["KS", "KH", "QS", "QD", "7C", "5D", "3H", "2C"], need=700, hands=3, discards=2, jokers=["Banner"])
+    rs = solver.RoundSolver(st, estimate)
+    kind, sel = rs.policy(rs.slots, rs.pool, 3, 2, 700, rs.ctx0)
+    assert kind == "PLAY" and {c.label() for c in sel} >= {"KS", "KH", "QS", "QD"}
+
+
+def test_psychic_half_joker_never_counts_on_short_plays():
+    st = state(["KS", "KD", "9H", "7C", "5D", "4S", "3H", "2C"], need=600, hands=3, discards=2, blind="The Psychic",
+               boss=True, jokers=["Half Joker"])
+    rs = solver.RoundSolver(st, estimate)
+    plain = solver.RoundSolver(dict(st, jokers=[]), estimate)
+    kk = rs.slots[:2]
+    assert rs.score(kk, [], 3, 2, rs.ctx0)[0] == plain.score(kk, [], 3, 2, plain.ctx0)[0]
+
+
 def _small_deck(st, keep_ids):
     """Only the listed deck card ids stay in the draw pile."""
     for c in st["deck"]["cards"]:

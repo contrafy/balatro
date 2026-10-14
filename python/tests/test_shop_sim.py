@@ -2,6 +2,8 @@
 
 import time
 
+import pytest
+
 from balatro_env import shop_sim
 from balatro_env.scripts.cli import BLIND_BASE, estimate
 
@@ -140,7 +142,10 @@ def test_dagger_and_madness_destroy_jokers_and_baseline_has_fixed_samples():
                        min_samples=4))
     assert res["base"]["n"] >= shop_sim.BASE_N  # guaranteed whatever the budget
     assert any("destroy" in n for n in res["base"]["notes"])
-    assert res["sell Dagger"]["p_blinds"][1] >= res["base"]["p_blinds"][1]  # the Joker survives without the Dagger
+    dag = shop_sim._OptionSim(shop_sim._solver(), estimate, st, shop_sim.upcoming_blinds(st, 2), 0)
+    removed, growth = set(), {}
+    dag._select_blind({"boss": True}, removed, growth, __import__("random").Random(0))
+    assert removed == {1} and growth == {0: 4.0}  # the Joker to its right (sell $2) becomes +4 Dagger mult
     mad = shop_state(jokers=[joker("Madness", ability={"x_mult": 1}), scorer, joker("Egg", eternal=True)], ante=1,
                      small="Upcoming")
     sim = shop_sim._OptionSim(shop_sim._solver(), estimate, mad, shop_sim.upcoming_blinds(mad, 3), 0)
@@ -149,3 +154,22 @@ def test_dagger_and_madness_destroy_jokers_and_baseline_has_fixed_samples():
     assert removed == {1} and growth == {0: 0.5}  # Egg is eternal: only the Joker can go
     sim._select_blind({"boss": True}, removed, growth, __import__("random").Random(0))
     assert growth == {0: 0.5}  # Madness fires on Small/Big only
+
+
+def test_riff_raff_creates_commons_into_free_slots():
+    st = shop_state(ante=1, small="Defeated", slots=4)
+    res = by_label(run(st, [{"label": "base"}, {"label": "riff", "add_joker": joker("Riff-raff"), "cost": 6}], blinds=2))
+    riff = res["riff"]
+    assert any("Riff-raff creates 3.0" in n for n in riff["notes"])  # 3 free slots: 2 on the first select, 1 more
+    assert riff["delta"] > 0.05
+
+
+def test_eternal_rental_is_flagged_with_run_rent_and_constellation_grows_on_planets():
+    lusty = joker("Lusty Joker", eternal=True, rental=True, cost=1)
+    st = shop_state(ante=2, small="Defeated")  # Big + Boss of ante 2 open, antes 3-8 ahead: 2 + 18 round-ends
+    res = by_label(run(st, [{"label": "base"}, {"label": "lusty", "add_joker": lusty, "cost": 1}], blinds=1,
+                       budget_s=1, min_samples=8))
+    assert res["lusty"]["rent_run"] == 3 * 20 and any("ETERNAL RENTAL" in n for n in res["lusty"]["notes"])
+    con = shop_state(jokers=[joker("Constellation", ability={"x_mult": 1.2})])
+    st3, err, notes = shop_sim.apply_option(con, {"levels": ["Pair"], "cost": 3})
+    assert err is None and st3["jokers"][0]["ability"]["x_mult"] == pytest.approx(1.3)

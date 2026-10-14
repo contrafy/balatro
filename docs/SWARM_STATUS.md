@@ -40,37 +40,42 @@ _Updated 07:50._
     interrupted runs mid-game. The second was absorbed by `retry.waitForUsageReset`.
   - One recorded junk action: run `XRWKX6AS`, step 117 (a stray sell), noted in `data/swarm_results.jsonl`
     under `junk_steps`.
-- **Decisions for you** (see the chat report):
-  - Bridge v2.0.1: a post-action settle guard (players sometimes saw the pre-action state) and the To Do List check.
-    This changes `bridge_hash`.
+- **The "pre-action state" reports were client-side, not the bridge.** SwarmOps checked about 48k tight-loop reads:
+  0 stale reads and 0 stale actions accepted. The cause was players running two `b.sh` commands in parallel on one
+  port. Fixes: a per-port CLI lock (GoldAdvisor) and an explicit rule in the player definitions. No data impact.
+- **Decisions for you:**
+  - An optional 2-frame post-action guard for the bridge (the patch is in SwarmOps' report). It changes `bridge_hash`.
   - Whether to keep Sonnet on Gold or move it down a stake.
   - Whether to persist the session settings changed overnight.
 
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 07:45:45 by `balatro-data status` (edits inside this block are overwritten). Player runs: 204 (198 finished, 6 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 08:05:38 by `balatro-data status` (edits inside this block are overwritten). Player runs: 212 (203 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (6)
+### Live runs (9)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | QS3DEH89 | 8 | PACK_OPENING | 4 | 7 | 3 | Big Blind (13500) | SELECT_PACK_CARD {"index":1} | Mercury: Pair L2, the repeatable type I lock/bank with (SIM +0.03, best remaining); indices re-read… | 26s |
-| 7803 | port-7803 | claude-opus-5-5 | XDYYYR1Y | 8 | BLIND_SELECT | 4 | 9 | 3 | Small Blind (9000) | SELECT_BLIND | typical hand < boss/2, take Small 9000 and the shop | 2s |
-| 7804 | port-7804 | claude-opus-5-5 | U6G7N65N | 8 | SHOP | 4 | 9 | 15 | Small Blind (9000) | SHOP_REROLL | EMERGENCY 0.27, 0 xMult, 2 free slots; shop has no scorer (Strength/Cloud9 do not add score): one r… | 18s |
-| 7805 | port-7805 | claude-opus-5-5 | RNVA7G3B | 8 | SHOP | 4 | 9 | 1 | Small Blind (9000) | SHOP_END | left | 17s |
-| 7809 | port-7809 | claude-opus-5-5 | BKRXB8HX | 8 | SHOP | 1 | 1 | 6 | Small Blind (300) | SHOP_BUY {"slot":1} | foil Blue Joker = +154 chips on any hand; SIM p_next 1.00 vs 0.01; rental bridge, sell once 2 score… | 14s |
-| 7810 | port-7810 | claude-sonnet-5-5 | 6XN584I7 | 8 | SELECTING_HAND | 4 | 10 | 4 | The Psychic 8874/18000 | PLAY_HAND {"card_indices":[1,2,4,5,8]} | Two Pair AATT + 2S filler est 9349 >= 9126 needed (previous est 8568 came in at 8874); 1 more hand … | 11s |
+| 7801 | port-7801 | claude-fable-5-1 | YSBWEA3U | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 232/450 | DISCARD {"card_indices":[2,4,7,8]} | Need 218 in 2 hands; two High Cards (~111+106) fall 1 short, so draw: keep AS QS 8S 6S (flush/pair … | 15s |
+| 7802 | port-7802 | claude-opus-5-5 | SCSDWJWT | 8 | SHOP | 5 | 8 | 44 | Small Blind (25000) | SHOP_BUY_BOOSTER {"slot":1} | second Arcana (0 left): Hermit would add +0, Judgement a joker, Wheel an edition; first one paid 1 | 39s |
+| 7803 | port-7803 | claude-opus-5-5 | CLA5SVN7 | 8 | SELECTING_HAND | 4 | 9 | 28 | Small Blind 7380/9000 | PLAY_HAND {"card_indices":[4,5]} | Pair 99 ~4.5k vs 1620 remaining | 18s |
+| 7804 | port-7804 | claude-opus-5-5 | NIMYTH5Y | 8 | SHOP | 4 | 6 | -9 | Small Blind (9000) | SHOP_END | hBc9, nothing affordable | 27s |
+| 7805 | port-7805 | claude-opus-5-5 | RNVA7G3B | 8 | SELECTING_HAND | 6 | 14 | 10 | Big Blind 43155/90000 | DISCARD {"card_indices":[4,5,6,7,8]} | no pair; 46845 needed in 1 hand vs ~23k max, discard 5 low cards to at least find a pair | 9s |
+| 7806 | port-7806 | claude-opus-5-5 | RHQLHNTL | 8 | SHOP | 4 | 8 | 15 | Small Blind (9000) | SELL_JOKER {"index":5} | sell Joker +4 (perishable) to fit Odd Todd +31 chips/odd: SIM 0.52 vs 0.00, chips are my missing ax… | 7s |
+| 7807 | port-7807 | claude-opus-5-5 | ZYK9EUJR | 8 | ROUND_EVAL | 6 | 10 | 25 | The Mark (120000) | CASH_OUT | cash out Mark (Mr. Bones saved it) | 9s |
+| 7809 | port-7809 | claude-opus-5-5 | ZCAAIS17 | 8 | SELECTING_HAND | 2 | 4 | 10 | Big Blind 0/1500 | PLAY_HAND {"card_indices":[4,5,8,7,6]} | Pair TH TC fires Seeing Double est 1020 of 1500; fillers 4H 7H 9D draw, keep 1 discard | 0s |
+| 7810 | port-7810 | claude-sonnet-5-5 | B2SNYDTS | 8 | SELECTING_HAND | 3 | 7 | 5 | Big Blind 2376/4800 | DISCARD {"card_indices":[1,3,8]} | Two Pair 7766 est 2300 < 2424 needed; discard KH 9C 4D to draw (aces/better), keep QC held +13 and … | 28s |
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 22 | 0 | 22 | 0 | 0 | 3.86 | 7 |
+| claude-fable-5-1 | 8 | Black | 23 | 0 | 23 | 0 | 0 | 3.91 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 127 | 1 | 126 | 0 | 0 | 3.87 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 43 | 0 | 42 | 0 | 1 | 3.26 | 8 |
+| claude-opus-5-5 | 8 | Black | 130 | 1 | 129 | 0 | 0 | 3.87 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 44 | 0 | 43 | 0 | 1 | 3.32 | 8 |
 
 ### Deepest runs
 
@@ -89,28 +94,28 @@ _Generated 2026-10-14 07:45:45 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 204 files in manifest; schema_ok 204, schema invalid 0; replay_ok 193, replay failed 0, awaiting replay 3, open/unended 8; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 99 / failed 0; gui (live) ok 107 / failed 0; cross-checked by both 13, disagreeing 0.
-- All files (incl. fuzz + replays): 385; schema_ok 383; replay_ok 199 (headless 99, gui 113); replay failed 0; awaiting replay 175; quarantined 2.
+- Player runs: 212 files in manifest; schema_ok 212, schema invalid 0; replay_ok 198, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 104 / failed 0; gui (live) ok 107 / failed 0; cross-checked by both 13, disagreeing 0.
+- All files (incl. fuzz + replays): 393; schema_ok 391; replay_ok 204 (headless 104, gui 113); replay failed 0; awaiting replay 175; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 1659 |
+| port-7805 | 2 | 2 | 1737 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1303 |
-| port-7803 | 1 | 1 | 1740 |
-| port-7804 | 1 | 1 | 1372 |
-| port-7807 | 1 | 1 | 1808 |
+| port-7802 | 1 | 1 | 1363 |
+| port-7803 | 1 | 1 | 1805 |
+| port-7804 | 1 | 1 | 1439 |
+| port-7807 | 1 | 1 | 1888 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 989 |
-| port-7806 | 0 | 0 | 1760 |
+| port-7801 | 0 | 0 | 1028 |
+| port-7806 | 0 | 0 | 1819 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 1599 |
-| port-7810 | 0 | 0 | 1941 |
+| port-7809 | 0 | 0 | 1675 |
+| port-7810 | 0 | 0 | 2015 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

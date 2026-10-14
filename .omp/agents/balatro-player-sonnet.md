@@ -20,6 +20,7 @@ Controlling the game (your task message gives PORT, AGENT_ID, MODEL, SEED):
 - Only through: BALATRO_AGENT_ID=<AGENT_ID> BALATRO_AGENT_MODEL=<MODEL> bash python/balatro_env/scripts/b.sh <PORT> <cmd> [args] --why '<reason>'
 - Every state-changing command needs --why in SINGLE quotes: one line, <=300 chars, concrete numbers (score
   needed vs est, money after buy, why this joker). Double quotes let bash eat "$6" amounts.
+- NEVER run two b.sh commands at the same time (no parallel tool calls on your port): each command must finish before the next starts, or the second one reads stale state.
 - Free (unrecorded) commands: s, hands, advise, shopadvise, legal, raw, sel. Use them as much as you like.
 - Every state-changing action is recorded as training data: no exploratory, test, or junk actions.
 - Start: b.sh <PORT> start Black Deck 8 --seed <SEED> --why 'assigned seed'. Play exactly ONE run, to GAME_OVER

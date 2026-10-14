@@ -777,3 +777,26 @@ def test_reorder_with_hanging_chad_and_photograph():
     d["hand_levels"]["Straight"] = {"level": 1, "chips": 30, "mult": 4}
     e, mv = cli._order_gain(d, "Straight", [1, 2, 3, 4, 5])
     assert mv in (3, 4, 5) and e > cli.estimate("Straight", cli._cards_by_idx(d, [1, 2, 3, 4, 5]), cli._held(d, [1, 2, 3, 4, 5]), d, played_n=5)[0]
+
+
+def test_sim_never_leave_with_big_gain(monkeypatch):
+    # 7809 The Duo +0.41 / 7807 Seeing Double +0.12 were answered with LEAVE
+    d = shop(jokers=[joker("Joker", 1, rental=True)], shop_jokers=[{"index": 1, "name": "The Duo", "set": "Joker", "cost": 1, "rental": True, "perishable": True, "perish_tally": 5}], money=14, ante=3)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
+
+    class FakeSim:
+        def options_from_state(self, st, **kw):
+            return [{"label": "baseline (buy nothing)"}, {"label": "buy The Duo $1", "add_joker": st["shop"]["jokers"][0], "cost": 1}]
+
+        def value_options(self, st, opts, **kw):
+            return [{"label": opts[0]["label"], "option": opts[0], "feasible": True, "p_next": 0.26, "delta": 0.0, "money_after": 14},
+                    {"label": opts[1]["label"], "option": opts[1], "feasible": True, "p_next": 0.66, "delta": 0.40, "money_after": 13}]
+    monkeypatch.setattr(cli, "_SHOP_SIM", FakeSim())
+    assert "b buy 1" in _advice(_out(cli.shop_advise_sim, d))
+
+
+def test_arcana_pack_has_advice():
+    d = {"phase": "PACK_OPENING", "stake": 8, "ante": 3, "money": 12, "joker_slots": 6, "jokers": [joker("Joker", 1)], "hand_levels": {},
+         "hand": [_card("King", "Spades", 1), _card("King", "Hearts", 2), _card("4", "Clubs", 3)],
+         "pack": {"kind": "Arcana", "choices_remaining": 1, "cards": [{"name": "The Tower", "set": "Tarot"}, {"name": "The Hermit", "set": "Tarot"}]}}
+    assert _advice(_out(cli.pack_advise, d)).startswith("ADVICE: PICK -> b pick 2")
