@@ -1024,12 +1024,14 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
 
     def rank(r):
         if r.get("value") is None:
-            return (0, 0, 0.0, 0, 0.0, 0.0, 0)
+            return (0, 0, 0.0, 0, 0.0, 0.0, 0.0, 0)
         # planets closer than PLANET_TIE to the best planet are noise apart: the most played hand's planet wins
         main_lv = pure_lv(r) and r["option"]["levels"] == [main]
         tied = r["value"] >= top - TIE_P or (top_planet and main_lv and r["value"] >= top - PLANET_TIE)
-        return (1, tied, 1.0 if tied else r["value"], tied and main_lv, r.get("score_ratio_term") or 0.0,
-                r["score_ratio"], r.get("shop_money", r["money_after"]))
+        # tied values: surviving the horizon first (7808 762P89ZR: Wrathful tied Crafty on value but scored nothing
+        # at The Goad, 0.72 vs 0.96 for the next blind), then the end build's score
+        return (1, tied, 1.0 if tied else r["value"], tied and main_lv, round(_depth(r), 2) if tied else 0.0,
+                r.get("score_ratio_term") or 0.0, r["score_ratio"], r.get("shop_money", r["money_after"]))
 
     res.sort(key=rank, reverse=True)
     return res
