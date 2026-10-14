@@ -147,6 +147,34 @@ def test_misprint_is_sampled_per_hand():
     assert 0.55 < top["p_model"] < 0.8
 
 
+def test_jokerless_rounds_report_raw_p_and_broken_pairs_are_named():
+    # 7802: ante-1 jokerless options read 0.98-0.99; jokerless rounds are calibrated raw (the joker map inflated them)
+    st = state(["AS", "KD", "QH", "7C", "7D", "4S", "3H", "2C"], need=300, hands=3, discards=2)
+    res = plan(st, samples=100)
+    assert all(r["p_clear"] == r["p_model"] for r in res)
+    assert solver.calibrate(0.8, jokerless=True) == 0.8 and solver.calibrate(0.8) > 0.8
+    breaking = [r for r in res if r["action"] == "DISCARD" and set(idx(st, "7C", "7D")) & set(r["cards"])]
+    assert breaking and all("breaks 77" in r["note"] for r in breaking)
+    assert not any("breaks" in r["note"] for r in res if r["action"] == "DISCARD" and r not in breaking)
+
+
+def test_misprint_planning_uses_mean_roll_not_est_floor():
+    # 7810 PISY2P91 ante 3 Small 3200: est 945 (Misprint at +6) for QQ77+8C looked like 3 x 945 < 3200, but the roll is
+    # 0..23 (mean +11.5): the hand averaged ~1245 and actually scored 1550; the blind cleared in 2 hands (p 0.95 raw)
+    st = state(["AC", "QS", "QC", "JD", "9D", "8C", "7H", "7D"], need=3200, hands=3, discards=2,
+               jokers=["Joker", "Even Steven", "Splash", "Misprint"])
+    st["jokers"][0]["ability"] = {"mult": 4}
+    st["jokers"][3]["ability"] = {"extra": {"min": 0, "max": 23}}
+    rs = solver.RoundSolver(st, estimate)
+    play = [rs.slots[i] for i in (1, 2, 5, 6, 7)]
+    held = [c for c in rs.slots if c not in play]
+    est6 = estimate("Two Pair", [c.d for c in play], [c.d for c in held], st, played_n=5)[0]
+    plan_v, _t = rs.score(play, held, 3, 2, rs.ctx0)
+    base, slope = rs._components("Two Pair", play, play, held, 3, 2, None)[:2]
+    assert base + 6 * slope == pytest.approx(est6, abs=1)
+    assert plan_v == pytest.approx(base + 11.5 * slope) and plan_v > est6
+
+
 def test_pillar_ahead_plays_fewest_cards():
     st = state(["AS", "AD", "QH", "9C", "7S", "5D", "3H", "2C"], need=3000, hands=3, discards=0, blind="Big Blind",
                blind_select={"choices": {"Boss": {"name": "The Pillar", "boss": True}}})

@@ -1,2 +1,5 @@
 # Run YF4LTZRA (port 7803, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (300 Skip / 450 Holo / The Pillar 600, $4): Small jokerless: Straight 2-6 200 + 2P QQTT 120. Shop $5: Buffoon -> holo Cloud 9{RENTAL} (override Erosion: +0 on a 52-card deck; holo +10 mult, $4/round covers rent). Big: Pair 55 240, Pair 88 312 (2-card plays for Pillar). Shop $7: Scholar $4. Pillar: 2P 8833 372 + Pair JJ 360.
+Ante 2 (1000 Polychrome / 1500 Buffoon / The Wheel 2000, $10): reroll (override LEAVE, ratio 0.39) -> Dusk{ETERNAL} $5, $0. Skipped Small (Polychrome tag; $0 shop useless). Big: Straight K-high 1106 + Pair 88 312 + 2P 4433. Shop $5: polychrome Drunkard{PERISH,RENTAL} $0 (x1.5 + 1 discard; override LEAVE). Wheel: Trips 555 877 + Trips 777 994 + 2P.
+Ante 3 (3200 Standard / 4800 Uncommon / The Goad 6400, $8): EMERGENCY ratio 0.32 -> Acrobat{ETERNAL} $6 (x3 final hand, pairs with Dusk). Skipped Small (Standard tag, $2 shop useless, saves $6 rent) -> Mega Standard: Gold 9S gold seal + Steel 6H.

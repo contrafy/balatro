@@ -50,6 +50,7 @@ def jobs(root: Path, limit: int | None):
             out.append({"run": traj.key, "i": i, "obs": obs, "kind": KIND[act["type"]],
                         "cards": (act.get("params") or {}).get("card_indices") or [], "cleared": cleared,
                         "first": first_of_blind, "boss": b.get("name") if b.get("boss") else None,
+                        "ante": int(obs.get("ante") or 1),
                         "jokers": [j.get("name") for j in obs.get("jokers") or [] if not j.get("debuff")]})
             first_of_blind = False
             if limit and len(out) >= limit:
@@ -66,7 +67,7 @@ def _work(args):
     except Exception as e:  # noqa: BLE001 - one odd observation must not stop the sweep
         return {"run": job["run"], "i": job["i"], "error": f"{type(e).__name__}: {e}"}
     p = r["p_clear"]
-    return {k: job[k] for k in ("run", "i", "kind", "cleared", "first", "boss", "jokers")} | {
+    return {k: job[k] for k in ("run", "i", "kind", "cleared", "first", "boss", "jokers", "ante")} | {
         "p": p, "p_model": r.get("p_model", p),
         "h": int(job["obs"].get("hands_remaining") or 0), "d": int(job["obs"].get("discards_remaining") or 0)}
 
@@ -145,9 +146,17 @@ def report(rows, module):
              f"Decisions {len(ok)}, errors {len(errs)}", "", table(ok, "All decisions (p_clear as reported)"), "",
              table([r for r in ok if r["first"]], "First decision of each blind"), "",
              table([r for r in ok if r["boss"]], "Boss blinds"), "",
+             table([r for r in ok if not r["jokers"]], "No active joker"), "",
+             table([r for r in ok if r["ante"] == 1 and not r["jokers"]], "Ante 1, no active joker"), "",
+             table([r for r in ok if r["ante"] == 1 and r["jokers"]], "Ante 1 with jokers"), "",
+             table([r for r in ok if r["ante"] == 2], "Ante 2"), "",
+             table([r for r in ok if r["ante"] >= 3], "Ante 3+"), "",
              table([dict(r, p=r["p_model"]) for r in ok], "All decisions, raw model p (p_model)"), "",
-             table(out_of_fold(ok), "p_model recalibrated out-of-fold (isotonic, 2-fold by run)"), "",
-             f"Isotonic knots fitted on all decisions (solver.CALIBRATION): {isotonic_knots(ok)}"]
+             table([dict(r, p=r["p_model"]) for r in ok if not r["jokers"]], "No active joker, raw p_model"), "",
+             table(out_of_fold([r for r in ok if r["jokers"]]),
+                   "With jokers: p_model recalibrated out-of-fold (isotonic, 2-fold by run)"), "",
+             "Isotonic knots fitted on decisions with an active joker (solver.CALIBRATION; jokerless rounds use "
+             f"the raw p): {isotonic_knots([r for r in ok if r['jokers']])}"]
     worst = sorted((r for r in ok if not r["cleared"]), key=lambda r: -r["p"])[:15]
     parts += ["", "## Lost blinds with the highest predicted p", "", "| run step | action | p | boss | jokers |",
               "|---|---|---|---|---|"]

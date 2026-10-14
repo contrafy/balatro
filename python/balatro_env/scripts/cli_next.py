@@ -50,9 +50,53 @@ def _digest(d):
     """What a decision depends on: phase, money, ids of hand/jokers/consumables/shop/pack cards, blind progress."""
     ids = lambda xs: [x.get("id", x.get("index")) for x in lst(xs)]
     sh = d.get("shop") or {}
+    bs = d.get("blind_select") or {}
     return json.dumps([d.get("phase"), d.get("money"), ids(d.get("hand")), ids(d.get("jokers")), ids(d.get("consumables")),
                        ids(sh.get("jokers")), ids(sh.get("boosters")), ids(sh.get("vouchers")), ids((d.get("pack") or {}).get("cards")),
-                       (d.get("blind") or {}).get("chips_scored"), d.get("hands_remaining"), d.get("discards_remaining")], default=str)
+                       (d.get("blind") or {}).get("chips_scored"), d.get("hands_remaining"), d.get("discards_remaining"),
+                       bs.get("on_deck"), [(k, (v or {}).get("state")) for k, v in sorted((bs.get("choices") or {}).items())],
+                       sh.get("reroll_cost")], default=str)
+
+
+def _last_action_file():
+    return os.path.join(CACHE_DIR, f"{PORT}_last_action.json")
+
+
+def _note_action(d, typ):
+    """Before a state-changing action: remember the decision content it must change."""
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(_last_action_file(), "w", encoding="utf-8") as f:
+            json.dump({"step_before": d.get("step"), "sig_before": _digest(d), "type": typ, "ts": time.time(), "confirmed": False}, f)
+    except Exception:
+        pass
+
+
+def _await_action_effect(d, timeout=5.0):
+    """7809: after `sell`, a separate `shopadvise` read the pre-sell state (two settled reads agreed: the sell lands
+    later) and advised selling what by then was another joker. Until the last recorded action's effect is visible
+    (decision content differs from before it), keep polling; returns the fresh state."""
+    try:
+        with open(_last_action_file(), encoding="utf-8") as f:
+            la = json.load(f)
+    except Exception:
+        return d
+    if la.get("confirmed") or time.time() - float(la.get("ts") or 0) > 120:
+        return d
+    t0 = time.time()
+    while _digest(d) == la.get("sig_before") and time.time() - t0 < timeout:
+        time.sleep(0.2)
+        d = wait_settled()
+    if _digest(d) == la.get("sig_before"):
+        print(f"(warning: the last {la.get('type')} is not visible in the state after {timeout:.0f}s; re-run `s` before acting)")
+    else:
+        la["confirmed"] = True
+        try:
+            with open(_last_action_file(), "w", encoding="utf-8") as f:
+                json.dump(la, f)
+        except Exception:
+            pass
+    return d
 
 
 def wait_settled(timeout=30.0):
@@ -3012,7 +3056,8 @@ def main():
             sys.exit(1)
     if cmd in ("buy", "buyuse", "vouch", "pack", "pick", "sell", "sellc", "use") and not ints:
         print(f"{cmd} needs a slot number (e.g. `{cmd} 2` or `{cmd} J2`)"); sys.exit(1)
-    d = _with_known_jokers(wait_settled())
+    d_raw = _await_action_effect(wait_settled())
+    d = _with_known_jokers(d_raw)
     LEGAL = get("legal")
     if cmd in ("s", "state"):
         show(d); show_legal(LEGAL); return
@@ -3053,6 +3098,7 @@ def main():
             explain_illegal(LEGAL, typ, params, d); sys.exit(2)
         if cmd == "play" and rest and rest[0].upper() in HAND_WORDS:
             play_type_check(rest, ints, d)
+    _note_action(d_raw, typ)
     for attempt in range(4):
         r = act(typ, params)
         if r.get("ok") or not r.get("retry") or attempt == 3:
@@ -3065,7 +3111,8 @@ def main():
     else:
         print("ACTION REJECTED:", r.get("error"))
     d_pre = d
-    d = _with_known_jokers(wait_settled())
+    d_raw = _await_action_effect(wait_settled()) if r.get("ok") else wait_settled()
+    d = _with_known_jokers(d_raw)
     LEGAL = get("legal")
     show(d)
     show_legal(LEGAL)

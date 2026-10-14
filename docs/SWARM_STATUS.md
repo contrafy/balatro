@@ -16,52 +16,42 @@ _Interim, 02:45 (updated as the night goes on)._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 03:17:51 by `balatro-data status` (edits inside this block are overwritten). Player runs: 128 (119 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 04:57:51 by `balatro-data status` (edits inside this block are overwritten). Player runs: 133 (133 finished, 0 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (9)
+### Live runs (0)
 
-| port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | 4UQQD6BE | 8 | BLIND_SELECT | 4 | 6 | -13 | Big Blind (13500) | SELECT_BLIND | Big 13500, never skipped; last Burglar round: 6 hands at mult ~66 | 15s |
-| 7802 | port-7802 | claude-fable-5-1 | 4J47S7PD | 8 | SELECTING_HAND | 4 | 10 | -1 | The Wall 0/36000 | DISCARD {"card_indices":[5,6,7,8]} | Keep glass AH + JD + TT, draw 4: an Ace makes A-T Two Pair with glass x4 (~23000) or a FH with it (… | 24s |
-| 7803 | port-7803 | claude-opus-5-5 | RHYICWF8 | 8 | SELECTING_HAND | 4 | 10 | 5 | Small Blind 3200/9000 | PLAY_HAND {"card_indices":[1,2,3,4,8]} | Two Pair KKQQ est 3800 of 5800; filler 2D draws 5 to find two pair/trips/high pair for last 2000 | 26s |
-| 7804 | port-7804 | claude-opus-5-5 | A5LJXXMW | 8 | BLIND_SELECT | 5 | 10 | 8 | The Wheel (50000) | SELECT_BLIND | boss The Wheel 50000; Pair L3 with Half Joker est ~30k/hand | 19s |
-| 7805 | port-7805 | claude-opus-5-5 | E57ZB14D | 8 | PACK_OPENING | 7 | 17 | 4 | Small Blind (110000) | SELECT_PACK_CARD {"index":1} | Temperance: +$ joker sell values (~6), ->~0 for Celestial packs/rerolls next shops | 12s |
-| 7806 | port-7806 | claude-opus-5-5 | I9RJP8E5 | 8 | PACK_OPENING | 3 | 5 | 23 | Small Blind (3200) | SELECT_PACK_CARD {"index":1} | override Walkie: my engine is face-first (Chad+Photograph), 10/4 rarely score first; Chaos = free r… | 2s |
-| 7807 | port-7807 | claude-opus-5-5 | 6TC4XVTG | 8 | SELECTING_HAND | 2 | 4 | 0 | Big Blind 200/1500 | PLAY_HAND {"card_indices":[1,2,3,8,7]} | trips Q est 360, best remaining line (solver p 0.03): quads-dig caps at ~1125 < 1300, so bank 360 a… | 20s |
-| 7809 | port-7809 | claude-opus-5-5 | 45J81AYQ | 8 | BLIND_SELECT | 4 | 7 | 15 | Small Blind (9000) | SKIP_BLIND | override: skip saves a perish tick so both foil Summits+Scary (3 rounds) survive Wall 36000 AND ant… | 4s |
-| 7810 | port-7810 | claude-sonnet-5-5 | PISY2P91 | 8 | BLIND_SELECT | 2 | 3 | 5 | Small Blind (1000) | SKIP_BLIND | Small 1000 pays /bin/bash; Ethereal tag gives a free Spectral pack now and skips a perishable tick;… | 36s |
+No live runs.
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 14 | 0 | 14 | 0 | 0 | 3.86 | 7 |
+| claude-fable-5-1 | 8 | Black | 18 | 0 | 17 | 0 | 1 | 3.56 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 65 | 0 | 65 | 0 | 0 | 3.66 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 34 | 0 | 33 | 0 | 1 | 3.09 | 8 |
+| claude-opus-5-5 | 8 | Black | 73 | 0 | 69 | 0 | 4 | 3.81 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 36 | 0 | 34 | 0 | 2 | 3.06 | 8 |
 
 ### Deepest runs
 
 | # | seed | model | stake | deck | outcome | ante | blind | post-mortem |
 |---|---|---|---|---|---|---|---|---|
 | 1 | B6KZC39M | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 207920/400000 | [7807_B6KZC39M.md](runs/7807_B6KZC39M.md) |
-| 2 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
-| 3 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
-| 4 | Z6ZJWRC4 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 146453/165000 | [7809_Z6ZJWRC4.md](runs/7809_Z6ZJWRC4.md) |
-| 5 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
-| 6 | 3IDYS1SA | claude-fable-5-1 | 8 | Black | loss | 6 | Big Blind 87529/90000 | [7802_3IDYS1SA.md](runs/7802_3IDYS1SA.md) |
-| 7 | 26ARMPG1 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 48586/90000 | [7807_26ARMPG1.md](runs/7807_26ARMPG1.md) |
-| 8 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
-| 9 | 76GDJXLS | claude-opus-5-5 | 8 | Black | loss | 6 | The Mouth 80352/120000 | [7809_76GDJXLS.md](runs/7809_76GDJXLS.md) |
-| 10 | PZ67LB31 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 28434/90000 | [7803_PZ67LB31.md](runs/7803_PZ67LB31.md) |
+| 2 | E57ZB14D | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 249600/400000 | [7805_E57ZB14D.md](runs/7805_E57ZB14D.md) |
+| 3 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
+| 4 | A5LJXXMW | claude-opus-5-5 | 8 | Black | unfinished | 8 | Crimson Heart 0/400000 | [7804_A5LJXXMW.md](runs/7804_A5LJXXMW.md) |
+| 5 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
+| 6 | Z6ZJWRC4 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 146453/165000 | [7809_Z6ZJWRC4.md](runs/7809_Z6ZJWRC4.md) |
+| 7 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
+| 8 | 3IDYS1SA | claude-fable-5-1 | 8 | Black | loss | 6 | Big Blind 87529/90000 | [7802_3IDYS1SA.md](runs/7802_3IDYS1SA.md) |
+| 9 | 26ARMPG1 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 48586/90000 | [7807_26ARMPG1.md](runs/7807_26ARMPG1.md) |
+| 10 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
 
 ### Data validity
 
-- Player runs: 128 files in manifest; schema_ok 128, schema invalid 0; replay_ok 114, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 20 / failed 0; gui (live) ok 99 / failed 0; cross-checked by both 5, disagreeing 0.
-- All files (incl. fuzz + replays): 300; schema_ok 298; replay_ok 120 (headless 20, gui 105); replay failed 0; awaiting replay 166; quarantined 2.
+- Player runs: 133 files in manifest; schema_ok 133, schema invalid 0; replay_ok 122, replay failed 0, awaiting replay 3, open/unended 8; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 28 / failed 0; gui (live) ok 99 / failed 0; cross-checked by both 5, disagreeing 0.
+- All files (incl. fuzz + replays): 305; schema_ok 303; replay_ok 128 (headless 28, gui 105); replay failed 0; awaiting replay 166; quarantined 2.
 
 ### Rejects per agent
 
@@ -69,18 +59,18 @@ _Generated 2026-10-14 03:17:51 by `balatro-data status` (edits inside this block
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
 | port-7778 | 1 | 1 | 0 |
-| port-7805 | 1 | 1 | 946 |
-| port-7807 | 1 | 1 | 1137 |
+| port-7805 | 1 | 1 | 989 |
+| port-7807 | 1 | 1 | 1205 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 551 |
-| port-7802 | 0 | 0 | 638 |
-| port-7803 | 0 | 0 | 1030 |
-| port-7804 | 0 | 0 | 676 |
-| port-7806 | 0 | 0 | 1095 |
+| port-7801 | 0 | 0 | 569 |
+| port-7802 | 0 | 0 | 657 |
+| port-7803 | 0 | 0 | 1086 |
+| port-7804 | 0 | 0 | 742 |
+| port-7806 | 0 | 0 | 1161 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 945 |
-| port-7810 | 0 | 0 | 1191 |
+| port-7809 | 0 | 0 | 988 |
+| port-7810 | 0 | 0 | 1250 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

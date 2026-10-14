@@ -402,8 +402,9 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         r["n"] = sim.n
         r["p_next_model"] = sim.joint / n
         r["p_blinds_model"] = [st[1] / max(1, st[0]) for st in sim.stats]
-        cal = getattr(sv, "calibrate", lambda p: p)  # the solver's map from greedy-policy p to players' clear rate
-        r["p_blinds"] = [cal(p) for p in r["p_blinds_model"]]
+        # the solver's map from greedy-policy p to players' clear rate (jokerless rounds stay raw)
+        r["p_blinds"] = [sv.calibrate(p, sim.solver(k, frozenset()).jokerless)
+                         for k, p in enumerate(r["p_blinds_model"])]
         r["p_next"] = 1.0
         for p in r["p_blinds"]:
             r["p_next"] *= p
