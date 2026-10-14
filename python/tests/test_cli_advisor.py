@@ -457,3 +457,41 @@ def test_boss_prep_eye_vs_card_sharp_buys_counter():
     d["blind_select"]["choices"]["Boss"] = {"name": "The Eye", "chips": 120000, "state": "Upcoming"}
     out = _out(cli.shop_advise, d)
     assert "BOSS PREP: The Eye" in out and "b buy 1" in _advice(out)
+
+
+_RANK = __import__("re").compile(r"^\s{1,4}(\d{1,3}) ((?:buy|buyuse|pack|vouch) \d+)\s+(.*)$")
+
+
+def _ranking_violation(out):
+    """None when the ADVICE is the top ranked option or every option ranked above it is listed with a reason."""
+    lines = out.splitlines()
+    adv = next((ln for ln in lines if ln.startswith("ADVICE")), "")
+    notes = " ".join(ln for ln in lines if "passed over" in ln or "cannot afford" in ln)
+    for ln in lines:
+        m = _RANK.match(ln)
+        if not m:
+            continue
+        if f"b {m[2]} " in adv + " ":
+            return None
+        name = m[3].split(" [")[0].split(" -> ")[-1]
+        if int(m[1]) >= 30 and "[AVOID" not in m[3] and name not in notes:
+            return f"{m[2]} {name} ranked above {adv!r} without a reason"
+    return None
+
+
+@pytest.mark.parametrize("d", [
+    shop(jokers=[joker("Joker", 1)], shop_jokers=[{"index": 1, "name": "Clever Joker", "set": "Joker", "cost": 4}],
+         boosters=[{"index": 1, "name": "Buffoon Pack", "cost": 4}], money=9, ante=2),
+    shop(jokers=[joker("Joker", 1)], shop_jokers=[{"index": 1, "name": "Ice Cream", "set": "Joker", "cost": 5}], money=7, ante=1),
+    shop(jokers=[joker("Joker", 1), joker("Jolly Joker", 2)], shop_jokers=[{"index": 1, "name": "Cavendish", "set": "Joker", "cost": 4}], money=6, ante=3),
+] + [p.stem for p in sorted(FIX.glob("*.json")) if json.loads(p.read_text(encoding="utf-8"))["obs"].get("phase") == "SHOP"])
+def test_advice_follows_printed_ranking(d):
+    assert _ranking_violation(_out(cli.shop_advise, _fixture(d) if isinstance(d, str) else d)) is None
+
+
+def test_score_check_counts_summit_and_acrobat():
+    # 7809/7803: EMERGENCY fired every shop because SCORE CHECK left out Mystic Summit / Acrobat
+    base = shop(jokers=[joker("Joker", 1)], ante=3)
+    full = shop(jokers=[joker("Joker", 1), joker("Mystic Summit", 2), joker("Acrobat", 3)], ante=3)
+    num = lambda out: int(out.split("SCORE CHECK: best")[1].split("~")[1].split()[0])
+    assert num(_out(cli.shop_advise, full)) > 3 * num(_out(cli.shop_advise, base))

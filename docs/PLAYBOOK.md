@@ -129,10 +129,12 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
 - BUFFOON PACKS: ante 2-5 with <2 reliable/growth xMults they rank 80 (an xMult sighting in 18% of packs). Inside a pack
   run `advise`: it ranks jokers with stickers, takes a decaying bridge (Popcorn, Ice Cream, Gros Michel) when you own no
   scorer, and says SKIP when everything is sticker junk.
-- SCORE CHECK and GOLD CHECK (`shopadvise`): your typical main hand vs boss/2 of this ante and boss/3 of the next
-  (below boss/3: every run died; EMERGENCY = buy the cheapest multiplier first). Targets: 1 reliable/growth xMult
-  (incl. Acrobat, Ramen, Stencil; card-trigger xMults like Photograph do not count: they multiply before +mult jokers)
-  by the end of ante 2, 2 by ante 5, 3 incl. a growing one by ante 7.
+- SCORE CHECK and GOLD CHECK (`shopadvise`): the best main hand of a round (Summit/Acrobat/Card Sharp active) vs boss/3
+  of the next ante; the printed ratio is calibrated on 1042 Gold shops (<0.35 died by the next ante 80% = EMERGENCY:
+  buy the cheapest multiplier through the floor; <0.7 died 60%: scoring jokers may break the floor; >=1 died 28%).
+  `shopadvise` lists every higher-ranked item it passes over and why. Targets: 1 reliable/growth xMult (incl. Acrobat,
+  Ramen, Stencil; card-trigger xMults like Photograph do not count: they multiply before +mult jokers) by the end of
+  ante 2, 2 by ante 5, 3 incl. a growing one by ante 7.
 - BOSS PREP: the ante's boss is known from its start. If it counters the build (Eye/Mouth vs Card Sharp, Plant vs face
   jokers, Psychic vs Half Joker, suit bosses vs Flush, Wall/Violet/Needle vs a small hand), `shopadvise` ranks a counter
   first (Luchador: sell it during the boss; Chicot; Mr. Bones; Director's Cut voucher) and keeps $10 for `rerollboss`

@@ -1,0 +1,6 @@
+# Run NW9TXZPC (port 7805, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
+
+Ante 1 (300 Holo / 450 Coupon / The Psychic 600, $4): Small: heart Flush 284 + Pair J. Shop $5: Buffoon over Green Joker -> Banner{RENTAL} (other: Red Card). Big: Pair Q 180, Two Pair JJ44 216 (overrode flush-draw discard: Ace High w/ Banner already cleared the rest), Pair T. Shop $2: sold Banner, Sly $3. Psychic: disc 5 around 99 -> FH 33399 468, Pair K 160.
+Ante 2 (1000 Investment / 1500 Garbage / The Club 2000, $6): Mystic Summit $5. Skipped Small for Investment. Big: 2 discards then Two Pair QQ88 1802 one-shot. Shop $7: left. Club: 2 discards -> FH 777JJ 2166 one-shot. $40 after Investment.
+Ante 3 (3200 Orbital / 4800 Foil / The Flint 6400, $40): 2 rerolls -> Half Joker{ETERNAL} $5. Small: 2 discards, Trips 666 3724 one-shot. Shop: The Duo{RENTAL} $1, Jumbo Celestial -> Mercury (Pair L2). Big: Pair T 7220 one-shot. Shop: Jumbo Celestial -> Mercury (Pair L3). Flint: Pair J 6660 one-shot.
+Ante 4 (9000 Buffoon / 13500 Top-up / The Goad 18000, $32): Jumbo Celestial (no Mercury) -> Venus, reroll, Even Steven $4. Skipped Small for Buffoon tag (Mega: Mad Joker; rest rental/perishable junk). Big: kept 66+55 through discards, Pair 6 9588 + Pair 5 7800. Goad: Pair 6 9588 + Trips 333 8720 (over advisor's Pair 8 with 16 margin). $27.

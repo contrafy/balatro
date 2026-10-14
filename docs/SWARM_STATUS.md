@@ -7,30 +7,30 @@ _Orchestrator: summarize the night here._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 01:33:33 by `balatro-data status` (edits inside this block are overwritten). Player runs: 83 (74 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 01:52:03 by `balatro-data status` (edits inside this block are overwritten). Player runs: 91 (82 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
 
 ### Live runs (9)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | AJAKNU2C | 8 | SHOP | 5 | 11 | 25 | Small Blind (25000) | SHOP_REROLL | Hunting an xMult with 5: 0 xMult at ante 5 loses; one reroll keeps 0 for a -9 xMult plus Director s… | 39s |
-| 7802 | port-7802 | claude-fable-5-1 | UYW5Q7RA | 8 | SELECTING_HAND | 1 | 2 | 2 | Big Blind 0/450 | DISCARD {"card_indices":[1,2,3,4]} | Override straight chase (280 does not clear 450 and leaves 0 discards). Keep 66 22: any 6 or 2 (4 o… | 1s |
-| 7803 | port-7803 | claude-opus-5-5 | HLJ9A59I | 8 | SHOP | 4 | 10 | 6 | Big Blind (13500) | SHOP_END | Slots full; Smiley would need selling Ice Cream (-25 chips, worse for Arm); keep | 2s |
-| 7804 | port-7804 | claude-opus-5-5 | RN5A1NYT | 8 | SHOP | 5 | 10 | 4 | Small Blind (25000) | SELL_JOKER {"index":7} | Devious only fires on straights (pair build); swap its slot for Mime (Abstract count unchanged), -> | 12s |
-| 7805 | port-7805 | claude-opus-5-5 | KPULE1HP | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | small blind won 376/300, cash out | 8s |
-| 7806 | port-7806 | claude-opus-5-5 | YJGGELMB | 8 | BLIND_SELECT | 3 | 6 | 11 | Big Blind (4800) | SELECT_BLIND | Big 4800, 4 hands | 9s |
-| 7807 | port-7807 | claude-opus-5-5 | 26ARMPG1 | 8 | SELECTING_HAND | 5 | 13 | 0 | The Club 9664/50000 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | no pair in hand; K-high Straight est 5014 banks the most now (HC dig ~2000); then need a Two Pair (… | 35s |
-| 7809 | port-7809 | claude-opus-5-5 | 3TY3A58A | 8 | BLIND_SELECT | 2 | 4 | 9 | The Water (2000) | SELECT_BLIND | The Water 2000, boss must be played | 37s |
-| 7810 | port-7810 | claude-sonnet-5-5 | M5SRCH3B | 8 | SELECTING_HAND | 2 | 5 | 12 | Big Blind 0/1500 | DISCARD {"card_indices":[1,2,4,8]} | Pair 4 est 1080 < 1500; keep 8H 6H 4H 4D (even ranks: 8/6 pair -> even Two Pair, 4 -> trips), draw … | 21s |
+| 7801 | port-7801 | claude-fable-5-1 | QRM4RTHQ | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | Small Blind won 344/300 | 5s |
+| 7802 | port-7802 | claude-fable-5-1 | UYW5Q7RA | 8 | SELECTING_HAND | 3 | 8 | -20 | The Window 0/6400 | DISCARD {"card_indices":[7,1,2,5,6]} | Pair 9 est 1188 x3 cannot reach 6400; keep 99 + stone and draw 5 looking for Queens (+13 mult each … | 28s |
+| 7803 | port-7803 | claude-opus-5-5 | PZ67LB31 | 8 | SELECTING_HAND | 3 | 6 | -11 | Big Blind 0/4800 | DISCARD {"card_indices":[5,6,7,8]} | Two Pair AAQQ est 1722, pace 4649 < 4800; discard 4 singles toward full house (4 outs) or better tw… | 2s |
+| 7804 | port-7804 | claude-opus-5-5 | 7N4F66AY | 8 | ROUND_EVAL | 4 | 9 | 19 | Small Blind (9000) | CASH_OUT | Small cleared ~10.2k/9000 | 16s |
+| 7805 | port-7805 | claude-opus-5-5 | NW9TXZPC | 8 | SELECTING_HAND | 4 | 10 | 21 | The Goad 0/18000 | PLAY_HAND {"card_indices":[3,4]} | Pair 6 est 9588; then Trips 3 8480 and Pair 8 8428 cover the rest of 18000 | 8s |
+| 7806 | port-7806 | claude-opus-5-5 | YJGGELMB | 8 | SELECTING_HAND | 6 | 16 | 17 | Big Blind 0/90000 | DISCARD {"card_indices":[6,7,8]} | straight K-9 is only ~2.4k (useless for 90k); keep K Q J T 9 as 15 pair outs, discard 8 3 2 to arm … | 8s |
+| 7807 | port-7807 | claude-opus-5-5 | 3WSFNWWA | 8 | SELECTING_HAND | 1 | 2 | 2 | Big Blind 288/450 | PLAY_HAND {"card_indices":[4,5]} | Pair T est 360 >= 162 remaining; TS already played in Small (Pillar), only 2 cards to keep the deck… | 6s |
+| 7809 | port-7809 | claude-opus-5-5 | 9JRMLNZG | 8 | SELECTING_HAND | 2 | 6 | 2 | The Mouth 0/2000 | DISCARD {"card_indices":[4,5,6,7,8]} | No made hand; keep A K J for face pairs (Photograph x2), Mouth needs repeatable Pair lock ~670/hand | 6s |
+| 7810 | port-7810 | claude-sonnet-5-5 | M5SRCH3B | 8 | SELECTING_HAND | 5 | 15 | 0 | The Mark 23970/50000 | PLAY_HAND {"card_indices":[1,2,4,5]} | FH gave 23970; 26030 left in 2 hands, no discards. Two face-down faces + 88: if the faces match (27… | 19s |
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 9 | 0 | 9 | 0 | 0 | 3.44 | 7 |
+| claude-fable-5-1 | 8 | Black | 10 | 0 | 10 | 0 | 0 | 3.6 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 32 | 0 | 32 | 0 | 0 | 3.44 | 6 |
+| claude-opus-5-5 | 8 | Black | 39 | 0 | 39 | 0 | 0 | 3.46 | 6 |
 | claude-sonnet-5-5 | 8 | Black | 27 | 0 | 26 | 0 | 1 | 2.93 | 8 |
 
 ### Deepest runs
@@ -39,19 +39,19 @@ _Generated 2026-10-14 01:33:33 by `balatro-data status` (edits inside this block
 |---|---|---|---|---|---|---|---|---|
 | 1 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
 | 2 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
-| 3 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
-| 4 | 76GDJXLS | claude-opus-5-5 | 8 | Black | loss | 6 | The Mouth 80352/120000 | [7809_76GDJXLS.md](runs/7809_76GDJXLS.md) |
-| 5 | F1NGCDKQ | claude-sonnet-5-5 | 8 | Black | loss | 5 | Big Blind 26537/37500 | [7810_F1NGCDKQ.md](runs/7810_F1NGCDKQ.md) |
-| 6 | ISNYLLW6 | claude-opus-5-5 | 8 | Black | loss | 5 | The Arm 8780/50000 | [7806_ISNYLLW6.md](runs/7806_ISNYLLW6.md) |
-| 7 | C1A5EUKS | claude-sonnet-5-5 | 8 | Black | loss | 5 | Small Blind 20982/25000 | [7807_C1A5EUKS.md](runs/7807_C1A5EUKS.md) |
-| 8 | 9W4KUCWA | claude-opus-5-5 | 8 | Black | loss | 5 | The House 18927/50000 | [7804_9W4KUCWA.md](runs/7804_9W4KUCWA.md) |
-| 9 | KTTHZFZI | claude-opus-5-5 | 8 | Black | loss | 5 | The Serpent 46894/50000 | [7803_KTTHZFZI.md](runs/7803_KTTHZFZI.md) |
-| 10 | A5D7B521 | claude-opus-5-5 | 8 | Black | loss | 5 | The Head 35995/50000 | [7806_A5D7B521.md](runs/7806_A5D7B521.md) |
+| 3 | 26ARMPG1 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 48586/90000 | [7807_26ARMPG1.md](runs/7807_26ARMPG1.md) |
+| 4 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
+| 5 | 76GDJXLS | claude-opus-5-5 | 8 | Black | loss | 6 | The Mouth 80352/120000 | [7809_76GDJXLS.md](runs/7809_76GDJXLS.md) |
+| 6 | AJAKNU2C | claude-fable-5-1 | 8 | Black | loss | 5 | The Eye 14823/50000 | [7801_AJAKNU2C.md](runs/7801_AJAKNU2C.md) |
+| 7 | HLJ9A59I | claude-opus-5-5 | 8 | Black | loss | 5 | The Fish 29532/50000 | [7803_HLJ9A59I.md](runs/7803_HLJ9A59I.md) |
+| 8 | F1NGCDKQ | claude-sonnet-5-5 | 8 | Black | loss | 5 | Big Blind 26537/37500 | [7810_F1NGCDKQ.md](runs/7810_F1NGCDKQ.md) |
+| 9 | ISNYLLW6 | claude-opus-5-5 | 8 | Black | loss | 5 | The Arm 8780/50000 | [7806_ISNYLLW6.md](runs/7806_ISNYLLW6.md) |
+| 10 | C1A5EUKS | claude-sonnet-5-5 | 8 | Black | loss | 5 | Small Blind 20982/25000 | [7807_C1A5EUKS.md](runs/7807_C1A5EUKS.md) |
 
 ### Data validity
 
-- Player runs: 69 files in manifest; schema_ok 69, schema invalid 0; replay_ok 56, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 14.
-- All files (incl. fuzz + replays): 186; schema_ok 184; replay_ok 62; replay failed 0; awaiting replay 111; quarantined 2.
+- Player runs: 83 files in manifest; schema_ok 83, schema invalid 0; replay_ok 61, replay failed 0, awaiting replay 11, open/unended 11; quarantined 0; not yet in manifest 8.
+- All files (incl. fuzz + replays): 209; schema_ok 207; replay_ok 67; replay failed 0; awaiting replay 128; quarantined 2.
 
 ### Rejects per agent
 
@@ -59,18 +59,18 @@ _Generated 2026-10-14 01:33:33 by `balatro-data status` (edits inside this block
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
 | port-7778 | 1 | 1 | 0 |
-| port-7805 | 1 | 1 | 484 |
+| port-7805 | 1 | 1 | 592 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 310 |
-| port-7802 | 0 | 0 | 350 |
-| port-7803 | 0 | 0 | 571 |
-| port-7804 | 0 | 0 | 266 |
-| port-7806 | 0 | 0 | 645 |
-| port-7807 | 0 | 0 | 661 |
+| port-7801 | 0 | 0 | 347 |
+| port-7802 | 0 | 0 | 408 |
+| port-7803 | 0 | 0 | 658 |
+| port-7804 | 0 | 0 | 338 |
+| port-7806 | 0 | 0 | 739 |
+| port-7807 | 0 | 0 | 730 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 515 |
-| port-7810 | 0 | 0 | 697 |
+| port-7809 | 0 | 0 | 596 |
+| port-7810 | 0 | 0 | 789 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
@@ -98,4 +98,5 @@ _Generated 2026-10-14 01:33:33 by `balatro-data status` (edits inside this block
 - 01:28 GoldAdvisor cli.py 7784153c: ORDER keeps a holo xMult with the xMults (7803 Summit right of holo Tribe); card-trigger xMults (Photograph, Triboulet) no longer count toward the xMult targets (they multiply before joker-main +mult); "no Pair floor" warning respects jokers that carry the est (Gros Michel) and Smiley/main-hand jokers; Half Joker = core scorer for Pair/Trips mains; retrigger jokers (Seltzer, Hanging Chad, Sock and Buskin, Dusk, Hack) are scorers; Walkie Talkie common; Mr. Bones a run-saver (72 when under-scaled), not AVOID; Raised Fist plays low fillers (no 2/3 protection); The Tooth no longer blocks buys in an EMERGENCY; PACE counts later hands at 60%. Tests 56/56.
 - 01:30 GoldAdvisor cli.py 99dbd2cf: main hand = argmax(typical est with jokers/levels x frequency you can make it), containment-aware (Two Pair/Trips/FH plays count for Pair; >=2 plays, >=3 for Quads); rerolls keep the rent due at round end ($3 per rental).
 - 01:33 GoldAdvisor cli.py f8edc21b: BOSS PREP (boss known at ante start): Eye/Mouth vs Card Sharp/Supernova, Plant vs face engines, Psychic vs Half Joker, suit bosses vs Flush, Wall/Violet/Needle/Flint/Arm vs a too-small hand -> counters (Luchador, Chicot, Mr. Bones, Director's Cut) ranked first, keep $10 if Director's Cut owned; every shop joker valued by its marginal est (+20%+ = keep/buy, +30% = core for stickers); Card Sharp counted in the typical est; Driver's License capped below 12 enhanced cards; Riff-raff described; PACE fixed: later hands at 85% (shown), and banking is preferred once a discard was used (7805 192/300 regression).
+- 01:51 GoldAdvisor cli.py a5939a5a: ADVICE walks the printed (final, post-reweight) ranking and lists every higher-ranked option it passes over with the reason (test over fixtures; 0 unexplained of 1783 recorded shops); reroll never passes an affordable 60+ joker (Ice Cream 88 case); SCORE CHECK = best hand of a round with Summit/Acrobat/Card Sharp active, calibrated on 1042 recorded Gold shops (ratio to next boss/3: <0.35 died 80%, <0.7 60%, <1 43%, else 28%; printed); EMERGENCY only below 0.35 (was firing in 89% of ante-2+ shops), scoring jokers may break the money floor below 0.7; marginal joker value on the round total (Acrobat rental x3 bought); Buffoon packs no longer held back for planets.
 

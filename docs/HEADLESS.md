@@ -45,6 +45,28 @@ python -m venv .venv && .venv/bin/pip install -e "python[dev,headless]"
 `BALATRO_HEADLESS_CACHE` overrides the cache directory (default `headless/.cache`). Cache entries are keyed by
 the exe's sha256, so a game update extracts into a new directory.
 
+### Linux on this machine (WSL2)
+
+Validated on Ubuntu 24.04 under WSL2 (Python 3.12.3, lupa 2.8), with its own venv (never the Windows
+`python/.venv`) and its own source cache extracted from the Windows install through `/mnt/c`:
+
+```bash
+wsl                                                    # Ubuntu shell
+python3 -m venv ~/venvs/balatro-headless
+~/venvs/balatro-headless/bin/pip install --upgrade pip
+# torch is a package dependency (balatro_env/__init__ imports it); the CPU wheel avoids the CUDA download
+~/venvs/balatro-headless/bin/pip install torch --index-url https://download.pytorch.org/whl/cpu
+~/venvs/balatro-headless/bin/pip install -e "/mnt/c/Users/contrafy/git/balatro/python[dev,headless]"
+
+export BALATRO_EXE="/mnt/c/Program Files (x86)/Steam/steamapps/common/Balatro/Balatro.exe"
+export BALATRO_HEADLESS_CACHE=$HOME/balatro-headless-cache   # Linux-side cache, not headless/.cache on /mnt/c
+cd /mnt/c/Users/contrafy/git/balatro                         # data/manifest.jsonl is resolved from ./data
+~/venvs/balatro-headless/bin/balatro-headless extract
+~/venvs/balatro-headless/bin/balatro-headless replay --manifest --workers 3
+~/venvs/balatro-headless/bin/balatro-headless bench --workers 4 --steps 8000
+(cd python && ~/venvs/balatro-headless/bin/python -m pytest tests/test_headless.py -q)
+```
+
 ## Usage
 
 ```python
@@ -67,7 +89,8 @@ with HeadlessPool(4) as pool:                         # one engine per process
 - Recording: `HeadlessEnv(record_dir=..., agent="...")` makes the bridge recorder write
   `<record_dir>/trajectories/<date>/<seed>_<port>_<ms>.jsonl.gz` in the DATA_CONTRACT format. The header is the
   bridge's own plus `"host": "headless"`; `lovely_version` is `headless-<version>` (the loader that replaces
-  Lovely). Use an `agent` starting with `test-` for anything that is not training data.
+  Lovely; `headless-1.1.0` since the fast path, with `+fastpath=<names|none>` appended when the engine runs a
+  non-default fast-path set). Use an `agent` starting with `test-` for anything that is not training data.
 
 ### CLI
 
@@ -75,6 +98,7 @@ with HeadlessPool(4) as pool:                         # one engine per process
 balatro-headless replay data/trajectories/2026-10-13/X.jsonl.gz ...   # files or directories
 balatro-headless replay --manifest --workers 4                        # every replay_ok row of data/manifest.jsonl
 balatro-headless bench --workers 4 --steps 4000                       # random legal policy throughput
+balatro-headless bench --fastpath none                                # A/B: vanilla game source (or a name list)
 ```
 
 `replay` runs the same comparison as `balatro-data replay` (it reuses `balatro_env.data.replay`'s diff code:
@@ -105,6 +129,8 @@ HeadlessEnv / HeadlessPool             headless/lua/runtime.lua
   `game_mod/BalatroRLBridge/main.lua`; `bridge_hash` in headless headers equals the live one).
 - `headless/lua/runtime.lua`: boot (`conf.lua`, `main.lua` with the exact `lovely.toml` patch applied, then
   `love.load`), fixed-dt frames, settle loop, request injection, and the header stamp `"host":"headless"`.
+- `headless/lua/fastpath.lua`: the fast path (next section), on by default: load-time source patches of the
+  game modules plus runtime hooks that skip rendering-only work.
 - `luasteam` is a stub (achievements are skipped anyway because the profile is `all_unlocked`).
 - Profile: in-memory `settings.jkr` like the swarm instance template (GAMESPEED 4, tutorial complete,
   `skip_splash`); the bridge's own boot step unlocks and discovers everything, exactly as on live instances.
@@ -135,40 +161,98 @@ HeadlessEnv / HeadlessPool             headless/lua/runtime.lua
 - `love.timer.getTime` is a virtual clock (used only by `nuGC`'s per-frame GC budget and perf checkpoints).
   Garbage collection has no effect on game state (no weak tables or finalizers in the game).
 
+## Fast path
+
+On by default (`Engine(fastpath=True)`, CLI `--fastpath all`); `fastpath=False` / `--fastpath none` runs the
+unmodified game source, and a comma list enables single optimizations for A/B attribution. Implementation and
+the per-item argument from the game source: `headless/lua/fastpath.lua`. Source patches are exact text
+replacements applied when a game module is `require`d (like Lovely patches) and must match exactly once, so a
+game update that changes patched code fails at boot instead of running unpatched.
+
+What the game source guarantees (the basis for every skip):
+
+- Rendering state: a moveable's visible transform `VT` and the easing that drives it (velocity, `STATIONARY`,
+  juice, pinch, `sprite_facing`), UI layout (UIBox/UIElement/DynaText transforms, text metrics), particles and
+  sprite animation frames. The game reads `VT` outside draw/move code only at: the shop and round-eval slide-in
+  gates (`game.lua:3090,3326`, on `G.shop`/`G.round_eval`), the booster gate on `G.pack_cards.VT.y`
+  (`card.lua:1787`), `Card:update`'s flip (`VT.w`, sets `sprite_facing`/`pinch`, both rendering-only),
+  `blind_choice_handler` (UI styling) and the initial position of card popups/buttons (UI).
+- Positions (`T`) reach game state only through cards: `CardArea:align_cards` sorts `area.cards` by `T.x`,
+  which includes `card.shadow_parrallax.x/30` (computed by the card's own move). Cursor collision never happens
+  headless: `G.DRAW_HASH` is filled only by draw functions, so `Controller:get_cursor_collision` returns at its
+  `not G.DRAW_HASH[1]` guard, and there is no input.
+- The bridge reads no transform, no UI button state (it computes legality itself) and no display-text fields.
+
+| name | what it does | why the game state is unchanged |
+|---|---|---|
+| `nojit` | `jit.off()`: LuaJIT 2.0 as a pure interpreter | The hot code is `pairs` loops and closures (ITERN/FNEW are NYI in 2.0), so traces abort and are retried forever; interpreter and JIT compute the same IEEE doubles |
+| `moves` | The per-frame move pass visits a maintained list (in `G.MOVEABLES` order) of Cards, CardAreas, `Card_Character` and the two gate UIBoxes; sprites, card shadows, UI elements/boxes/text, blinds and particles are no longer moved. The update pass visits a maintained list without classes whose `update` is the empty `Node.update` | Skipped moves only write rendering state; a kept object whose `role.major` is skipped still moves it on demand (`Moveable.move`), so `G.pack_cards` and every card/area transform is computed as before. The move pass creates/removes nothing, so the sublist walk equals the stock walk; if an update removes moveables, the update pass resumes as the stock `pairs` loop would, from the key reconstructed from a removal log |
+| `cardmove` | A Major card's move without `move_juice/xy/r/scale/wh` | Those only write `VT`, velocity, `STATIONARY`, juice; the frame bookkeeping, `align_to_major`, `calculate_parrallax` (same expression) and `lr_clamp` still run |
+| `uiupdate` | No `DynaText:update`, `Particles:update`, sprite animation, background-spin easing; `UIElement:update` only for elements whose `func` is not in an audited rendering-only list (17 HUD/button funcs) | Text metrics, particles, animation frames and the spin are rendering; the listed funcs write UI config, UI boxes, display-only `*_text` fields, `G.GAME.blind.states.visible`, flame shader state; unlisted funcs still run |
+| `cardupdate` | One name lookup guards `Card:update`'s run of `if self.ability.name == ...` blocks | The guarded names are extracted from the patched source at load, which also checks that every top-level statement of the run is such a name test |
+| `remove` | Instance-list removal searches from the end; `G.STAGE_OBJECTS` keeps a membership hint | The lists are dense arrays with each object at most once, so the match is the stock index; the hint is a superset (fixes the O(n^2) `remove_all` at every run reset) |
+| `gc` | `nuGC` = full collection above 64 MB instead of ~3 incremental steps per frame | No weak tables or finalizers in the game or bridge |
+
+Known differences from the unmodified source (none observable through the bridge): rendering state is stale;
+UI objects that only rendering-only funcs create or remove (the HUD flame sprite, high-score alerts) are not
+created/removed, so `G.MOVEABLES` holds slightly different UI objects; trajectories record the same `obs`,
+`/legal`, `hidden` and `refs` (replay gate, `test_fastpath_matches_vanilla`).
+
 ## Results (2026-10-14, game 1.0.1o-FULL, bridge_hash cd4ee1e6…)
 
 Fidelity:
 
-- `balatro-headless replay --manifest`: **31/31** `replay_ok` trajectories (1996 steps; fuzzer, rule agent and
-  swarm runs) match at every step (obs, `/legal`, final obs, and the replay's own recording incl. `hidden`/`refs`).
-- All 123 manifest rows (`--manifest-all`, including runs never live-replayed): 121/123 match. The two misses are
-  `tainted` bridge test runs that used `/debug/eval` state surgery (`schema_ok=false`, non-replayable by design).
+- `balatro-headless replay --manifest` (fast path on): **100%** of `replay_ok` trajectories match at every step
+  (obs, `/legal`, final obs, and the replay's own recording incl. `hidden`/`refs`): 65/65 (4220 steps; fuzzer,
+  rule agent and swarm runs) on Windows and 66/66 (4338 steps) on Linux (WSL2) on the final code. The gate was
+  re-run after every optimization (31 -> 66 files as the swarm added runs) and never dropped below 100%.
+- Before the fast path: all 123 manifest rows (`--manifest-all`, including runs never live-replayed): 121/123
+  match. The two misses are `tainted` bridge test runs that used `/debug/eval` state surgery (`schema_ok=false`,
+  non-replayable by design).
 - Reverse direction: runs recorded headless (`host:"headless"`) pass `balatro-data validate` and replay with
   `REPLAY_OK` on a live GUI instance through `balatro-data replay` (3/3, 25-81 steps, shops and packs).
 - Root-caused divergence found during bring-up: Brainstorm's `ability.blueprint_compat` after a joker
   `REORDER` (computed in `Card:update`). Fix: every settle runs at least one frame (see Determinism).
 
-Throughput (`balatro-headless bench`, random legal policy incl. resets, `dt=0.1`, Ryzen 7 9700X with the
-10-instance GUI swarm running on the same machine):
+Throughput (`balatro-headless bench`, random legal policy incl. resets, `dt=0.1`, Ryzen 7 9700X 8C/16T with the
+10-instance GUI swarm running on the same machine, so absolute numbers are noisy by ~±5%). One worker, each row
+adds one optimization (`--fastpath` list), Windows:
 
-| workers | steps/s total | steps/s per worker | frames/step | frames/s |
-|---|---|---|---|---|
-| 1 | 55 | 55 | 24.0 | 1320 |
-| 4 | 177 | 44 | 23.4 | 4130 |
+| fast path | steps/s | frames/step | frames/s |
+|---|---|---|---|
+| none (unmodified source, JIT on) | 46.3 | 24.0 | 1111 |
+| `nojit` | 52.6 | 24.0 | 1262 |
+| + `moves` | 91.7 | 23.9 | 2193 |
+| + `cardmove` | 101.0 | 23.9 | 2414 |
+| + `uiupdate` | 157.5 | 23.9 | 3764 |
+| + `cardupdate` | 160.4 | 23.9 | 3834 |
+| + `remove` | 163.5 | 23.9 | 3908 |
+| + `gc` (= all, default) | 176.9 | 23.9 | 4229 |
 
-This is below the plan's 300 steps/s per core target. Where the time goes (sampling profile, one worker):
+Before/after, steps/s total (per worker):
 
-- ~24 frames per decision is close to the floor. The event manager completes at most one blocking event per
-  queue per frame, and a played hand is a chain of ~20 blocking events. Extra event passes per frame halve the
-  frame count but double the cost per frame (no net gain), and they change `final_obs` timing, so they are not
-  used. Larger `dt` does not help (24 frames at 0.1 vs 22 at 0.25, and 0.25 does not settle).
-- Each frame costs ~0.75 ms and is interpreter-bound (LuaJIT 2.0 does not compile `pairs` loops, and
-  `jit.off()` makes no measurable difference). `Moveable:move` over all ~430 moveables accounts for 55%
-  (52 deck cards with 3 glued sprites each, ~145 UI elements), UI layout (`UIBox:recalculate`,
-  `UIElement:update`) for ~20%, and the event queue (the game logic proper) for ~11%.
-- Request overhead (bridge JSON encode + `json.loads`) is ~1.5 ms per step.
+| host | workers | none | all |
+|---|---|---|---|
+| Windows 11 | 1 | 46.3 | 176.9 |
+| Windows 11 | 4 | 187.2 (46.8) | 705.9 (176.5) |
+| WSL2 Ubuntu 24.04 | 1 | 36.5 | 143.7 |
+| WSL2 Ubuntu 24.04 | 4 | 105.0 (26.2) | 438.2 (109.5) |
 
-Next levers, each to be gated on the same 100% replay check: a bit-exact fast path that skips `Moveable:move`
-for objects whose update would be a no-op (stationary, no juice/pinch/velocity: most deck cards and HUD
-elements), and skipping per-frame UI work that has no game-state side effects (`UIElement` button funcs need
-an audit first).
+With the JIT on, the fast path reaches only ~136 steps/s (one worker): `nojit` matters more once the frame is
+cheap. The 300 steps/s per core target is not reached (~3.8x over the unmodified source). Where a step goes now
+(one worker, ~5 ms):
+
+- ~3.7 ms in ~24 frames (~0.15 ms each). Per frame the largest items are the event queue itself (the game
+  logic plus the UI it builds: `UIBox` construction and layout inside events, ~30%), the ~52 deck cards
+  (`CardArea:align_cards` positions and flips them every frame, `Card:update`, the card move; ~25%), and GC
+  (~10%). These are game semantics or feed card order, so they stay.
+- ~0.85 ms in `/state` (the bridge's `build_obs` + its Lua JSON encoder, ~8 KB per step; frozen code), ~0.25 ms
+  in `/action` and `/legal`, ~0.2 ms in Python.
+- Frames per decision cannot drop without changing event semantics. Over 12.7k frames of random play, 55%
+  complete a blocking event; most others are the second frame of a `before`/`after` event: `EventManager:update`
+  sets `blocked` after handling any blocking event, completed or not, so an event that waits on its timer holds
+  the queue for the frame in which it completes. A clock-skipping prototype (after an observed inert frame,
+  advance every timer exactly as the skipped `Game:update` calls would, up to the frame in which the first
+  waiting event is due) passed the replay gate but skipped 49 of 12.7k frames (0.4%): at GAMESPEED 4,
+  `TIMERS.TOTAL` advances 0.4 s per 0.1 s frame, so almost every wait is due on the next frame, and the long
+  waits (the 1.2 s run-start screenwipe) overlap with easing and polling events. It was removed.

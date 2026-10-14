@@ -96,6 +96,42 @@ def test_same_seed_same_actions_same_observations():
     assert run(HeadlessEnv(agent="test-headless")) == first  # fresh engine
 
 
+def test_fastpath_matches_vanilla():
+    """The fast path (default) and the unmodified game source produce the same observations and /legal at
+    every step of the same action sequence (the replay gate in miniature, including run resets)."""
+    from balatro_env.headless.env import HeadlessEnv, random_legal_action
+
+    def run(e):
+        rng = random.Random(5)
+        seen = []
+        for seed, deck in (("TESTFP01", "b_red"), ("TESTFP02", "b_magic")):
+            obs, legal = e.reset(seed, deck, 2)
+            seen.append((obs, legal))
+            for _ in range(60):
+                obs, legal, done, info = e.step(random_legal_action(legal, rng))
+                seen.append((obs, legal, info["ok"]))
+                if done:
+                    break
+        return seen
+
+    fast = HeadlessEnv(agent="test-headless")
+    vanilla = HeadlessEnv(agent="test-headless", fastpath=False)
+    assert fast.engine.fastpath and not vanilla.engine.fastpath
+    assert run(fast) == run(vanilla)
+
+
+def test_fastpath_names():
+    from balatro_env.headless.engine import fastpath_names, resolve_fastpath
+
+    names = fastpath_names()
+    assert "moves" in names and "nojit" in names
+    assert resolve_fastpath(True) == resolve_fastpath("all") == names
+    assert resolve_fastpath(False) == resolve_fastpath("none") == ()
+    assert resolve_fastpath("moves,nojit") == ("nojit", "moves")  # canonical order
+    with pytest.raises(ValueError):
+        resolve_fastpath("moves,warp")
+
+
 def test_recording_is_valid_and_replays(tmp_path):
     from balatro_env.headless.env import HeadlessEnv, random_legal_action
     from balatro_env.headless.replay import replay

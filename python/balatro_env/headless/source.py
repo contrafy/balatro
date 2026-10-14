@@ -68,8 +68,12 @@ def extract_source(exe: str | os.PathLike | None = None, cache: Path | None = No
     cache = cache or cache_root()
     stamp = f"{st.st_size}-{st.st_mtime_ns}"
     index = cache / "index.json"
-    known = json.loads(index.read_text()) if index.is_file() else {}
+    try:
+        known = json.loads(index.read_text()) if index.is_file() else {}
+    except ValueError:  # unreadable index: only a cache of exe hashes, rebuild it
+        known = {}
     digest = known.get(str(path), {}).get(stamp)
+    known_before = digest is not None
     if digest is None:
         h = hashlib.sha256()
         with open(path, "rb") as f:
@@ -91,12 +95,17 @@ def extract_source(exe: str | os.PathLike | None = None, cache: Path | None = No
             tmp.rename(out)
         except OSError:  # another worker won the race
             shutil.rmtree(tmp, ignore_errors=True)
-    known.setdefault(str(path), {})[stamp] = digest
-    cache.mkdir(parents=True, exist_ok=True)
-    try:
-        index.write_text(json.dumps(known))
-    except OSError:
-        pass
+    if not known_before:
+        known.setdefault(str(path), {})[stamp] = digest
+        cache.mkdir(parents=True, exist_ok=True)
+        # Parallel workers boot at once: write a private file and rename it into place, so a reader
+        # never sees a partial index.
+        tmp_index = cache / f".index-{os.getpid()}.json"
+        try:
+            tmp_index.write_text(json.dumps(known))
+            os.replace(tmp_index, index)
+        except OSError:
+            tmp_index.unlink(missing_ok=True)
     return out
 
 

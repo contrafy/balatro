@@ -656,6 +656,14 @@ class RoundSolver:
         bs, bp, _bt = self.best_play(cards, h, d, ctx)
         if bs >= need or (h <= 1 and d <= 0) or not pile_cards:
             return PLAY, (self._pad(bp, cards, 5) if self.psychic else bp)
+        if self.hd_dep and h >= 2 and not self.psychic:
+            # Acrobat/Dusk/...: a hand that clears when played as the final hand is held; burn hands with 1 junk card
+            fs, fp, _ft = self.best_play(cards, 1, d, ctx)
+            if fs >= need:
+                fids = {id(c) for c in fp}
+                junk = [c for c in cards if id(c) not in fids]
+                if junk:
+                    return PLAY, [min(junk, key=lambda c: c.val)]
         pile = _Pile(pile_cards, self.suit_keys)
         best_k, best_u = None, -1.0
         for K in self._keep_sets(cards, bp):
@@ -755,7 +763,10 @@ class RoundSolver:
             if not pos or len(pos) > self.lim or (kind, pos) in seen:
                 return
             seen.add((kind, pos))
-            out.append({"kind": kind, "pos": pos, "note": note})
+            hand_type = None
+            if kind == PLAY and all(known[i].known for i in pos):
+                hand_type = self.classify([known[i] for i in pos])[0]
+            out.append({"kind": kind, "pos": pos, "note": note, "hand": hand_type})
 
         vis = [c for c in known if c.known]
         idx_of = {id(c): i for i, c in enumerate(known)}
@@ -787,6 +798,14 @@ class RoundSolver:
                         f"{t} {' '.join(c.label() for c in p)} est {int(s)} + filler(s) "
                         f"{' '.join(c.label() for c in fill[len(p):])} (draws {len(fill)} new cards)")
                     break
+        if self.hd_dep and h >= 2 and vis and not self.psychic:
+            fs, fp, ft = self.best_play(vis, 1, d, ctx)
+            fids = {id(c) for c in fp}
+            junk = [c for c in vis if id(c) not in fids]
+            if junk:
+                j = min(junk, key=lambda c: c.val)
+                add(PLAY, [idx_of[id(j)]], f"throwaway {j.label()}: hold {ft} {' '.join(c.label() for c in fp)} "
+                                           f"for the final hand (est {int(fs)} then)")
         if d > 0:
             chosen = [K for K, _v in top_keeps[:16]] + self._keep_sets(known, bp or [])
             for K in chosen:
@@ -843,7 +862,8 @@ class RoundSolver:
             if not n:
                 continue
             res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]], "p_clear": cl / n,
-                        "exp_score": tot / n, "hands_left": hl / n, "discards_used": du / n, "n": n, "note": c["note"]})
+                        "exp_score": tot / n, "hands_left": hl / n, "discards_used": du / n, "n": n, "note": c["note"],
+                        "hand": c.get("hand")})
         top_n = max((r["n"] for r in res), default=0)
         res.sort(key=lambda r: (r["n"] >= min(top_n, 120), r["p_clear"], r["hands_left"], -r["discards_used"],
                                 r["exp_score"]), reverse=True)
@@ -867,16 +887,20 @@ def default_estimate():
 
 def best_round_plan(state, estimate_fn=None, *, samples=400, time_budget_s=2.0, seed=0):
     """Ranked options for the current SELECTING_HAND decision, best first:
-    [{action: 'PLAY'|'DISCARD', cards: [hand indices], p_clear, exp_score, note, hands_left, discards_used, n}].
+    [{action: 'PLAY'|'DISCARD', cards: [hand indices], p_clear, exp_score, note, hand, hands_left, discards_used, n}].
     p_clear = P(clear the blind within the remaining hands) taking this action and then the solver's greedy policy
-    (Monte-Carlo over n sampled draw orders); exp_score = mean chips scored over the rest of the round.
-    Ties break on more hands left, then fewer discards used, then exp_score."""
+    (Monte-Carlo over n sampled draw orders); exp_score = mean chips scored over the rest of the round; hand = the
+    poker hand a PLAY makes (None for discards and plays with face-down cards). Options that reached the full sample
+    count rank first; ties break on more hands left, then fewer discards used, then exp_score. time_budget_s covers
+    candidate generation too (every candidate still gets the first 16 samples)."""
     if state.get("phase") not in (None, "SELECTING_HAND") or not _lst(state.get("hand")):
         return []
     if int(state.get("hands_remaining") or 0) <= 0:
         return []
+    t0 = time.perf_counter()
     rs = RoundSolver(state, estimate_fn or default_estimate(), seed=seed)
-    return rs.evaluate(rs.candidates(), samples=samples, time_budget_s=time_budget_s)
+    cands = rs.candidates()
+    return rs.evaluate(cands, samples=samples, time_budget_s=max(0.2, time_budget_s - (time.perf_counter() - t0)))
 
 
 def evaluate_action(state, action, cards, estimate_fn=None, *, samples=400, seed=0):

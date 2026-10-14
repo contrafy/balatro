@@ -98,7 +98,11 @@ class _Host:
 class Engine:
     """Boots the game to the main menu (profile unlocked by the bridge) and exposes the bridge's HTTP API
     in-process. `request()` goes through the bridge's own server loop, so bodies are byte-identical to a
-    live instance's."""
+    live instance's.
+
+    fastpath: the headless/lua/fastpath.lua optimizations to enable (True = all, the default; False =
+    vanilla game source; or names). They skip rendering-only work and are gated on the replay check; a
+    non-default set is recorded in the trajectory header (`lovely_version` "headless-X+fastpath=...")."""
 
     def __init__(self, exe: str | None = None, data_dir: str | os.PathLike | None = None,
                  port: int = HEADLESS_PORT, dt: float = DEFAULT_DT, git_sha: str | None = None,
@@ -131,6 +135,8 @@ class Engine:
             b"dt": float(dt),
             b"quiet": bool(quiet),
             b"fastpath": self.lua.table_from([n.encode() for n in self.fastpath]),
+            b"loader_tag": b"" if self.fastpath == fastpath_names()
+            else ("+fastpath=" + (",".join(self.fastpath) or "none")).encode(),
             b"env": self.lua.table_from(env),
             b"save_files": self.lua.table_from({b"settings.jkr": SETTINGS_LUA.encode()}),
         })

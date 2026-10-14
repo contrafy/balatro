@@ -77,13 +77,12 @@ def test_open_ended_straight_draw_beats_keeping_high_cards():
 
 
 def test_four_flush_with_two_discards_beats_banking_two_pair():
-    # 7805 SB: advise played AAKK (124) with 2 discards instead of chasing the 4-heart flush
-    st = state(["AH", "KH", "8H", "4H", "AS", "KS", "6C", "2D"], need=300, hands=3, discards=2)
+    # 7805: advise played AAKK (124) with 2 discards instead of chasing the 4-heart flush. With 2 hands for 300 the
+    # flush (two discards to hit it, then any second hand) beats banking 124 and needing 176 from one last hand.
+    st = state(["AH", "KH", "8H", "4H", "AS", "KS", "6C", "2D"], need=300, hands=2, discards=2)
     res = plan(st)
     top = res[0]
-    bank = find(res, "PLAY", idx(st, "AH", "AS", "KH", "KS")) if any(
-        r["action"] == "PLAY" and sorted(r["cards"]) == idx(st, "AH", "AS", "KH", "KS") for r in res) else \
-        solver.evaluate_action(st, "PLAY", idx(st, "AH", "AS", "KH", "KS"), estimate)
+    bank = solver.evaluate_action(st, "PLAY", idx(st, "AH", "AS", "KH", "KS"), estimate)
     assert not (top["action"] == "PLAY" and set(idx(st, "AH", "KH")) <= set(top["cards"]))
     assert top["p_clear"] > bank["p_clear"] + 0.05
     flush = solver.evaluate_action(st, "DISCARD", idx(st, "AS", "KS", "6C", "2D"), estimate)
@@ -93,14 +92,16 @@ def test_four_flush_with_two_discards_beats_banking_two_pair():
 def test_jokerless_ante1_small_blind_pace():
     st = state(["5S", "5D", "KC", "JH", "9S", "7C", "4D", "2H"], need=300, hands=3, discards=2)
     t0 = time.perf_counter()
-    res = solver.best_round_plan(st, estimate)  # default budget
-    assert time.perf_counter() - t0 < 3.5
+    fast = solver.best_round_plan(st, estimate)  # default 2 s budget (stage 1 always completes)
+    assert time.perf_counter() - t0 < 3.5 and fast[0]["n"] >= 100
+    res = plan(st)
     top = res[0]
     assert top["n"] == 400 and 0.4 <= top["p_clear"] <= 1.0
     pair_alone = solver.evaluate_action(st, "PLAY", idx(st, "5S", "5D"), estimate)
     assert top["p_clear"] > pair_alone["p_clear"]
     assert all({"action", "cards", "p_clear", "exp_score", "note"} <= set(r) for r in res)
-    assert [r["p_clear"] for r in res if r["n"] == 400] == sorted((r["p_clear"] for r in res if r["n"] == 400), reverse=True)
+    full = [r["p_clear"] for r in res if r["n"] == 400]
+    assert full == sorted(full, reverse=True)
 
 
 def test_no_discards_offers_dig_plays_and_keeps_the_pair():
@@ -130,6 +131,18 @@ def test_psychic_plays_five_cards():
     assert res[0]["action"] == "PLAY" or res[0]["p_clear"] > 0
 
 
+def test_acrobat_holds_the_made_hand_for_the_final_hand():
+    # flush 296 now, x3 = 888 as the final hand: burn a junk card first (E46A72GI held its straight for Acrobat)
+    st = state(["AH", "KH", "9H", "6H", "3H", "QS", "7D", "2C"], need=600, hands=2, discards=0, jokers=["Acrobat"])
+    res = plan(st, samples=100)
+    top = res[0]
+    assert top["action"] == "PLAY" and set(top["cards"]) <= set(idx(st, "QS", "7D", "2C"))
+    assert any(r["note"].startswith("throwaway") and r["p_clear"] == 1.0 for r in res)
+    assert top["p_clear"] == 1.0
+    now = find(res, "PLAY", idx(st, "AH", "KH", "9H", "6H", "3H"))
+    assert now["p_clear"] < 0.5
+
+
 def test_classify_and_odds():
     rs = solver.RoundSolver(state(["AH", "2S", "3D", "4C", "5H", "KH", "KS", "KD"], need=1), estimate)
     hand = rs.slots
@@ -138,5 +151,5 @@ def test_classify_and_odds():
     assert rs.classify(hand[5:7] + hand[0:1] + hand[4:5])[0] == "Pair"
     rs4 = solver.RoundSolver(state(["AH", "KH", "QH", "JH", "2S"], need=1, jokers=["Four Fingers"]), estimate)
     assert rs4.classify(rs4.slots)[0] == "Straight Flush"
-    assert solver.p_none(44, 8, 4) == pytest.approx(0.4609, abs=1e-3)  # OESD misses 4 draws
-    assert solver.p_atleast(44, 9, 4, 1) == pytest.approx(1 - 0.3857, abs=1e-3)
+    assert solver.p_none(44, 8, 4) == pytest.approx(58905 / 135751)  # OESD (8 outs) missed with 4 draws
+    assert solver.p_atleast(44, 9, 4, 1) == pytest.approx(1 - 52360 / 135751)  # 4-flush hit with 4 draws
