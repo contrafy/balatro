@@ -245,6 +245,20 @@ def test_face_down_draws_cannot_be_seen_by_the_policy():
         assert fish["low_confidence"] and fish["p_model"] < plain["p_model"]
 
 
+def test_hit_the_road_discarding_jacks_raises_later_hands():
+    # 7805 65YFNPGW: Hit the Road (+x0.5 per Jack discarded this round) was ignored, the round read UNWINNABLE
+    hand = ["JS", "JH", "JC", "KS", "KD", "9C", "5H", "2D"]
+    st = state(hand, need=500, hands=2, discards=1, jokers=["Hit the Road"])
+    st["jokers"][0]["ability"] = {"x_mult": 1, "extra": 0.5}
+    rs = solver.RoundSolver(st, estimate)
+    hr = next(j for j in rs._state(2, 0, None, 3)["jokers"] if j["name"] == "Hit the Road")
+    assert hr["ability"]["x_mult"] == pytest.approx(2.5)
+    top = plan(st, samples=200)[0]
+    assert top["action"] == "DISCARD" and {1, 2, 3} <= set(top["cards"])
+    plain = plan(state(hand, need=500, hands=2, discards=1), samples=200)[0]
+    assert plain["action"] == "PLAY" and top["p_model"] > plain["p_model"] + 0.1  # FH 360 now vs x2.5 later
+
+
 def test_tied_options_prefer_getting_rid_of_debuffed_cards():
     # 7810 YY2DXIBD (The Head): debuffed hearts score nothing; among tied lines discard them
     st = state(["KS", "9C", "8H", "7H", "7C", "6C", "4H", "2S"], need=2000, hands=3, discards=2, blind="The Head",
@@ -286,7 +300,7 @@ def test_obelisk_resets_inside_the_round():
     assert after_pair[0] == 1.0 and after_high[0] == pytest.approx(4.4)
     kk = [rs.slots[2]]
     s_before, _t = rs.score(kk, [], 3, 0, rs.ctx0)
-    s_after, _t = rs.score(kk, [], 2, 0, rs.ctx0[:3] + (after_pair,))
+    s_after, _t = rs.score(kk, [], 2, 0, rs.ctx0[:3] + (after_pair, 0))
     assert s_after < s_before / 3
 
 
