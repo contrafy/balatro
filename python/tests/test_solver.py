@@ -147,6 +147,18 @@ def test_misprint_is_sampled_per_hand():
     assert 0.55 < top["p_model"] < 0.8
 
 
+def test_mr_bones_is_a_tie_break_not_a_clear():
+    # 7804: with Mr. Bones every option read >= 0.99 and the solver could not rank; real clears come first
+    st = state(["AS", "AD", "QH", "9C", "7S", "5D", "3H", "2C"], need=700, hands=3, discards=2)
+    bones = dict(st, jokers=[{"name": "Mr. Bones", "index": 1, "ability": {}}])
+    a = solver.evaluate_action(st, "DISCARD", idx(st, "QH", "9C", "7S", "5D", "3H"), estimate, samples=200)
+    b = solver.evaluate_action(bones, "DISCARD", idx(st, "QH", "9C", "7S", "5D", "3H"), estimate, samples=200)
+    assert b["p_model"] == a["p_model"] < 0.9 and b["p_survive"] > b["p_model"]
+    res = plan(bones, samples=100)
+    tops = [r["p_model"] for r in res if r["n"] == res[0]["n"]]
+    assert res[0]["p_model"] >= max(tops) - solver.TIE_P
+
+
 def test_options_near_the_top_never_rest_on_16_samples():
     # 7810: an n=16 discard printed p=0.63; at n=100 it was 0.23
     st = state(["AS", "KD", "QH", "7C", "7D", "4S", "3H", "2C"], need=900, hands=3, discards=2, jokers=["Joker"])

@@ -26,6 +26,8 @@ class ReplayResult:
     message: str = ""
     replay_path: str | None = None
     seconds: float = 0.0
+    # outcome=win: final_obs still to be compared with the replay recording's end line (see end_from_file)
+    final_pending: bool = False
 
     def detail(self) -> str | None:
         if self.ok:
@@ -63,6 +65,7 @@ def replay(path: str | Path, port: int, settle_timeout: float = 90.0, compare_le
         _run(traj, Bridge(port), res, settle_timeout, compare_legal, log)
         if res.ok and check_file and res.replay_path:
             _compare_files(traj, res, log)
+        finish_final(res)
     except BridgeError as exc:
         res.ok = False
         res.divergence_kind = res.divergence_kind or "bridge"
@@ -112,13 +115,32 @@ def _run(traj: Trajectory, bridge: Bridge, res: ReplayResult, settle_timeout: fl
             log(f"  replay {key}: {res.steps_matched}/{res.steps_total} steps match")
     end = traj.end
     if end and end.get("outcome") in END_PHASE and isinstance(end.get("final_obs"), dict):
+        # Settling (GAME_OVER / WIN overlay) also guarantees the replay's recorder has written its end line.
         state, _ = bridge.wait_settled(settle_timeout)
-        diffs = sides.diff(end["final_obs"], state)
-        if diffs:
-            res.divergence_kind, res.diff = "final", diffs
-            res.message = f"final obs differs ({len(diffs)} paths)"
-            return
+        if end_from_file(end):
+            res.final_pending = True  # verified by _compare_files against the replay's own end line
+        else:
+            diffs = sides.diff(end["final_obs"], state)
+            if diffs:
+                res.divergence_kind, res.diff = "final", diffs
+                res.message = f"final obs differs ({len(diffs)} paths)"
+                return
     res.ok = True
+
+
+def end_from_file(end: dict[str, Any] | None) -> bool:
+    """A win's final_obs is captured the moment `G.GAME.won` is set (DATA_CONTRACT: may be mid-transition); the
+    game then keeps animating into the next ante, so no later settled live state equals it. It is compared with
+    the replay's own recorded end line instead (same capture point). A loss settles at GAME_OVER: live compare."""
+    return bool(end) and end.get("outcome") == "win" and isinstance(end.get("final_obs"), dict)
+
+
+def finish_final(res: ReplayResult) -> None:
+    """A win whose final_obs could not be compared (replay recording unavailable) is not verified."""
+    if res.ok and res.final_pending:
+        res.ok = False
+        res.divergence_kind = "final"
+        res.message = "win final_obs not verified: the replay's own recording (end line) was unavailable"
 
 
 def _find_replay_file(replay_path: str, wait_s: float = 15.0) -> Path | None:
@@ -157,6 +179,19 @@ def _compare_files(orig: Trajectory, res: ReplayResult, log) -> None:
         res.ok = False
         res.divergence_kind = "post_file:end"
         res.message = f"outcome {orig.end.get('outcome')} vs replay {rep.end.get('outcome')}"
+        return
+    if res.final_pending:
+        if rep.end is None or not isinstance(rep.end.get("final_obs"), dict):
+            res.ok = False
+            res.divergence_kind = "final"
+            res.message = "replay recording has no end line with final_obs (original ended in a win)"
+            return
+        diffs = sides.diff(orig.end["final_obs"], rep.end["final_obs"])
+        res.final_pending = False
+        if diffs:
+            res.ok = False
+            res.divergence_kind, res.diff = "final", diffs
+            res.message = f"win final obs differs from the replay's recorded end.final_obs ({len(diffs)} paths)"
 
 
 def replay_many(paths: list[str], port: int, **kw) -> list[ReplayResult]:

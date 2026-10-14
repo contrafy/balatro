@@ -10,7 +10,14 @@ import time
 from pathlib import Path
 from typing import Any
 
-from balatro_env.data.replay import END_PHASE, ReplayResult, _compare_files, _Sides
+from balatro_env.data.replay import (
+    END_PHASE,
+    ReplayResult,
+    _compare_files,
+    _Sides,
+    end_from_file,
+    finish_final,
+)
 from balatro_env.data.trajectory import Trajectory, find_trajectories, read_trajectory
 from balatro_env.headless.engine import Engine, EngineError
 
@@ -36,6 +43,7 @@ class Replayer:
             if res.ok and self.check_file and res.replay_path:
                 self.engine.frames(2)  # the recorder closes + gzips the file on the frame after the run ends
                 _compare_files(traj, res, log)
+            finish_final(res)
         except EngineError as exc:
             res.ok = False
             res.divergence_kind = res.divergence_kind or "bridge"
@@ -127,12 +135,15 @@ def _run(traj: Trajectory, engine: Engine, res: ReplayResult, compare_legal: boo
             log(f"  replay {key}: {res.steps_matched}/{res.steps_total} steps match")
     end = traj.end
     if end and end.get("outcome") in END_PHASE and isinstance(end.get("final_obs"), dict):
-        state, _ = _settled(engine, res, None)
-        diffs = sides.diff(end["final_obs"], state)
-        if diffs:
-            res.divergence_kind, res.diff = "final", diffs
-            res.message = f"final obs differs ({len(diffs)} paths)"
-            return
+        state, _ = _settled(engine, res, None)  # GAME_OVER / WIN overlay; the recorder has written its end line
+        if end_from_file(end):
+            res.final_pending = True  # verified by _compare_files against the replay's own end line
+        else:
+            diffs = sides.diff(end["final_obs"], state)
+            if diffs:
+                res.divergence_kind, res.diff = "final", diffs
+                res.message = f"final obs differs ({len(diffs)} paths)"
+                return
     res.ok = True
 
 

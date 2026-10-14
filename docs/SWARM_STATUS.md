@@ -6,8 +6,8 @@ _Interim, 05:30 (updated as the night goes on)._
 
 - **FIRST BLACK DECK GOLD STAKE WIN: Opus, seed `9IIGB2FF` (port 7807), beat the ante-8 boss Crimson Heart
   402199/400000.** Trajectory `data/trajectories/2026-10-14/9IIGB2FF_7807_1791965962567.jsonl.gz`: 121 steps, 0 rejects,
-  validated. Headless replay matched all 121 steps; the win end-state comparison was never exercised before and needs
-  a fix (the final observation is captured at a different moment), which is in progress.
+  validated, and replay-verified on both the headless engine and a live GUI instance (121/121 steps plus the final
+  state).
   - Build: flat chips/mult (Clever, Stuntman, Abstract, Even Steven) plus foil Obelisk (x3.6) and Throwback (x3.75).
   - Line: from ante 5 it skipped every Small and Big blind (9 skips) and fought only bosses.
   - Post-mortem: `docs/runs/7807_9IIGB2FF.md`.
@@ -28,52 +28,47 @@ _Interim, 05:30 (updated as the night goes on)._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 05:17:51 by `balatro-data status` (edits inside this block are overwritten). Player runs: 142 (133 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 05:31:02 by `balatro-data status` (edits inside this block are overwritten). Player runs: 144 (140 finished, 4 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (9)
+### Live runs (4)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | UX7FJYS3 | 8 | SELECTING_HAND | 2 | 6 | 10 | The Pillar 0/2000 | DISCARD {"card_indices":[1,5,6,7,8]} | No pair, need 2000; dump both debuffed cards and the low junk, keep clean JH TH 9D (straight/pair d… | 22s |
-| 7802 | port-7802 | claude-fable-5-1 | KGP6GZRV | 8 | BLIND_SELECT | 4 | 7 | 4 | Big Blind (13500) | SELECT_BLIND | Big Blind 13500: Two Pair ~7590 at 0 discards, FH ~14600 | 3s |
-| 7803 | port-7803 | claude-opus-5-5 | Q5Z3IQVH | 8 | BLIND_SELECT | 1 | 2 | 7 | The Goad (600) | SELECT_BLIND | boss The Goad 600, cannot skip | 10s |
-| 7804 | port-7804 | claude-opus-5-5 | GZN3NGM7 | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 0/450 | DISCARD {"card_indices":[1,6,7,8]} | Two Pair 9988 est 108, pace 291 < 450; draw 4 for full house (4 outs) or better two pair | 30s |
-| 7805 | port-7805 | claude-opus-5-5 | 7YW86UJN | 8 | BLIND_SELECT | 4 | 8 | 18 | Big Blind (13500) | SELECT_BLIND | Big 13500 | 2s |
-| 7806 | port-7806 | claude-opus-5-5 | I9RJP8E5 | 8 | SELECTING_HAND | 7 | 15 | 14 | Small Blind 0/110000 | PLAY_HAND {"card_indices":[1,2,4,7,8]} | Pair KK (lucky KS first) + red fillers JD 5H 4H, held JC TS 7S all black -> x3 est 40752 (> Two Pai… | 26s |
-| 7807 | port-7807 | claude-opus-5-5 | 9IIGB2FF | 8 | SELECTING_HAND | 8 | 13 | 39 | Crimson Heart 166500/400000 | PLAY_HAND {"card_indices":[2,3,5,6,8]} | Two Pair KKJJ est 95k (+steel 3H held x1.5), disabled Even Steven is irrelevant for KKJJ; need 2335… | 44s |
-| 7809 | port-7809 | claude-opus-5-5 | H8E931PC | 8 | BLIND_SELECT | 1 | 2 | 1 | The Goad (600) | SELECT_BLIND | boss The Goad 600, spades debuffed; Half Joker pairs ~500-900 | 8s |
-| 7810 | port-7810 | claude-sonnet-5-5 | CCLZQ4S8 | 8 | SHOP | 3 | 5 | 13 | Small Blind (3200) | SHOP_BUY_BOOSTER {"slot":1} | Celestial pack leaves (floor ); Mercury levels Pair main hand (+15 chips on ~28) | 6s |
+| 7801 | port-7801 | claude-fable-5-1 | UX7FJYS3 | 8 | BLIND_SELECT | 4 | 8 | -4 | Small Blind (9000) | SELECT_BLIND | Small 9000; Investment tag pays after the boss but typical hand < boss/2, take the shop | 20s |
+| 7804 | port-7804 | claude-opus-5-5 | KPAV6GP5 | 8 | SELECTING_HAND | 2 | 4 | 8 | Big Blind 0/1500 | PLAY_HAND {"card_indices":[2,4,5,6,7]} | Club flush Q9876 est 1233 of 1500, 267 left over 2 hands | 11s |
+| 7807 | port-7807 | claude-opus-5-5 | Z66KG7K4 | 8 | SELECTING_HAND | 1 | 3 | 1 | The Hook 360/600 | PLAY_HAND {"card_indices":[1,3,5,6,7]} | club flush TC 9C 7C 5C 3C est (35+34)x4=276 >= 240 needed | 19s |
+| 7809 | port-7809 | claude-opus-5-5 | H8E931PC | 8 | PACK_OPENING | 4 | 9 | 6 | Big Blind (13500) | SELECT_PACK_CARD {"index":4} | Temperance = total joker sell value ~1 now ( -> ~7), money for a Psychic counter/xMult; other tarot… | 35s |
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 17 | 0 | 17 | 0 | 0 | 3.71 | 7 |
+| claude-fable-5-1 | 8 | Black | 18 | 0 | 18 | 0 | 0 | 3.78 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 74 | 0 | 74 | 0 | 0 | 3.7 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 36 | 0 | 35 | 0 | 1 | 3.08 | 8 |
+| claude-opus-5-5 | 8 | Black | 79 | 1 | 78 | 0 | 0 | 3.78 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 37 | 0 | 36 | 0 | 1 | 3.11 | 8 |
 
 ### Deepest runs
 
 | # | seed | model | stake | deck | outcome | ante | blind | post-mortem |
 |---|---|---|---|---|---|---|---|---|
-| 1 | B6KZC39M | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 207920/400000 | [7807_B6KZC39M.md](runs/7807_B6KZC39M.md) |
-| 2 | E57ZB14D | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 249600/400000 | [7805_E57ZB14D.md](runs/7805_E57ZB14D.md) |
-| 3 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
-| 4 | A5LJXXMW | claude-opus-5-5 | 8 | Black | loss | 8 | Crimson Heart 275896/400000 | [7804_A5LJXXMW.md](runs/7804_A5LJXXMW.md) |
-| 5 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
-| 6 | Z6ZJWRC4 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 146453/165000 | [7809_Z6ZJWRC4.md](runs/7809_Z6ZJWRC4.md) |
-| 7 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
-| 8 | 3IDYS1SA | claude-fable-5-1 | 8 | Black | loss | 6 | Big Blind 87529/90000 | [7802_3IDYS1SA.md](runs/7802_3IDYS1SA.md) |
-| 9 | 26ARMPG1 | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 48586/90000 | [7807_26ARMPG1.md](runs/7807_26ARMPG1.md) |
-| 10 | ZJZ9YLCM | claude-opus-5-5 | 8 | Black | loss | 6 | Big Blind 87251/90000 | [7806_ZJZ9YLCM.md](runs/7806_ZJZ9YLCM.md) |
+| 1 | 9IIGB2FF | claude-opus-5-5 | 8 | Black | win | 8 | Crimson Heart 402199/400000 | [7807_9IIGB2FF.md](runs/7807_9IIGB2FF.md) |
+| 2 | B6KZC39M | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 207920/400000 | [7807_B6KZC39M.md](runs/7807_B6KZC39M.md) |
+| 3 | E57ZB14D | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 249600/400000 | [7805_E57ZB14D.md](runs/7805_E57ZB14D.md) |
+| 4 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
+| 5 | A5LJXXMW | claude-opus-5-5 | 8 | Black | loss | 8 | Crimson Heart 275896/400000 | [7804_A5LJXXMW.md](runs/7804_A5LJXXMW.md) |
+| 6 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
+| 7 | I9RJP8E5 | claude-opus-5-5 | 8 | Black | loss | 7 | The Flint 157176/220000 | [7806_I9RJP8E5.md](runs/7806_I9RJP8E5.md) |
+| 8 | Z6ZJWRC4 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 146453/165000 | [7809_Z6ZJWRC4.md](runs/7809_Z6ZJWRC4.md) |
+| 9 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
+| 10 | 3IDYS1SA | claude-fable-5-1 | 8 | Black | loss | 6 | Big Blind 87529/90000 | [7802_3IDYS1SA.md](runs/7802_3IDYS1SA.md) |
 
 ### Data validity
 
-- Player runs: 142 files in manifest; schema_ok 142, schema invalid 0; replay_ok 128, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 34 / failed 0; gui (live) ok 99 / failed 0; cross-checked by both 5, disagreeing 0.
-- All files (incl. fuzz + replays): 314; schema_ok 312; replay_ok 134 (headless 34, gui 105); replay failed 0; awaiting replay 166; quarantined 2.
+- Player runs: 144 files in manifest; schema_ok 144, schema invalid 0; replay_ok 135, replay failed 0, awaiting replay 3, open/unended 6; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 41 / failed 0; gui (live) ok 100 / failed 0; cross-checked by both 6, disagreeing 0.
+- All files (incl. fuzz + replays): 318; schema_ok 316; replay_ok 141 (headless 41, gui 106); replay failed 0; awaiting replay 168; quarantined 2.
 
 ### Rejects per agent
 
@@ -81,18 +76,18 @@ _Generated 2026-10-14 05:17:51 by `balatro-data status` (edits inside this block
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
 | port-7778 | 1 | 1 | 0 |
-| port-7805 | 1 | 1 | 1061 |
-| port-7807 | 1 | 1 | 1256 |
+| port-7805 | 1 | 1 | 1104 |
+| port-7807 | 1 | 1 | 1283 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 608 |
-| port-7802 | 0 | 0 | 700 |
-| port-7803 | 0 | 0 | 1138 |
-| port-7804 | 0 | 0 | 790 |
-| port-7806 | 0 | 0 | 1226 |
+| port-7801 | 0 | 0 | 635 |
+| port-7802 | 0 | 0 | 727 |
+| port-7803 | 0 | 0 | 1177 |
+| port-7804 | 0 | 0 | 837 |
+| port-7806 | 0 | 0 | 1253 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 1041 |
-| port-7810 | 0 | 0 | 1314 |
+| port-7809 | 0 | 0 | 1088 |
+| port-7810 | 0 | 0 | 1353 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

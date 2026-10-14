@@ -667,3 +667,28 @@ def test_steel_card_never_a_filler():
     a = _advice(_out(cli._advise_rules, d))
     if "b play" in a:
         assert "8" not in a.split("b play ")[1].split("   ")[0].split()[1:]
+
+
+def test_eternal_rental_never_needed_now():
+    # 7807 (first Gold win): Raised Fist{ETERNAL,RENTAL} ranked BUY at ante 1 (-$66 unsellable rent)
+    d = shop(jokers=[joker("Clever Joker", 1)], shop_jokers=[{"index": 1, "name": "Raised Fist", "set": "Joker", "cost": 1, "eternal": True, "rental": True}], money=6, ante=1)
+    assert "b buy 1" not in _advice(_out(cli.shop_advise, d))
+
+
+def test_obelisk_is_a_growth_xmult():
+    cls, sc = cli.classify_joker("Obelisk", 0, "Pair")
+    assert cls.startswith("XMULT(growth") and sc >= 55
+
+
+def test_abstract_counts_disabled_jokers():
+    s = {"jokers": [joker("Abstract Joker", 1), joker("Joker", 2, debuff=True)], "hand_levels": {"Pair": {"level": 1, "chips": 10, "mult": 2}}}
+    kk = [_card("King", "Spades", 1), _card("King", "Hearts", 2)]
+    assert cli.estimate("Pair", kk, [], s)[0] == (10 + 20) * (2 + 6)
+
+
+def test_throwback_skips_big_with_margin():
+    d = blind_select("tag_garbage", jokers=[joker("Throwback", 1), joker("Stuntman", 2)], ante=5)
+    d["blind_select"]["on_deck"] = "Big"
+    d["blind_select"]["choices"]["Boss"]["chips"] = 10
+    d["hands_per_round"] = 3
+    assert "ADVICE: b skip" in _out(cli.show, d)

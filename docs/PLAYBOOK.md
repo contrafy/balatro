@@ -97,11 +97,17 @@ Gold includes every lower stake's modifier. Together with Black Deck (+1 joker s
 
 Stickers show in `s`/`shopadvise` as `{ETERNAL}`, `{PERISHABLE(n rounds left)}`, `{RENTAL(-$3/round)}`. Rent is charged
 and perishables tick at every round end, so a skipped blind skips both. `shopadvise`, pack `advise` and `s` encode:
-
+- WINNING LINE (7807 9IIGB2FF, first Gold win, docs/runs/7807_9IIGB2FF.md): flat chips/+mult jokers (Clever, Stuntman,
+  Abstract, Even Steven) times two GROWTH xMults (foil Obelisk x3.6, Throwback x3.75), +hand size (Paint Brush, Palette)
+  and +1 hand (Grabber). From ante 5 it skipped Small AND Big every ante (9 skips): Throwback +x0.25 per skip, tags paid
+  now (Skip/Garbage/Economy money, Boss Tag rerolled The Wall), one blind fought per ante. Obelisk grows on every hand
+  whose type is NOT strictly your most played (after +1, ties keep it growing): rotate types, never throw away a card of
+  the max type. `s` recommends the skips when Throwback is owned and your rounds beat the boss by 1.3x+.
 - SMALL BLIND SKIP: ante 1 only for a tag that gives jokers NOW (Buffoon = Mega Buffoon pack, Top-up = 2 jokers; needs a
   free slot). Ante 2-4: other useful tags need 2+ scoring jokers, and at ante 3-4 your typical hand must reach half this
   ante's boss (skippers died 40-46% vs 25-33%). Rare/Uncommon/Polychrome/Negative/Coupon tags pay in the NEXT shop,
-  after the Big Blind. Ante 5+: never skip.
+  after the Big Blind. Ante 5+: never skip, except the Throwback plan above. Rent-broke (a rental and <$4 after it):
+  skip the Small, its shop could buy nothing.
 - RENTAL: priced at -$3 x rounds left (a perishable rental only until it perishes). Take one only for a reliable/growth
   xMult, or as a scorer you need to survive ante 1-2 (`NEEDED NOW`). Never two before ante 5. A flat rental is sold
   once 2 other non-rental scorers carry your hands (41 Gold rentals cost $393, mostly flat jokers held until death).
