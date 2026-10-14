@@ -7130,3 +7130,83 @@
 7807	a1	The Hook	Flush	TC 9C 7C 5C 3C	Pareidolia,Mr. Bones	est=276	actual=276	OK
 7804	a2	-	Flush	QC 9C 8C 7C 6C	Smiley Face,Odd Todd	est=1233	actual=1233	OK
 7804	a2	-	Pair	5H 5C	Smiley Face,Odd Todd	est=164	actual=164	OK
+7804	a2	-	Two Pair	KC KD QH QD	Smiley Face,Odd Todd	est=1320	actual=1320	OK
+7801	a4	-	Two Pair	AS AC 9S 9D	Shoot the Moon,Joker,The Duo,Credit Card(foil),Baseball Card,Odd Todd	est=11508	actual=11508	OK
+7803	a1	-	Full House	QH QC 9S 9H 9D		est=348	actual=348	OK
+7807	a2	-	Two Pair	TS TH 8C 8D	Pareidolia,Popcorn	est=1232	actual=1232	OK
+7807	a2	-	Pair	7S 7H	Pareidolia,Popcorn	est=528	actual=528	OK
+7809	a4	The Psychic	Pair	KS(glass) KC	Half Joker(holo),Burnt Joker,Odd Todd,Red Card,Gros Michel	est=6750	actual=6750	OK
+7801	a4	-	Two Pair	7S 7D 3H 3D	Shoot the Moon,Joker,The Duo,Credit Card(foil),Baseball Card,Odd Todd	est=10668	actual=10668	OK
+7803	a1	-	Flush	KS JS TS 6S 5S	Photograph	est=608	actual=608	OK
+7801	a4	-	Pair	AS AH	Shoot the Moon,Joker,The Duo,Credit Card(foil),Baseball Card,Odd Todd	est=5472	actual=5472	OK
+7810	a1	-	Flush	AC KC TC 6C 4C		est=304	actual=304	OK
+7804	a2	The Head	Two Pair	AH(DEBUFF) AC 5S 5D	Smiley Face,Odd Todd,Swashbuckler(negative),Baron(polychrome)	est=2412	actual=2412	OK
+7802	a1	-	Flush	JS TS 8S 6S 5S		est=296	actual=296	OK
+7809	a4	The Psychic	Pair	AH AC	Half Joker(holo),Burnt Joker,Odd Todd,Red Card,Gros Michel	est=8244	actual=8244	OK
+7805	a1	-	Two Pair	KS KD QS QC		est=120	actual=120	OK
+7806	a1	-	Straight	QH JH TS 9S 8D		est=308	actual=308	OK
+7802	a1	-	Pair	5H 5D		est=40	actual=40	OK
+7809	a4	The Psychic	Pair	7S 7H	Half Joker(holo),Burnt Joker,Odd Todd,Red Card,Gros Michel	est=7956	actual=7956	OK
+7805	a1	-	Flush	AH QH JH 7H 3H		est=304	actual=304	OK
+7803	a1	The Window	High Card	TH	Photograph	est=15	actual=15	OK
+7810	a1	-	Pair	4H 4C	Even Steven	est=180	actual=180	OK
+7803	a1	The Window	Full House	JH JC JD(DEBUFF) 8C 8D(DEBUFF)	Photograph	est=544	actual=544	OK
+7802	a1	-	Three of a Kind	2S 2H 2C	Popcorn	est=828	actual=828	OK
+7810	a1	-	Flush	AS KS TS 3S 2S	Even Steven	est=852	actual=852	OK
+7803	a1	The Window	Two Pair	7S 7H 3H 3C	Photograph	est=80	actual=80	OK
+7804	a3	-	Pair	9H 9C	Smiley Face,Odd Todd,Swashbuckler(negative),Baron(polychrome)	est=1755	actual=1755	OK
+7807	a2	The Manacle	Flush	KH TH 8H 4H	Pareidolia,Popcorn,Four Fingers	est=1340	actual=1340	OK
+7804	a3	-	Straight	AS KH QH JH TC	Smiley Face,Odd Todd,Swashbuckler(negative),Baron(polychrome)	est=6468	actual=6468	OK
+7807	a2	The Manacle	Flush	JH 7H 5H 3H	Pareidolia,Popcorn,Four Fingers	est=1200	actual=1200	OK
+7802	a1	The Window	Two Pair	9S 9H 7H 7D(DEBUFF)	Popcorn,Riff-raff,Hallucination(holo),Photograph	est=1260	actual=1260	OK
+7806	a1	-	Two Pair	AS AC JS JD	Blackboard	est=372	actual=372	OK
+7805	a1	-	Straight	QH JS TH 9H 8C	Photograph	est=616	actual=616	OK
+7809	a5	-	Pair	9H 9D	Half Joker(holo),Burnt Joker,Odd Todd,Red Card,Gros Michel,Blue Joker	est=17080	actual=17080	OK
+7806	a1	-	Pair	9H 9C	Blackboard	est=168	actual=168	OK
+7810	a1	The Hook	Flush	QS 8S 7S 5S 2S	Even Steven	est=804	actual=804	OK
+7809	a5	-	Pair	3S 3D	Half Joker(holo),Burnt Joker,Odd Todd,Red Card,Gros Michel,Blue Joker	est=16184	actual=16184	OK
+7803	a2	-	High Card	9S	Photograph,Clever Joker,Burglar	est=14	actual=14	OK
+7804	a3	-	Two Pair	TC TD 4H 4C	Smiley Face,Odd Todd,Swashbuckler(negative),Jolly Joker,Baron(polychrome)	est=2397	actual=2397	OK
+7802	a2	-	Two Pair	9H 9D 6H 6C	Popcorn,Riff-raff,Hallucination(holo),Photograph,Fortune Teller,Jolly Joker	est=1600	actual=1600	OK
+7809	a5	-	Pair	AS AH	Half Joker(holo),Burnt Joker,Odd Todd,Red Card,Gros Michel,Blue Joker	est=16744	actual=16744	OK
+7803	a2	-	Two Pair	KS KH JH JC	Photograph,Clever Joker,Burglar	est=560	actual=560	OK
+7804	a3	-	Two Pair	KC KD JS JC	Smiley Face,Odd Todd,Swashbuckler(negative),Jolly Joker,Baron(polychrome)	est=5040	actual=5040	OK
+7803	a2	-	Full House	TS TC TD 6S 6C	Photograph,Clever Joker,Burglar	est=648	actual=648	OK
+7805	a1	The Head	High Card	KD	Photograph,Devious Joker	est=30	actual=30	OK
+7802	a2	-	Pair	AS AC	Popcorn,Riff-raff,Hallucination(holo),Photograph,Jolly Joker,Blue Joker	est=3360	actual=3360	OK
+7805	a1	The Head	Straight	7S 6H(DEBUFF) 5C 4C 3S	Photograph,Devious Joker	est=596	actual=596	OK
+7806	a1	The Psychic	Two Pair	QC QD 7H 7C	Blackboard,Lusty Joker	est=810	actual=810	OK
+7804	a3	The Eye	Flush	QS TS 6S 5S 2S	Smiley Face,Odd Todd,Swashbuckler(negative),Jolly Joker,Baron(polychrome),Egg	est=3267	actual=3267	OK
+7807	a3	-	Straight Flush	AH 8H 7H 6H 5S	Pareidolia,Popcorn,Four Fingers,Sly Joker	est=2740	actual=2740	OK
+7803	a2	-	Two Pair	AH AC 6S 6H	Photograph,Clever Joker,Burglar,Mystic Summit	est=2278	actual=2278	OK
+7801	a4	The Window	Pair	3S 3D(DEBUFF)	Shoot the Moon,Joker,The Duo,Credit Card(foil),Baseball Card,Odd Todd	est=6016	actual=6016	OK
+7809	a5	The Fish	Pair	9S 9C	Half Joker(holo),Burnt Joker,Red Card,Blue Joker,Stuntman,Swashbuckler	est=25755	actual=25755	OK
+7804	a3	The Eye	Two Pair	JH JC 7H 7C	Smiley Face,Odd Todd,Swashbuckler(negative),Jolly Joker,Baron(polychrome),Egg	est=6936	actual=6936	OK
+7807	a3	-	Straight	QC JC TD 9D	Pareidolia,Popcorn,Four Fingers,Sly Joker	est=1104	actual=1104	OK
+7810	a2	-	Two Pair	AS AH TS TD	Even Steven,Scholar	est=1836	actual=1836	OK
+7803	a2	The Fish	Pair	TC TD	Photograph,Clever Joker,Burglar,Mystic Summit	est=510	actual=510	OK
+7801	a4	The Window	High Card	9H	Shoot the Moon,Joker,The Duo,Credit Card(foil),Baseball Card,Odd Todd	est=2945	actual=2945	OK
+7802	a2	The Hook	Pair	8H 8C	Riff-raff,Hallucination(holo),Photograph,Jolly Joker,Blue Joker,The Duo	est=4560	actual=4560	OK
+7801	a4	The Window	Pair	TC TD(DEBUFF)	Shoot the Moon,Joker,The Duo,Credit Card(foil),Baseball Card,Odd Todd	est=4480	actual=4480	OK
+7803	a2	The Fish	High Card	QH	Photograph,Clever Joker,Burglar,Mystic Summit	est=255	actual=570	MISS
+7805	a2	-	Straight	9H 8H 7S 6D 5C	Photograph,Devious Joker	est=1365	actual=1365	OK
+7803	a2	The Fish	High Card	NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown)	Photograph,Clever Joker,Burglar,Mystic Summit	est=80	actual=256	MISS
+7807	a3	-	Straight Flush	AD JS TD 9D 8D	Popcorn,Four Fingers,Sly Joker,Seeing Double	est=2368	actual=2368	OK
+7806	a2	-	Two Pair	KS KH 2S 2D	Blackboard,Smiley Face	est=1584	actual=1584	OK
+7803	a2	The Fish	High Card	NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown)	Photograph,Clever Joker,Burglar,Mystic Summit	est=80	actual=374	MISS
+7804	a4	-	Two Pair	QS QD 9H 9C	Smiley Face,Odd Todd,Swashbuckler(negative),Jolly Joker,Baron(polychrome),Egg,Ice Cream	est=16380	actual=16380	OK
+7803	a2	The Fish	High Card	NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown) NoneN(facedown)	Photograph,Clever Joker,Burglar,Mystic Summit	est=80	actual=476	MISS
+7810	a2	The Goad	Two Pair	KS(DEBUFF) KH JS(DEBUFF) JC	Even Steven,Scholar,Smiley Face,Loyalty Card(polychrome)	est=720	actual=720	OK
+7807	a3	-	Full House	KC KD 2H 2C 2D	Popcorn,Four Fingers,Sly Joker,Seeing Double	est=2784	actual=2784	OK
+7810	a2	The Goad	Flush	QD JD 9D 6D 5D	Even Steven,Scholar,Smiley Face,Loyalty Card(polychrome)	est=2025	actual=2025	OK
+7805	a2	-	Straight	AS KD QC JS TS	Photograph,Devious Joker,Hanging Chad	est=3262	actual=3262	OK
+7809	a6	-	Pair	AH AC	Half Joker(holo),Red Card,Blue Joker,Stuntman,Swashbuckler	est=25450	actual=25450	OK
+7809	a6	-	Pair	2C 2D	Half Joker(holo),Red Card,Blue Joker,Stuntman,Swashbuckler	est=24250	actual=24250	OK
+7806	a2	-	Flush	QS 8S 6S 3S 2S	Blackboard,Smiley Face	est=1728	actual=1728	OK
+7809	a6	-	Pair	TS TC	Half Joker(holo),Red Card,Blue Joker,Stuntman,Swashbuckler	est=24850	actual=24850	OK
+7802	a3	-	Pair	KH KD	Hallucination(holo),Photograph,Jolly Joker,Blue Joker,The Duo,Stuntman	est=16016	actual=16016	OK
+7807	a3	The Fish	Full House	JS JC JD 3H 3D	Four Fingers,Sly Joker,Jolly Joker,Seeing Double	est=3024	actual=3024	OK
+7803	a3	-	High Card	AS	Photograph,Clever Joker,Burglar,Mystic Summit	est=256	actual=256	OK
+7804	a4	The Mark	Pair	AS AD	Smiley Face,Odd Todd,Swashbuckler(negative),Jolly Joker,Zany Joker(negative),Ice Cream,Baron(polychrome),Egg	est=10127	actual=9922	OK
+7803	a3	-	Two Pair	JH JC 2C 2D	Photograph,Clever Joker,Burglar,Mystic Summit	est=3024	actual=3024	OK
+7805	a2	The Goad	High Card	TH	Photograph,Devious Joker,Hanging Chad	est=35	actual=35	OK

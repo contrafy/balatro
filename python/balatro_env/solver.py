@@ -1016,9 +1016,11 @@ class RoundSolver:
         Ranking: options whose p_clear is within TIE_P of the best full-sample option count as tied on p_clear and are
         ordered by secondary value = dollars from unused hands ($1 each) + GROWTH_W per growth-joker trigger
         - PILLAR_W per card played when The Pillar is this ante's boss, then fewer discards used, then exp_score;
-        the rest follow by p_clear."""
+        the rest follow by p_clear. A Mr. Bones save is a spent resource, not a clear: p_model counts only real clears
+        and p_survive (Bones saves included) is the first tie-break."""
         t0 = time.perf_counter()
-        stats = [[0, 0, 0.0, 0.0, 0.0, 0.0, 0.0] for _ in cands]  # n, clears, score, hands left, discards, growth, played
+        # n, clears (no Bones), score, hands left, discards, growth, cards played, survivals (Bones saves included)
+        stats = [[0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0] for _ in cands]
         pw = PILLAR_W if self.pillar_ahead else 0.0
 
         def step(i, upto):
@@ -1027,17 +1029,18 @@ class RoundSolver:
             while st[0] < upto:
                 ok, tot, hl, du, g, npl = self.run(first, st[0])
                 st[0] += 1
-                st[1] += ok
+                st[1] += ok and tot >= self.need0
                 st[2] += tot
                 st[3] += hl
                 st[4] += du
                 st[5] += g
                 st[6] += npl
+                st[7] += ok
 
         def key(i):
             st = stats[i]
             n = max(1, st[0])
-            return (st[1] / n, (st[3] + GROWTH_W * st[5] - pw * st[6]) / n, -st[4] / n, st[2] / n)
+            return (st[1] / n, st[7] / n, (st[3] + GROWTH_W * st[5] - pw * st[6]) / n, -st[4] / n, st[2] / n)
 
         alive = list(range(len(cands)))
         s1 = min(samples, 16)
@@ -1066,11 +1069,11 @@ class RoundSolver:
             step(i, min(MIN_N, samples))
         res = []
         for i, c in enumerate(cands):
-            n, cl, tot, hl, du, g, npl = stats[i]
+            n, cl, tot, hl, du, g, npl, sv = stats[i]
             if not n:
                 continue
             res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]],
-                        "p_clear": calibrate(cl / n, self.jokerless), "p_model": cl / n,
+                        "p_clear": calibrate(cl / n, self.jokerless), "p_model": cl / n, "p_survive": sv / n,
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
                         "discards_used": du / n, "n": n, "low_n": n < min(MIN_N, samples), "note": c["note"],
@@ -1081,7 +1084,8 @@ class RoundSolver:
 
         def rank(r):
             tied = r["p_model"] >= top_p - TIE_P
-            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_model"], r["value"], -r["discards_used"], r["exp_score"])
+            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_model"], r["p_survive"], r["value"],
+                    -r["discards_used"], r["exp_score"])
 
         res.sort(key=rank, reverse=True)
         return res

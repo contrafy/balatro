@@ -999,9 +999,10 @@ def show_hands(d):
         for hi in range(14, L - 1, -1):
             run = [vals.get(v) for v in range(hi, hi - L, -1)]
             if all(run):
+                # every distinct straight is a candidate (est decides): the A-5 wheel can beat a 6-high one with
+                # Fibonacci / Scholar / Even Steven (Main 06:xx)
                 out.append(f"STRAIGHT {hi}-high: idx {idx(run)} | {base('Straight')} + {card_chips(run)} card chips")
                 found = True
-                break
         if found:
             break
     # a 1-card High Card is always a candidate: with Half Joker / Hanging Chad / Photograph it can beat a Pair (7803 at
@@ -1133,7 +1134,9 @@ def advise(d):
         def _sl(r):
             p = r["p_clear"]
             ps = ">=0.99" if p >= 0.995 else f"{p:.2f}"
-            return (f"p {ps} (calibrated, n={r.get('n')}{', low n' if r.get('low_n') else ''})  +${r.get('dollars', 0):.1f}" + (f" growth {r['growth']:.1f}" if r.get("growth") else "")
+            return (f"p {ps} (calibrated, n={r.get('n')}{', low n' if r.get('low_n') else ''})"
+                    + (f"  survive {r['p_survive']:.2f}" if r.get("p_survive") is not None and any(j.get("name") == "Mr. Bones" for j in lst(d.get("jokers"))) else "")
+                    + f"  +${r.get('dollars', 0):.1f}" + (f" growth {r['growth']:.1f}" if r.get("growth") else "")
                     + f"  exp {int(r['exp_score'])}")
         sol = [f"  SOLVER {r['action']} {' '.join(map(str, r['cards']))}  {_sl(r)}  ({r['note']})" for r in plan[:3]]
         if mine:
@@ -1392,6 +1395,8 @@ def _advise_rules(d):
             splash = "Splash" in jnames_all
             if r in used_ranks or (face_jokers and r in FACES and not splash) or SUIT.get(c.get("suit")) in live_suit:
                 continue
+            if hand_name == "High Card" and RANK_VAL.get(r, 0) >= max((RANK_VAL.get(_r(x), 0) for x in _cards_by_idx(d, idxs)), default=0):
+                continue  # the game scores the HIGHEST card: a higher filler steals the High Card (7806: AD over KS, 722 vs 3250)
             if hand_name in ("Pair", "Two Pair", "Three of a Kind", "High Card"):
                 if splash:
                     # every played card scores: pick the fillers that add the most (faces for face jokers, joker-favoured ranks, high chips)
@@ -1469,6 +1474,16 @@ def _advise_rules(d):
         fl = fillers(pick[1], pick[0]) if len(pick[1]) < 5 else []
         print(f"ADVICE: PLAY -> b play {TYPE_WORD.get(pick[0], 'HIGH')} {' '.join(map(str, pick[1] + fl))}   (est {pick[2]} >= need {need}{why}" + (f"; fillers {fl} just draw cards)" if fl else ")"))
         return
+    summit = any(j.get("name") == "Mystic Summit" and not j.get("debuff") for j in lst(d.get("jokers")))
+    if summit and discards > 0 and best[2] < need:
+        est0 = estimate(best[0], _cards_by_idx(d, best[1]), _held(d, best[1]), dict(d, discards_remaining=0), repeat=_repeat_flag(d, best[0]), played_n=len(best[1]))[0]
+        junk = sorted((c for c in hand if c.get("index") not in best[1]), key=lambda c: (_held_value(c, d), CHIP_VAL.get(_r(c), 0) if c.get("rank") else 0))
+        if est0 >= need and junk:
+            # Mystic Summit is +15 only at 0 discards left: burn them on junk, then the made hand clears (Main 06:xx: TT
+            # discarded from a made pair that cleared with Summit on)
+            print(f"ADVICE: DISCARD -> b disc {junk[0].get('index')}   (Mystic Summit: {best[0]} {best[1]} scores {best[2]} now but {est0} at 0 discards left (need {need}); "
+                  f"burn your {discards} discard(s) one junk card at a time, keep {best[1]}, then play it)")
+            return
     acro = next((j for j in lst(d.get("jokers")) if j.get("name") == "Acrobat" and not j.get("debuff")), None)
     if acro and hands_left >= 2 and not psychic and boss_name not in ("The Hook", "The Serpent", "The Eye", "The Mouth"):
         # Acrobat: x3 mult on the final hand of the round. Hold the best hand and burn the other hands with spare cards.
@@ -2175,7 +2190,17 @@ def shop_advise_sim(d, budget_s=3.5):
     adv_cmd = f"buy {m.group(2)}" if m else None
     mine = next((r for r in feas if (r["option"].get("_cmd") == adv_cmd if adv_cmd else not r["option"].get("_cmd") and "baseline" in r["label"])), None)
     top = max(feas, key=key) if feas else None
-    if top and mine and top is not mine and key(top) - key(mine) > 0.05:
+    if mine and adv_cmd and (mine.get("delta") or 0) <= 0 and not all_zero and re.match(r"ADVICE: (BUY|SELL then BUY)", adv) and "growth" not in adv and "COUNTER" not in adv:
+        # the SIM says the advised buy (with its sell) does not raise survival: never advise it (Main 06:xx: "sell Mystic
+        # Summit for Baron" while SIM rated Baron -0.04)
+        sim.append(f"  (rule advice was: {adv[8:]})")
+        better = [r for r in feas if (r.get("delta") or 0) > 0.02 and r["option"].get("_cmd")]
+        if better:
+            b_r = max(better, key=key)
+            adv = f"ADVICE: BUY -> b {b_r['option']['_cmd']}   (SIM veto: the rule pick changes survival by {mine.get('delta') or 0:+.2f}; {b_r['label']} {b_r.get('delta'):+.2f})"
+        else:
+            adv = f"ADVICE: LEAVE -> b endshop   (SIM veto: the rule pick changes survival by {mine.get('delta') or 0:+.2f}, nothing on offer raises it)"
+    elif top and mine and top is not mine and key(top) - key(mine) > 0.05:
         rank = {}
         for ln in lines:
             mm = re.match(r"^\s{1,4}(\d{1,3}) (buy \d+)\s", ln)

@@ -28,16 +28,21 @@ _Interim, 05:30 (updated as the night goes on)._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 05:31:02 by `balatro-data status` (edits inside this block are overwritten). Player runs: 144 (140 finished, 4 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 05:35:48 by `balatro-data status` (edits inside this block are overwritten). Player runs: 149 (140 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (4)
+### Live runs (9)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | UX7FJYS3 | 8 | BLIND_SELECT | 4 | 8 | -4 | Small Blind (9000) | SELECT_BLIND | Small 9000; Investment tag pays after the boss but typical hand < boss/2, take the shop | 20s |
-| 7804 | port-7804 | claude-opus-5-5 | KPAV6GP5 | 8 | SELECTING_HAND | 2 | 4 | 8 | Big Blind 0/1500 | PLAY_HAND {"card_indices":[2,4,5,6,7]} | Club flush Q9876 est 1233 of 1500, 267 left over 2 hands | 11s |
-| 7807 | port-7807 | claude-opus-5-5 | Z66KG7K4 | 8 | SELECTING_HAND | 1 | 3 | 1 | The Hook 360/600 | PLAY_HAND {"card_indices":[1,3,5,6,7]} | club flush TC 9C 7C 5C 3C est (35+34)x4=276 >= 240 needed | 19s |
-| 7809 | port-7809 | claude-opus-5-5 | H8E931PC | 8 | PACK_OPENING | 4 | 9 | 6 | Big Blind (13500) | SELECT_PACK_CARD {"index":4} | Temperance = total joker sell value ~1 now ( -> ~7), money for a Psychic counter/xMult; other tarot… | 35s |
+| 7801 | port-7801 | claude-fable-5-1 | UX7FJYS3 | 8 | SHOP | 4 | 10 | -14 | Big Blind (13500) | SHOP_END | Leave at -4; second Mega Arcana unaffordable within the -0 limit | 0s |
+| 7802 | port-7802 | claude-opus-5-5 | X5MG1LC2 | 8 | BLIND_SELECT | 2 | 3 | 7 | Small Blind (1000) | SELECT_BLIND | Small 1000; Riff-raff makes 2 commons into the 2 free slots | 9s |
+| 7803 | port-7803 | claude-opus-5-5 | 2J1M1T5I | 8 | BLIND_SELECT | 2 | 3 | 3 | Small Blind (1000) | SELECT_BLIND | Small 1000; Economy tag only + at , need shop visit | 14s |
+| 7804 | port-7804 | claude-opus-5-5 | KPAV6GP5 | 8 | BLIND_SELECT | 3 | 6 | 8 | Big Blind (4800) | SELECT_BLIND | Big 4800 | 9s |
+| 7805 | port-7805 | claude-opus-5-5 | CJ4YES92 | 8 | SHOP | 1 | 2 | 7 | Big Blind (450) | SHOP_BUY {"slot":1} | Devious ( left): only scorer on offer, SIM p_next 0.08->0.47 vs Head 600; perishable bridge, straig… | 5s |
+| 7806 | port-7806 | claude-opus-5-5 | 48WZHEWG | 8 | ROUND_EVAL | 1 | 2 | 2 | Big Blind (450) | CASH_OUT | cash out big blind | 7s |
+| 7807 | port-7807 | claude-opus-5-5 | Z66KG7K4 | 8 | ROUND_EVAL | 3 | 5 | 1 | The Manacle (6400) | CASH_OUT | Manacle cleared 2540/2000 | 20s |
+| 7809 | port-7809 | claude-opus-5-5 | H8E931PC | 8 | SELECTING_HAND | 5 | 11 | 2 | Big Blind 17080/37500 | PLAY_HAND {"card_indices":[2,8,7]} | Pair 33 L10 est 16184 of 20420, leaves 4236 which AH high card (6251) alone covers; 6D filler | 3s |
+| 7810 | port-7810 | claude-sonnet-5-5 | 7TA9AD6H | 8 | ROUND_EVAL | 2 | 3 | 7 | The Hook (2000) | CASH_OUT | cash out Hook | 5s |
 
 ### Results by model x stake x deck
 
@@ -66,9 +71,9 @@ _Generated 2026-10-14 05:31:02 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 144 files in manifest; schema_ok 144, schema invalid 0; replay_ok 135, replay failed 0, awaiting replay 3, open/unended 6; quarantined 0; not yet in manifest 0.
+- Player runs: 149 files in manifest; schema_ok 149, schema invalid 0; replay_ok 135, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
 - Player-run replay verdicts by host: headless ok 41 / failed 0; gui (live) ok 100 / failed 0; cross-checked by both 6, disagreeing 0.
-- All files (incl. fuzz + replays): 318; schema_ok 316; replay_ok 141 (headless 41, gui 106); replay failed 0; awaiting replay 168; quarantined 2.
+- All files (incl. fuzz + replays): 323; schema_ok 321; replay_ok 141 (headless 41, gui 106); replay failed 0; awaiting replay 168; quarantined 2.
 
 ### Rejects per agent
 
@@ -76,18 +81,18 @@ _Generated 2026-10-14 05:31:02 by `balatro-data status` (edits inside this block
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
 | port-7778 | 1 | 1 | 0 |
-| port-7805 | 1 | 1 | 1104 |
-| port-7807 | 1 | 1 | 1283 |
+| port-7805 | 1 | 1 | 1118 |
+| port-7807 | 1 | 1 | 1301 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 635 |
-| port-7802 | 0 | 0 | 727 |
-| port-7803 | 0 | 0 | 1177 |
-| port-7804 | 0 | 0 | 837 |
-| port-7806 | 0 | 0 | 1253 |
+| port-7801 | 0 | 0 | 649 |
+| port-7802 | 0 | 0 | 744 |
+| port-7803 | 0 | 0 | 1199 |
+| port-7804 | 0 | 0 | 860 |
+| port-7806 | 0 | 0 | 1264 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 1088 |
-| port-7810 | 0 | 0 | 1353 |
+| port-7809 | 0 | 0 | 1107 |
+| port-7810 | 0 | 0 | 1369 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
