@@ -1,6 +1,7 @@
 """Round solver (balatro_env/solver.py) on hand-built SELECTING_HAND observations, scored with cli.py's estimate."""
 
 import itertools
+import math
 import time
 
 import pytest
@@ -146,6 +147,20 @@ def test_misprint_is_sampled_per_hand():
     st["jokers"][0]["ability"] = {"extra": {"min": 0, "max": 23}}
     top = plan(st)[0]
     assert 0.55 < top["p_model"] < 0.8
+
+
+def test_acrobat_x3_only_on_final_hand_and_forced_dig_is_reported_raw():
+    # 7804 I9HDGAQA: 2 hands, 0 discards, 4 clubs kept by a dig; the 5th club is a plain hypergeometric draw
+    st = state(["AC", "7C", "6C", "2C", "TS", "8D", "6H", "5H"], need=2000, hands=2, discards=0,
+               jokers=["Gluttonous Joker", "Acrobat"])
+    rs = solver.RoundSolver(st, estimate)
+    clubs = rs.slots[:4] + [next(c for c in rs.pool if c.suit == "C")]
+    s_final, t = rs.score(clubs, [], 1, 0, rs.ctx0)
+    s_now, _t = rs.score(clubs, [], 2, 0, rs.ctx0)
+    assert t == "Flush" and s_final == pytest.approx(3 * s_now, rel=0.01) and s_final > 2000 > s_now
+    r = solver.evaluate_action(st, "PLAY", idx(st, "TS", "8D", "6H", "5H"), estimate, samples=400)
+    exact = 1 - math.comb(44 - 9, 4) / math.comb(44, 4)  # 9 clubs left in 44 cards, 4 drawn
+    assert abs(r["p_model"] - exact) < 0.06 and r["p_clear"] == r["p_model"]
 
 
 def _small_deck(st, keep_ids):

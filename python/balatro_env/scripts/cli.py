@@ -284,6 +284,10 @@ def show(d):
         orb = small.get("orbital_hand")
         if tk == "tag_orbital" and orb in (main_hand(d), "Pair", "Two Pair", "Three of a Kind", "Full House"):
             NOW_TAGS[tk] = f"+3 levels to {orb} right now"
+        boss_n = (ch.get("Boss") or {}).get("name")
+        if tk == "tag_boss" and boss_n in ("The Wall", "Violet Vessel", "The Needle", "The Flint", "The Arm", "The Eye", "The Mouth", "The Psychic",
+                                            "The Plant", "Crimson Heart", "Cerulean Bell", "Amber Acorn", "Verdant Leaf", "The Water", "The Manacle"):
+            NOW_TAGS[tk] = f"rerolls {boss_n} right now (7807's win used a Boss Tag on The Wall)"
         # The Big Blind comes BEFORE any shop, so it must be beaten with what you own plus what the tag pays right now.
         # Stake 2-3 data (2026-08-30) and Gold data (2026-10-13: 328/450 and 448/450 with zero jokers after skipping for a
         # Rare/Polychrome tag) show a jokerless deck loses the ante-1 Big Blind; a shop-time tag cannot help it.
@@ -618,7 +622,7 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         if "Seltzer" in jnames:
             times += 1
         if "Hanging Chad" in jnames and pos == 0:
-            times += 2
+            times += 2 * jnames.count("Hanging Chad")  # Blueprint/Brainstorm copies of Chad retrigger again
         if str(c.get("seal") or "") == "Red":
             times += 1
         expanded.extend([c] * times)
@@ -1115,7 +1119,9 @@ def _order_gain(d, hand_name, idxs):
     cur = estimate(hand_name, cards, held, d, played_n=len(idxs))[0]
     best = (cur, None)
     for k, c in enumerate(cards[1:], 1):
-        e = estimate(hand_name, [c] + cards[:k] + cards[k + 1:], held, d, played_n=len(idxs))[0]
+        # estimate scores cards in hand (index) order: give the moved card an index just left of the play
+        lead_i = min(x.get("index") or 0 for x in cards) - 0.5
+        e = estimate(hand_name, [dict(c, index=lead_i)] + cards[:k] + cards[k + 1:], held, d, played_n=len(idxs))[0]
         if e > best[0]:
             best = (e, c.get("index"))
     return best
@@ -1178,6 +1184,13 @@ def advise(d):
                     + f"  +${r.get('dollars', 0):.1f}" + (f" growth {r['growth']:.1f}" if r.get("growth") else "")
                     + f"  exp {int(r['exp_score'])}")
         sol = [f"  SOLVER {r['action']} {' '.join(map(str, r['cards']))}  {_sl(r)}  ({r['note']})" for r in plan[:3]]
+        if all(r["p_clear"] < 0.01 for r in plan):
+            bx = max(plan, key=lambda r: r["exp_score"])
+            has_bones = any(j.get("name") == "Mr. Bones" for j in lst(d.get("jokers")))
+            cons_n = [c.get("name") for c in lst(d.get("consumables"))]
+            sol.append(f"  UNWINNABLE this round on the simulation: no line clears. Best expected score: {bx['action']} {' '.join(map(str, bx['cards']))} (exp {int(bx['exp_score'])})"
+                       + ("; Mr. Bones saves the run at 25% of the blind" if has_bones else "")
+                       + (f"; check consumables {cons_n} (Strength/Death/Justice/planets) before playing" if cons_n else ""))
         if mine:
             sol.append(f"  SOLVER on the rule pick ({m.group(2)}{m.group(4)}): {_sl(mine)}")
         top = plan[0]
@@ -1768,9 +1781,15 @@ def main_hand(d):
     after it was >= 20% better per hand in 2 consecutive shops."""
     raw = _main_hand_raw(d)
     h = d.get("_mh_hyst") or {}
+    if h.get("run") != d.get("trajectory"):
+        h = {}  # memory from another run on this port (7802 JB7Q6L46 inherited a stale Flush)
     prev = h.get("mh")
     if not prev or raw == prev or raw == "undecided" or d.get("_mh_forced") or prev not in SYN_HANDS:
         return raw
+    hl = d.get("hand_levels") or {}
+    pv, rv = hl.get(prev) or {}, hl.get(raw) or {}
+    if int(pv.get("played") or 0) < int(rv.get("played") or 0) and int(pv.get("level") or 1) <= int(rv.get("level") or 1):
+        return raw  # the remembered hand is now both less played and not higher level: nothing to stick to
     if h.get("pend") == raw and int(h.get("n") or 0) >= 2:
         return raw
     return prev
@@ -1780,6 +1799,8 @@ def _mh_hyst_update(d):
     """`b shopadvise`: advance the main-hand hysteresis state once per shop."""
     path = os.path.join(CACHE_DIR, f"{PORT}_mainhand.json")
     h = dict(d.get("_mh_hyst") or {})
+    if h.get("run") != d.get("trajectory"):
+        h = {}
     raw = _main_hand_raw(d)
     sig = json.dumps([d.get("ante"), d.get("round"), [x.get("id") for x in lst((d.get("shop") or {}).get("jokers"))]])
     prev = h.get("mh")
@@ -1797,6 +1818,7 @@ def _mh_hyst_update(d):
     else:
         h = {"mh": prev}
     h["sig"] = sig
+    h["run"] = d.get("trajectory")
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
@@ -2289,7 +2311,7 @@ def _shop_sim():
     return _SHOP_SIM
 
 
-def shop_advise_sim(d, budget_s=3.5):
+def shop_advise_sim(d, budget_s=6.0):
     """`b shopadvise`: the rule advice plus a SIM section (shop_sim.value_options: each affordable buy played through the
     next 3 blinds). The SIM ranks by delta vs buying nothing (its absolute p is pessimistic: AUC 0.86 for ranking only);
     it breaks ties between buys the rules scored within 5 points and flags a disagreement > 0.05."""
@@ -2304,15 +2326,18 @@ def shop_advise_sim(d, budget_s=3.5):
         print("\n".join(lines)); return
     try:
         ss = _shop_sim()
-        opts = ss.options_from_state(d)
+        opts = ss.options_from_state(d, packs=True)  # Buffoon/Celestial packs valued as their expected best pick
         sh_items = lst((d.get("shop") or {}).get("jokers"))
         for o in opts:
             item = o.get("add_joker") or (o.get("add_cards") or [None])[0]
             if item is None and o.get("levels"):
                 nm = o.get("label", "").split(" $")[0].replace("buy ", "", 1)
                 item = next((c for c in sh_items if c.get("name") == nm), None)
+            if o.get("booster_index") is not None:
+                o["_cmd"] = f"pack {o.get('booster_index')}"
+                continue
             o["_cmd"] = f"buy {item.get('index')}" if item is not None and item.get("index") is not None else None
-        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate, seed=0, min_samples=48)  # fixed seed, more samples: stable baseline
+        res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate, seed=0, min_samples=24)  # fixed seed; packs need the larger budget
     except Exception as e:
         lines.insert(adv_i, f"  (SIM unavailable: {type(e).__name__}: {e})")
         print("\n".join(lines)); return
@@ -2336,7 +2361,7 @@ def shop_advise_sim(d, budget_s=3.5):
     # TIGHT/EMERGENCY.
     rank = {}
     for ln in lines:
-        mm = re.match(r"^\s{1,4}(-?\d{1,3}) (buy \d+)\s", ln)
+        mm = re.match(r"^\s{1,4}(-?\d{1,3}) ((?:buy|pack) \d+)\s", ln)
         if mm:
             rank[mm.group(2)] = int(mm.group(1))
     mf = re.search(r"money floor \$(\d+)", out_all)
@@ -2344,8 +2369,8 @@ def shop_advise_sim(d, budget_s=3.5):
     floor_off = "TIGHT:" in out_all or "EMERGENCY" in out_all
     ante_s = int(d.get("ante") or 1)
     own_rent = any(_stk(j)["rental"] for j in lst(d.get("jokers")))
-    m0 = re.search(r"b (buy|buyuse) (\d+)", adv)
-    adv_cmd0 = f"buy {m0.group(2)}" if m0 else None
+    m0 = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
+    adv_cmd0 = f"{'pack' if m0.group(1) == 'pack' else 'buy'} {m0.group(2)}" if m0 else None
     base0 = next((r for r in feas if not r["option"].get("_cmd")), None)
     key0 = key(base0) if base0 else 0
 
@@ -2369,8 +2394,8 @@ def shop_advise_sim(d, budget_s=3.5):
         tied = [r for r in cands_s if key(r) >= top_k - 0.03]
         best = max(tied, key=lambda r: (rank.get(r["option"]["_cmd"], -999), key(r)))
     gain = (key(best) - key(base)) if best and base else 0.0
-    m = re.search(r"b (buy|buyuse) (\d+)", adv)
-    adv_cmd = f"buy {m.group(2)}" if m else None
+    m = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
+    adv_cmd = f"{'pack' if m.group(1) == 'pack' else 'buy'} {m.group(2)}" if m else None
     sim_cmds = {r["option"].get("_cmd") for r in feas if r["option"].get("_cmd")}
     keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING")) or \
         (adv_cmd not in sim_cmds and adv.split("(")[0].strip() not in ("ADVICE: LEAVE -> b endshop", "ADVICE: REROLL -> b reroll") and gain < 0.05)
@@ -2387,7 +2412,8 @@ def shop_advise_sim(d, budget_s=3.5):
             if new.split("   ")[0] != adv.split("   ")[0]:
                 sim.append(f"  (rule advice was: {adv[8:]})")
                 adv = new
-        elif adv_cmd in sim_cmds:
+        elif adv_cmd in sim_cmds and int(next((r["option"].get("cost") or 0 for r in feas if r["option"].get("_cmd") == adv_cmd), 1)) > 0:
+            # (a $0 item is never vetoed: it costs nothing)
             sim.append(f"  (rule advice was: {adv[8:]})")
             mine = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
             adv = f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes survival by {(key(mine) - key(base)) if mine and base else 0:+.2f}; nothing on offer raises it by more than 0.02)"
@@ -2474,7 +2500,9 @@ def _shop_rules(d):
     ch_now = (d.get("blind_select") or {}).get("choices") or {}
     bl_left = sum(1 for k in ("Small", "Big", "Boss") if ((ch_now.get(k) or {}).get("state") or "Upcoming") not in ("Defeated", "Skipped"))
     rounds_left = _rounds_left(d)
-    dead = [j for j in jokers if _dead_perishable(j)]
+    # a perished joker still counts for Abstract Joker (+3 mult) and Swashbuckler: keep it while a slot is free (Main 07:xx)
+    dead = [j for j in jokers if _dead_perishable(j)
+            and not (free > 0 and any(x.get("name") in ("Abstract Joker", "Swashbuckler") and not x.get("debuff") for x in jokers))]
     if dead:
         j = dead[0]
         print(f"  SELL FIRST: b sell {j.get('index')}   ({j.get('name')} has perished: debuffed for the rest of the run, it scores nothing; selling returns ${j.get('sell_cost')} and frees the slot)")
@@ -2486,7 +2514,9 @@ def _shop_rules(d):
     rent_due = 3 * len(rentals)  # charged at the next round end: a reroll never spends it (7809: $8 -> $3 with two rentals)
     if rentals:
         print(f"  Rentals owned: {', '.join(str(j.get('name')) for j in rentals)} = -${3 * len(rentals)} every round (~${9 * len(rentals)}/ante + lost interest) until sold; selling one returns $1 and stops its charge")
-    sellable_j = [j for j in jokers if not _stk(j)["eternal"]]  # the game never lets you sell an Eternal joker
+    # the game never lets you sell an Eternal joker; selling Credit Card in debt resets the debt limit, so the buy it funds
+    # becomes impossible (Main 07:xx)
+    sellable_j = [j for j in jokers if not _stk(j)["eternal"] and not (j.get("name") == "Credit Card" and money < 0)]
 
     def alive_next(j):
         """still scoring after the blinds left in this ante: perishables count only if their tally outlasts them"""
@@ -2536,7 +2566,9 @@ def _shop_rules(d):
         print(f"  TIGHT: next blind ({(ch_now.get(nk) or {}).get('name') or nk}) needs {need_next}; projected round ~{proj} ({proj / need_next:.2f}x < 1.2x): "
               f"recorded Gold shops at this ratio lost the next blind {'40' if proj < 0.5 * need_next else '32' if proj < 0.8 * need_next else '13'}% (>= 1.2x: 6% or less). "
               "Money floor OFF - spend on whatever adds main-hand score now (main-hand planet, Celestial/Arcana pack, scorer)")
-    print(f"Shop advisor: ante {ante}, ${money}, jokers {len(jokers)}/{slots}, main hand {mh}, money floor ${floor} (spend below it only for an xMult, your main-hand planet or a Buffoon pack)"
+    mh_lv = (d.get("hand_levels") or {}).get(mh) or {}
+    mh_why = f" (L{mh_lv.get('level') or 1}, {mh_lv.get('played') or 0} plays" + ("; forced: 2x the plays or +3 levels" if d.get("_mh_forced") else "") + ")" if mh != "undecided" else ""
+    print(f"Shop advisor: ante {ante}, ${money}, jokers {len(jokers)}/{slots}, main hand {mh}{mh_why}, money floor ${floor} (spend below it only for an xMult, your main-hand planet or a Buffoon pack)"
           + (f", {rounds_left} round-ends left (rent/perish ticks)" if stake >= 7 else ""))
     splash_owned = any(j.get("name") == "Splash" for j in jokers)
     if bl_left == 3 and all((ch_now.get(k) or {}).get("chips") for k in ("Small", "Big", "Boss")):

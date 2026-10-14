@@ -34,13 +34,14 @@ GROWTH_JOKERS = {"Square Joker", "Runner", "Spare Trousers", "Ride the Bus", "Gr
 TIE_P = 0.015  # p_clear differences below this are Monte-Carlo noise: rank those options by secondary value
 GROWTH_W = 0.5  # secondary value of one growth-joker trigger, in $ (an unused hand pays $1)
 MIN_N = 64  # options within 0.3 of the best p get at least this many samples; fewer are flagged low_n
-# Isotonic map of the model p to the realized clear rate of recorded Gold decisions WITH an active joker and 2+ hands
-# left (solver_calib: 3337 decisions, 2026-10-14): (model p, realized) knots, linear in between. Players beat the
-# greedy later-hand policy there. Jokerless rounds and final-hand decisions (the rest of the round is forced: the
-# best play after the draw) are calibrated as raw (final hand: Brier 0.023 raw vs 0.025 mapped), so they stay raw.
-CALIBRATION = ((0.0, 0.0), (0.0256, 0.1884), (0.1371, 0.3109), (0.2845, 0.4479), (0.4229, 0.549), (0.5345, 0.6912),
-               (0.6094, 0.716), (0.6729, 0.7619), (0.7788, 0.8606), (0.8563, 0.8974), (0.8883, 0.9625),
-               (0.9201, 0.9836), (0.9945, 1.0), (1.0, 1.0))
+# Isotonic map of the model p to the realized clear rate of recorded Gold decisions WITH an active joker whose rest of
+# the round still holds real decisions (solver_calib: 3452 decisions, 2026-10-14): (model p, realized) knots, linear in
+# between. Players beat the greedy later-hand policy there. Jokerless rounds and actions after which the round is
+# forced (final hand; a play at 2 hands with 0 discards: only the best final play remains) are calibrated as raw
+# (h2/d0 plays: raw mid bins within 0.05, mapped 0.05-0.12 overconfident), so they stay raw.
+CALIBRATION = ((0.0, 0.0), (0.0263, 0.1905), (0.1368, 0.3269), (0.2822, 0.4778), (0.4233, 0.5513), (0.5303, 0.6833),
+               (0.5948, 0.7167), (0.6623, 0.7391), (0.7796, 0.8756), (0.8544, 0.9079), (0.884, 0.961),
+               (0.9206, 0.973), (0.9947, 1.0), (1.0, 1.0))
 PILLAR_W = 0.25  # $-equivalent cost per card played when The Pillar is this ante's boss (played cards get debuffed)
 LEVEL_UP = {"High Card": (10, 1), "Pair": (15, 1), "Two Pair": (20, 1), "Three of a Kind": (20, 2),
             "Straight": (30, 3), "Flush": (15, 2), "Full House": (25, 2), "Four of a Kind": (30, 3),
@@ -1018,6 +1019,12 @@ class RoundSolver:
                 add(PLAY, throw, f"dig: play {' '.join(known[i].label() for i in throw)}, keep {kept or 'nothing'} ({self.label(label)})")
         return out
 
+    def forced_after(self, kind):
+        """True when, after this first action, the rest of the round is forced (only the best final play is left):
+        the final hand itself, or a play with 2 hands and 0 discards. Its p is exact under the model, so it is
+        reported raw instead of through the calibration map."""
+        return self.h0 <= 1 or (self.h0 == 2 and self.d0 == 0 and kind == PLAY)
+
     def evaluate(self, cands, samples=400, time_budget_s=2.0):
         """Successive halving on common sampled draw orders; returns ranked option dicts.
         Ranking: options whose p_clear is within TIE_P of the best full-sample option count as tied on p_clear and are
@@ -1080,7 +1087,7 @@ class RoundSolver:
             if not n:
                 continue
             res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]],
-                        "p_clear": cl / n if self.h0 <= 1 else calibrate(cl / n, self.jokerless),
+                        "p_clear": cl / n if self.forced_after(c["kind"]) else calibrate(cl / n, self.jokerless),
                         "p_model": cl / n, "p_survive": sv / n,
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,

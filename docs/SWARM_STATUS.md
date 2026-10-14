@@ -2,46 +2,65 @@
 
 ## Morning summary
 
-_Interim, 05:30 (updated as the night goes on)._
+_Updated 07:50._
 
-- **FIRST BLACK DECK GOLD STAKE WIN: Opus, seed `9IIGB2FF` (port 7807), beat the ante-8 boss Crimson Heart
-  402199/400000.** Trajectory `data/trajectories/2026-10-14/9IIGB2FF_7807_1791965962567.jsonl.gz`: 121 steps, 0 rejects,
-  validated, and replay-verified on both the headless engine and a live GUI instance (121/121 steps plus the final
-  state).
+**Headline: 191 Gold Stake runs on Black Deck, 1 win.**
+
+- **The win:** Opus, seed `9IIGB2FF` (port 7807), beat the ante-8 boss Crimson Heart 402199/400000.
+  - Trajectory `data/trajectories/2026-10-14/9IIGB2FF_7807_1791965962567.jsonl.gz`: 121 steps, 0 rejects, validated.
+  - Replay-verified on both the headless engine and a live GUI instance: 121/121 steps plus the final state.
   - Build: flat chips/mult (Clever, Stuntman, Abstract, Even Steven) plus foil Obelisk (x3.6) and Throwback (x3.75).
   - Line: from ante 5 it skipped every Small and Big blind (9 skips) and fought only bosses.
-  - Post-mortem: `docs/runs/7807_9IIGB2FF.md`.
-- 103 Gold Stake runs finished on Black Deck by 02:45, 0 wins until 05:15.
-- Antes reached: 1: 15, 2: 15, 3: 26, 4: 19, 5: 21, 6: 4, 7: 2, 8: 1.
-- Deepest run: Sonnet `ZY6GJXIG` lost the ante-8 boss Crimson Heart with a face-Pair engine. Next were Fable
-  `MKHAVQ6W` (ante 7, The Eye) and Opus `YJGGELMB` (ante 7, The Manacle).
-- Mean ante: Opus 3.5 (60 runs), Fable 3.6 (12), Sonnet 3.1 (31). The tiers are close; Fable is ~3x slower per run.
-- Data: 270 trajectories recorded, 87 replay-verified so far; the backlog is being moved to headless replay.
-- Why runs die: under-scaled by ante 3-5, broke from Gold rent and $0 Small Blinds, and reliable xMults are rare.
-  See `docs/GOLD_ANALYSIS.md`.
-- ~03:30: a second account-wide 429 rate limit (retry-after ~90 min) hit. With `retry.waitForUsageReset` on, agents
-  paused and resumed instead of dying, so some runs show 1.5-2.5 h durations. The account rate limit, not this
-  machine, now bounds throughput.
-- 03:00-05:10: three Opus runs lost at the ante-8 boss: Amber Acorn x2 and Crimson Heart x1. They came after the
-  solver, shop-sim and advisor upgrades. A Sonnet run had lost to Crimson Heart earlier in the night.
+  - Post-mortem: `docs/runs/7807_9IIGB2FF.md`. Its rules now open PLAYBOOK section 2a.
+- **Antes reached:** 1: 24, 2: 27, 3: 35, 4: 37, 5: 41, 6: 15, 7: 7, 8: 5. Of the five ante-8 runs, one won; the
+  losses were Crimson Heart x2 and Amber Acorn x2.
+- **By model:**
+
+  | model | runs | mean ante | reached ante 6+ | reached ante 8 | wins |
+  |---|---|---|---|---|---|
+  | Opus 5.5 | 127 | 3.87 | 21 | 4 | 1 |
+  | Fable 5.1 | 22 | 3.86 | 3 | 0 | 0 |
+  | Sonnet 5.5 | 42 | 3.31 | 3 | 1 | 0 |
+
+  Fable was no better than Opus and took about 3x longer per run, so it went from 2 ports to 1 at 05:30. Sonnet
+  improved as the advisor improved: its first 10 runs averaged ante 2.2, its last 10 averaged 3.9.
+- **Data:** 204 player trajectories, all schema-valid. 193 are replay-verified (headless and/or GUI), 0 replays
+  failed, 0 quarantined, and the rest are live or awaiting replay. `dataops` now verifies headlessly with a live
+  spot-check on about 1 run in 10.
+- **Tooling built overnight (all live in `cli.py`):**
+  - Sticker-aware Gold advisor.
+  - Monte Carlo play/discard solver with calibrated p_clear (`solver.py`).
+  - Shop simulator that ranks shop options by the chance of clearing the next 3 blinds (`shop_sim.py`, now the primary
+    shop ranking).
+  - Data analysis in `docs/GOLD_ANALYSIS.md`.
+- **Why runs die:** under-scaled at antes 3-5 (no lasting xMult), broke from Gold rent plus the $0 Small Blind, and
+  boss counters at ante 7-8 (The Eye, Crimson Heart, Amber Acorn).
+- **Incidents:**
+  - Two account-wide 429 rate limits (about 23:05 and 03:30). The first killed every agent; I revived the
+    interrupted runs mid-game. The second was absorbed by `retry.waitForUsageReset`.
+  - One recorded junk action: run `XRWKX6AS`, step 117 (a stray sell), noted in `data/swarm_results.jsonl`
+    under `junk_steps`.
+- **Decisions for you** (see the chat report):
+  - Bridge v2.0.1: a post-action settle guard (players sometimes saw the pre-action state) and the To Do List check.
+    This changes `bridge_hash`.
+  - Whether to keep Sonnet on Gold or move it down a stake.
+  - Whether to persist the session settings changed overnight.
 
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 07:20:41 by `balatro-data status` (edits inside this block are overwritten). Player runs: 197 (189 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 07:45:45 by `balatro-data status` (edits inside this block are overwritten). Player runs: 204 (198 finished, 6 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (8)
+### Live runs (6)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7802 | port-7802 | claude-opus-5-5 | YZMAQVI2 | 8 | PACK_OPENING | 4 | 7 | 7 | The Plant (18000) | SKIP_PACK | slots full; Bull rental / Walkie / Idol{E} not worth selling Mystic (Plant) or Devious (+100 straig… | 6s |
-| 7803 | port-7803 | claude-opus-5-5 | PAPB41GW | 8 | SELECTING_HAND | 3 | 8 | 0 | Big Blind 0/4800 | DISCARD {"card_indices":[3,5,8]} | solver: keep AA + 4 hearts (flush ~3000 w/ Droll/Scholar), p 0.99 vs 0.94 playing 2P 2354 now | 6s |
-| 7804 | port-7804 | claude-opus-5-5 | I9HDGAQA | 8 | BLIND_SELECT | 2 | 4 | 1 | Big Blind (1500) | SELECT_BLIND | Big 1500, never skipped | 13s |
-| 7805 | port-7805 | claude-opus-5-5 | 17B87T9F | 8 | SELECTING_HAND | 5 | 13 | 2 | The Wall 0/100000 | PLAY_HAND {"card_indices":[7,8,9]} | Trips 444 est 16324 (Walkie x3, Zany, Half); solver exp 39k either way, Wall 100k out of reach | 12s |
-| 7806 | port-7806 | claude-opus-5-5 | FFN7JZWK | 8 | SHOP | 2 | 4 | 7 | Big Blind (1500) | SHOP_BUY_AND_USE {"slot":1} | Uranus : Two Pair L2 (pair-family main, Head debuffs hearts so flushes weaker); SIM p_next 0.74 vs … | 1s |
-| 7807 | port-7807 | claude-opus-5-5 | BCWCHGTG | 8 | ROUND_EVAL | 1 | 2 | -1 | Big Blind (450) | CASH_OUT | cash out big blind | 6s |
-| 7809 | port-7809 | claude-opus-5-5 | 1S259TVC | 8 | ROUND_EVAL | 3 | 5 | 10 | The Goad (6400) | CASH_OUT | cash out Goad | 1s |
-| 7810 | port-7810 | claude-sonnet-5-5 | PPK31EVC | 8 | PACK_OPENING | 6 | 14 | 10 | Small Blind (60000) | SELECT_PACK_CARD {"index":3} | Earth: Full House L3 (+2 mult, FH also fires Mad); no Uranus offered | 3s |
+| 7801 | port-7801 | claude-fable-5-1 | QS3DEH89 | 8 | PACK_OPENING | 4 | 7 | 3 | Big Blind (13500) | SELECT_PACK_CARD {"index":1} | Mercury: Pair L2, the repeatable type I lock/bank with (SIM +0.03, best remaining); indices re-read… | 26s |
+| 7803 | port-7803 | claude-opus-5-5 | XDYYYR1Y | 8 | BLIND_SELECT | 4 | 9 | 3 | Small Blind (9000) | SELECT_BLIND | typical hand < boss/2, take Small 9000 and the shop | 2s |
+| 7804 | port-7804 | claude-opus-5-5 | U6G7N65N | 8 | SHOP | 4 | 9 | 15 | Small Blind (9000) | SHOP_REROLL | EMERGENCY 0.27, 0 xMult, 2 free slots; shop has no scorer (Strength/Cloud9 do not add score): one r… | 18s |
+| 7805 | port-7805 | claude-opus-5-5 | RNVA7G3B | 8 | SHOP | 4 | 9 | 1 | Small Blind (9000) | SHOP_END | left | 17s |
+| 7809 | port-7809 | claude-opus-5-5 | BKRXB8HX | 8 | SHOP | 1 | 1 | 6 | Small Blind (300) | SHOP_BUY {"slot":1} | foil Blue Joker = +154 chips on any hand; SIM p_next 1.00 vs 0.01; rental bridge, sell once 2 score… | 14s |
+| 7810 | port-7810 | claude-sonnet-5-5 | 6XN584I7 | 8 | SELECTING_HAND | 4 | 10 | 4 | The Psychic 8874/18000 | PLAY_HAND {"card_indices":[1,2,4,5,8]} | Two Pair AATT + 2S filler est 9349 >= 9126 needed (previous est 8568 came in at 8874); 1 more hand … | 11s |
 
 ### Results by model x stake x deck
 
@@ -50,8 +69,8 @@ _Generated 2026-10-14 07:20:41 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 22 | 0 | 22 | 0 | 0 | 3.86 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 119 | 1 | 118 | 0 | 0 | 3.84 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 42 | 0 | 41 | 0 | 1 | 3.19 | 8 |
+| claude-opus-5-5 | 8 | Black | 127 | 1 | 126 | 0 | 0 | 3.87 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 43 | 0 | 42 | 0 | 1 | 3.26 | 8 |
 
 ### Deepest runs
 
@@ -70,28 +89,28 @@ _Generated 2026-10-14 07:20:41 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 197 files in manifest; schema_ok 197, schema invalid 0; replay_ok 183, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 89 / failed 0; gui (live) ok 106 / failed 0; cross-checked by both 12, disagreeing 0.
-- All files (incl. fuzz + replays): 377; schema_ok 375; replay_ok 189 (headless 89, gui 112); replay failed 0; awaiting replay 174; quarantined 2.
+- Player runs: 204 files in manifest; schema_ok 204, schema invalid 0; replay_ok 193, replay failed 0, awaiting replay 3, open/unended 8; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 99 / failed 0; gui (live) ok 107 / failed 0; cross-checked by both 13, disagreeing 0.
+- All files (incl. fuzz + replays): 385; schema_ok 383; replay_ok 199 (headless 99, gui 113); replay failed 0; awaiting replay 175; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 1576 |
+| port-7805 | 2 | 2 | 1659 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1236 |
-| port-7803 | 1 | 1 | 1653 |
-| port-7804 | 1 | 1 | 1284 |
-| port-7807 | 1 | 1 | 1734 |
+| port-7802 | 1 | 1 | 1303 |
+| port-7803 | 1 | 1 | 1740 |
+| port-7804 | 1 | 1 | 1372 |
+| port-7807 | 1 | 1 | 1808 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 931 |
-| port-7806 | 0 | 0 | 1690 |
+| port-7801 | 0 | 0 | 989 |
+| port-7806 | 0 | 0 | 1760 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 1529 |
-| port-7810 | 0 | 0 | 1847 |
+| port-7809 | 0 | 0 | 1599 |
+| port-7810 | 0 | 0 | 1941 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

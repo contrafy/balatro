@@ -131,3 +131,21 @@ def test_pack_options_and_full_slots_sell_weakest():
     res = by_label(run(st, budget_s=30))
     take = next(r for r in res.values() if r["label"].startswith("take Jolly"))
     assert "(sell Egg)" in take["label"] and take["delta"] > 0
+
+
+def test_dagger_and_madness_destroy_jokers_and_baseline_has_fixed_samples():
+    scorer = joker("Joker", ability={"mult": 4})
+    st = shop_state(jokers=[joker("Ceremonial Dagger", ability={"mult": 0}), scorer], ante=1, small="Defeated")
+    res = by_label(run(st, [{"label": "base"}, {"label": "sell Dagger", "sell": [1]}], blinds=2, budget_s=0.01,
+                       min_samples=4))
+    assert res["base"]["n"] >= shop_sim.BASE_N  # guaranteed whatever the budget
+    assert any("destroy" in n for n in res["base"]["notes"])
+    assert res["sell Dagger"]["p_blinds"][1] >= res["base"]["p_blinds"][1]  # the Joker survives without the Dagger
+    mad = shop_state(jokers=[joker("Madness", ability={"x_mult": 1}), scorer, joker("Egg", eternal=True)], ante=1,
+                     small="Upcoming")
+    sim = shop_sim._OptionSim(shop_sim._solver(), estimate, mad, shop_sim.upcoming_blinds(mad, 3), 0)
+    removed, growth = set(), {}
+    sim._select_blind({"boss": False}, removed, growth, __import__("random").Random(0))
+    assert removed == {1} and growth == {0: 0.5}  # Egg is eternal: only the Joker can go
+    sim._select_blind({"boss": True}, removed, growth, __import__("random").Random(0))
+    assert growth == {0: 0.5}  # Madness fires on Small/Big only

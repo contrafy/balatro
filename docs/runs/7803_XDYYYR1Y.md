@@ -1,0 +1,6 @@
+# Run XDYYYR1Y (port 7803, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
+
+Ante 1 (D6/Juggle/The Head 600, $4): Small: Flush 284 + Pair 22. Shop $5: Raised Fist{PERISH} $5 (only scorer; SIM 1.00). Big: 2P 3322 420 + Trips 666. Shop $5: passed Earth (SIM +0.03). Head: 2P QQ66 one-shot.
+Ante 2 (Double/Juggle/The House 2000, $13): EMERGENCY 0.34 -> Shoot the Moon $5. Small: Pair 88 910 + Pair TT. Shop $10: Misprint $4 (overrode SIM Merry Andy{ETERNAL} foil $9: -1 hand size forever, $1 left). Big: disc, Pair KK 1080 + Pair 44. Shop $12: Jumbo Celestial -> Mercury (Pair L2). House: disc 5 face-down, Pair AA 736, disc 4, Pair 44 (holding K Q T) cleared. Raised Fist perished.
+Ante 3 (Meteor/Polychrome/The Hook 6400, $15): EMERGENCY 0.17; sold perished Fist, reroll $5 -> Supernova{PERISH} $5. Small: Pair 99 1892, disc, Trips JJJ 1980. Shop $7: Jumbo Arcana $6 -> Temperance (+$6). Big: disc, Trips 999 holding QQQ 3819 + Pair QQ. Shop $13: Scary Face{ETERNAL} $4, passed Mega Arcana $8 (kept $9). Hook: disc AA (solver 0.87 vs 0.75), Pair KK holding QQQ 4305 (Misprint low) + Pair TT holding QQ cleared.
+Ante 4 (Polychrome/Juggle/The Psychic 18000, $16): EMERGENCY 0.13; reroll $5 -> Mystic Summit{ETERNAL} $5 + Jolly $3. $3 left, 6/6 slots, 0 xMult.

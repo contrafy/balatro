@@ -219,7 +219,9 @@ def show(d):
     if jk:
         idol = (d.get("run") or {}).get("idol_card") or {}
         idol_s = f" (this round: {idol.get('rank')} of {idol.get('suit')})" if isinstance(idol, dict) and idol.get("rank") else ""
-        print(f"Jokers ({len(jk)}/{d.get('joker_slots')}) cons_slots {d.get('consumable_slots')} hand_size {d.get('hand_size')}: " + " | ".join(f"[{j.get('index', i + 1)}] {j.get('name')}{stickers(j)} ({JOKER_DESC.get(j.get('name'), 'effect not in table')}{idol_s if j.get('name') == 'The Idol' else ''}) sell${j.get('sell_cost')}"
+        mail = (d.get("run") or {}).get("mail_card") or {}
+        extra_s = {"The Idol": idol_s, "Mail-In Rebate": f" (this round: {mail.get('rank')})" if isinstance(mail, dict) and mail.get("rank") else ""}
+        print(f"Jokers ({len(jk)}/{d.get('joker_slots')}) cons_slots {d.get('consumable_slots')} hand_size {d.get('hand_size')}: " + " | ".join(f"[{j.get('index', i + 1)}] {j.get('name')}{stickers(j)} ({JOKER_DESC.get(j.get('name'), 'effect not in table')}{extra_s.get(j.get('name'), '')}) sell${j.get('sell_cost')}"
                                     + (f" {j['edition'].get('type', j['edition']) if isinstance(j.get('edition'), dict) else j['edition']}" if j.get("edition") else "")
                                     + (f" ab={compact_ability(j.get('ability'))}" if compact_ability(j.get('ability')) else "")
                                     for i, j in enumerate(jk)))
@@ -1730,7 +1732,13 @@ def _advise_rules(d):
         debuffed_idx = [c.get("index") for c in hand if c.get("debuff") and c.get("index") not in keep]
         if debuffed_idx:
             why += f"; debuffed cards {debuffed_idx} score nothing, discard them first"
-        disc = (debuffed_idx + [i for i in all_idx if i not in keep and i not in debuffed_idx])[:5]
+        mail_r = ((d.get("run") or {}).get("mail_card") or {}).get("rank") if any(j.get("name") == "Mail-In Rebate" and not j.get("debuff") for j in lst(d.get("jokers"))) else None
+        rest_d = [i for i in all_idx if i not in keep and i not in debuffed_idx]
+        if mail_r:
+            # Mail-In Rebate pays $5 per discarded card of this round's rank: discard those first (7805 missed ~$40)
+            rest_d = sorted(rest_d, key=lambda i: str((_cards_by_idx(d, [i]) or [{}])[0].get("rank")) != str(mail_r))
+            why += f"; Mail-In Rebate: {mail_r}s discarded first ($5 each)"
+        disc = (debuffed_idx + rest_d)[:5]
         if disc:
             print(f"ADVICE: DISCARD -> b disc {' '.join(map(str, disc))}   ({why}; best now {best[0]} est {best[2]} < need {need})")
             return
@@ -2347,7 +2355,7 @@ def shop_advise_sim(d, budget_s=6.0):
     all_zero = all((r.get("p_next") or 0) < 0.05 for r in feas)
     key = (lambda r: r.get("score_ratio") or 0) if all_zero else (lambda r: r.get("p_next") or 0)
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
-        f"  SIM (next 3 blinds, ranking only): {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"p_next {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f})")
+        f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f} vs buying nothing)")
         + f" ${r.get('money_after')}" + (f" rent {r['rent_per_round']}/round" if r.get("rent_per_round") else "")
         + (f" | ETERNAL RENTAL: -${3 * _rounds_left(d)} to the run's end, beyond the SIM's 3 blinds"
            if _stk(r["option"].get("add_joker") or {})["eternal"] and _stk(r["option"].get("add_joker") or {})["rental"] else "")
@@ -2379,6 +2387,8 @@ def shop_advise_sim(d, budget_s=6.0):
         st = _stk(aj)
         if st["eternal"] and st["rental"] and ante_s < 7:
             return False
+        if aj.get("name") in AVOID_JOKERS and aj.get("name") in ("Madness", "Ceremonial Dagger"):
+            return False  # the SIM does not model them destroying your jokers (7809: SIM recommended Madness)
         if st["rental"] and own_rent and ante_s < 6:
             return False
         # the $ floor binds unless TIGHT/EMERGENCY, the rules exempted this very buy, or the SIM gain is large (+0.15)
@@ -2461,7 +2471,7 @@ def pack_advise_sim(d, budget_s=3.5):
         st = _stk(r["option"].get("add_joker") or {})
         return not (st["eternal"] and st["rental"] and ante_s < 7) and not (st["rental"] and own_rent and ante_s < 6)
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
-        f"  SIM (next 3 blinds): {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"p_next {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f})")
+        f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f} vs skipping)")
         for r in sorted(feas, key=key, reverse=True)[:6]]
     adv = lines[adv_i]
     base = next((r for r in feas if not r["option"].get("_cmd")), None)
@@ -2612,7 +2622,8 @@ def _shop_rules(d):
         best_o = max(cands_o, key=lambda o: round_est(d, mh, [jokers[i - 1] for i in o]))
         best_e = round_est(d, mh, [jokers[i - 1] for i in best_o])
         if best_e >= 1.03 * cur_e and best_o != list(range(1, len(jokers) + 1)):
-            print(f"  ORDER FIRST (free): b order {' '.join(map(str, best_o))}   (round est {cur_e} -> {best_e}: +mult left of xMult, copy targets of Blueprint/Brainstorm kept); then follow the ADVICE below")
+            print(f"  ORDER FIRST (free): b order {' '.join(map(str, best_o))}   (left to right AFTER: {', '.join(str(jokers[i - 1].get('name')) for i in best_o)}; "
+                  f"now: {', '.join(str(j.get('name')) for j in jokers)}; round est {cur_e} -> {best_e}, both orders measured); then follow the ADVICE below")
     _is_scoring = _is_scoring_cls
     # planning unit: scorers alive next ante; a holographic/foil edition makes any joker a flat scorer (+10 mult / +50 chips)
     # (suit jokers, Stencil, ... count when they carry 15%+ of a round: 7810 Gluttonous and 7807 Stencil were "0 scorers")
@@ -2652,7 +2663,9 @@ def _shop_rules(d):
     # rental sells are folded into the ADVICE as SELL FIRST; the ranking below is computed as if it were sold (Main
     # 06:xx: no ranking was printed while a rental sell was pending)
     sold = None
-    for j in sellable_j:
+    # never sell what this shop just bought (7805: bought Half Joker on SIM +0.15, next call said SELL FIRST)
+    fresh = set(d.get("_bought_ids") or [])
+    for j in [x for x in sellable_j if x.get("id") not in fresh]:
         cls_r = classify_joker(j.get("name"), 0, mh)[0]
         if (_stk(j)["rental"] and ante <= 6 and keep_value(j) <= 45 and j.get("name") not in ENGINE_KEEP
                 and not _is_scoring(cls_r) and not cls_r.startswith("XMULT") and _joker_edition(j) not in ("holo", "foil", "polychrome")):
@@ -2661,7 +2674,7 @@ def _shop_rules(d):
             break
     non_rental_scorers = [j for j in jokers if not _stk(j)["rental"] and alive_next(j) and _is_scoring(classify_joker(j.get("name"), 0, mh)[0])]
     if sold is None and len(non_rental_scorers) >= 2 and ante <= 6:
-        flat_r = [j for j in rentals if not _stk(j)["eternal"] and not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") and j.get("name") not in TYPE_X_JOKERS
+        flat_r = [j for j in rentals if j.get("id") not in fresh and not _stk(j)["eternal"] and not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") and j.get("name") not in TYPE_X_JOKERS
                   and joker_share(d, j, mh) < 0.3 and j.get("name") != "Mr. Bones"]  # 7805: The Trio was called a "flat rental"
         if flat_r:
             sold = min(flat_r, key=keep_value)
@@ -2670,7 +2683,7 @@ def _shop_rules(d):
     if sold is None and len(rentals) >= 2 and ante <= 6:
         # never the rental that carries the score (7801: Clever +80 chips on every Two Pair; 7807: Acrobat, the only xMult)
         # or the run-saver: sell the one whose rent buys the least
-        sell_r = sorted([j for j in rentals if not _stk(j)["eternal"] and j.get("name") != "Mr. Bones" and joker_share(d, j, mh) < 0.25
+        sell_r = sorted([j for j in rentals if j.get("id") not in fresh and not _stk(j)["eternal"] and j.get("name") != "Mr. Bones" and joker_share(d, j, mh) < 0.25
                          and not (_rg_x(classify_joker(j.get("name"), 0, mh)[0]) and n_rg <= 1)], key=keep_value)
         if sell_r and keep_value(sell_r[0]) < 85 and not (scoring_now <= 1 and alive_next(sell_r[0]) and _is_scoring(classify_joker(sell_r[0].get("name"), 0, mh)[0])):
             sold = sell_r[0]
@@ -3575,6 +3588,34 @@ def main():
     d_raw = _await_action_effect(wait_settled())
     d = _with_known_jokers(d_raw)
     LEGAL = get("legal")
+    pack_file = os.path.join(CACHE_DIR, f"{PORT}_pack.json")
+    pk_now = [[c.get("id"), c.get("name")] for c in lst((d.get("pack") or {}).get("cards"))]
+    if d.get("phase") == "PACK_OPENING" and cmd in ("s", "state", "advise", "hands", "raw"):
+        # the listing the player decides from: `pick N` is resolved against it (Fable 7801: in a Mega pack the indices
+        # shifted after the first pick and the CLI sent a different card)
+        try:
+            os.makedirs(CACHE_DIR, exist_ok=True)
+            with open(pack_file, "w", encoding="utf-8") as f:
+                json.dump({"cards": pk_now}, f)
+        except Exception:
+            pass
+    if cmd == "pick" and ints and d.get("phase") == "PACK_OPENING":
+        try:
+            with open(pack_file, encoding="utf-8") as f:
+                seen = json.load(f).get("cards") or []
+        except Exception:
+            seen = []
+        if seen and seen != pk_now and 1 <= ints[0] <= len(seen):
+            want = seen[ints[0] - 1]
+            pos = next((i for i, c in enumerate(pk_now, 1) if (want[0] is not None and c[0] == want[0]) or (want[0] is None and c[1] == want[1])), None)
+            if pos is None:
+                print(f"REFUSED (nothing sent): pick {ints[0]} was {want[1]} in the listing you saw, and it is no longer in the pack. Run `b advise` again.")
+                sys.exit(1)
+            if pos != ints[0]:
+                print(f"(pack indices shifted since your listing: {want[1]} is now pick {pos}; sending pick {pos})")
+                ints[0] = pos
+                if rest:
+                    rest = [str(pos)] + rest[1:]
     if cmd in ("s", "state"):
         show(d); show_legal(LEGAL); return
     if cmd == "hands":
@@ -3638,6 +3679,22 @@ def main():
     LEGAL = get("legal")
     show(d)
     show_legal(LEGAL)
+    if r.get("ok") and typ in ("SHOP_BUY", "SHOP_BUY_AND_USE"):
+        it = next((c for c in lst((d_pre.get("shop") or {}).get("jokers")) if c.get("index") == params.get("slot", params.get("index"))), None)
+        if it is not None and it.get("set") == "Joker":
+            bf = os.path.join(CACHE_DIR, f"{PORT}_bought.json")
+            try:
+                with open(bf, encoding="utf-8") as f:
+                    bo = json.load(f)
+            except Exception:
+                bo = {}
+            key_r = [d_pre.get("ante"), d_pre.get("round"), d_pre.get("trajectory")]
+            ids = bo.get("ids", []) if bo.get("key") == key_r else []
+            try:
+                with open(bf, "w", encoding="utf-8") as f:
+                    json.dump({"key": key_r, "ids": ids + [it.get("id")]}, f)
+            except Exception:
+                pass
     if r.get("ok") and typ == "REORDER" and params.get("area") == "jokers" and d_pre.get("_jokers_cached"):
         _cache_reorder([j.get("name") for j in lst(d_pre.get("jokers"))], params.get("order") or [])
     if cmd == "play" and _EST_CTX and r.get("ok"):
@@ -3677,6 +3734,13 @@ def _with_known_jokers(d):
     while they are face-down, est uses that multiset in the inferred order (after the first hand) or the last seen
     order, and d['_jokers_cached'] says so."""
     d = dict(d, _mh_hyst=_mh_hyst_load())  # main-hand hysteresis memory (per port)
+    try:
+        with open(os.path.join(CACHE_DIR, f"{PORT}_bought.json"), encoding="utf-8") as f:
+            bo = json.load(f)
+        if bo.get("key") == [d.get("ante"), d.get("round"), d.get("trajectory")]:
+            d["_bought_ids"] = bo.get("ids") or []  # jokers bought in this shop: never a rental-sell target here
+    except Exception:
+        pass
     js = lst(d.get("jokers"))
     if not js:
         return d
