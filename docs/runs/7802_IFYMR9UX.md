@@ -1,2 +1,5 @@
 # Run IFYMR9UX (port 7802, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (Skip/Foil/The Pillar 600, $4): Small: Straight K-9 316 one-shot. Shop $6: Buffoon -> Brainstorm (over Gift Card). Big: Flush C 292 + 2P JJ55 + Pair AA = 456. Shop: Even Steven $4 (leftmost so Brainstorm copies it: +8 mult/even card). Pillar: disc debuffed, Straight 8-4 1080 one-shot.
+Ante 2 (Investment/Double/The House 2000, $9): Jumbo Buffoon -> Blackboard{PERISH}. Skipped Small (Investment). Big: Pair 88 held-black x3 1404 + Pair TT. Shop: nothing ($8). House: disc 5 face-down, disc 4 to keep diamonds, High TD dump 405, Pair 44 972, FH 222 66 2552.
+Ante 3 (Investment/Voucher/The Window 6400, $39): Scary Face{E} foil $6, Wrathful $5, reroll -> Hanging Chad{PERISH} $4, Jumbo Arcana -> Temperance +$17. Skipped Small (Investment). Big: Pair JJ 13200 one-shot. Shop: Arcana -> Strength 9C,7H -> TC,8H; reroll x1. Window: Flush H est 7320 actual 2440 (held debuffed TD is still red: Blackboard off), disc reds, 2P 5544 w/ JD filler -> cleared.

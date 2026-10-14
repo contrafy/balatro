@@ -193,4 +193,7 @@ _Generated 2026-10-14 12:18:26 by `balatro-data status` (edits inside this block
   about 10 of 16 logical cores. CPU is the binding limit, so the swarm stays at 18. All instances now run at
   BelowNormal priority (`launch_instance.ps1` sets it) so the desktop stays responsive. Sweeps are capped at 3
   workers.
+- 12:15 Second Gold win: Sonnet, `2WEJC1IS`. Following the plan of "Sonnet/Haiku win Gold, then switch decks",
+  7814 becomes a Haiku 5.5 port, to test whether PLAYBOOK 2b plus the advisor carry the weakest tier. Gold
+  continues on all ports until Haiku has a meaningful sample. The deck switch waits for the user's call.
 

@@ -10195,3 +10195,44 @@
 7806	a2	-	Flush	KS 9S 7S 6S 3S	Ice Cream,Abstract Joker	est=1600	actual=1600	OK
 7812	a5	-	High Card	3D	Fibonacci,Brainstorm,Walkie Talkie,Blue Joker,Scary Face(holo),Cavendish	est=6318	actual=6318	OK
 7814	a5	-	Two Pair	AC AD 2S 2H	Flash Card(foil),Misprint,Even Steven,Joker Stencil	est=9396	actual=7308	MISS
+7808	a4	The Flint	High Card	KH	Droll Joker,Even Steven,Joker,Hanging Chad,Scary Face(foil),Abstract Joker	est=4071	actual=4094	OK
+7818	a5	-	Three of a Kind	2S 2C 2D	Mystic Summit,Swashbuckler,Obelisk(foil),Odd Todd,Ramen,Blackboard	est=19168	actual=19168	OK
+7802	a3	The Window	Two Pair	4S 5S 5C 4D(DEBUFF)	Wrathful Joker,Scary Face(foil),Even Steven,Brainstorm,Blackboard,Hanging Chad	est=10488	actual=10488	OK
+7817	a3	The Flint	Full House	AH AC(gold) AD 9S 9C	Jolly Joker,Joker(holo),Castle,Mystic Summit	est=3822	actual=3822	OK
+7805	a3	The Psychic	Two Pair	QS QD 7C 7D	Mystic Summit,Popcorn,Mad Joker,Hack(holo),Credit Card,Ice Cream	est=6786	actual=6786	OK
+7817	a3	The Flint	Pair	TC TD	Jolly Joker,Joker(holo),Castle,Mystic Summit	est=1976	actual=1976	OK
+7810	a1	-	Three of a Kind	5S 5H 5C		est=135	actual=135	OK
+7811	a2	The Pillar	Two Pair	AS(DEBUFF) AC 3H 3C(DEBUFF)	Mystic Summit,Riff-raff,Mad Joker,Odd Todd,Gros Michel,Greedy Joker	est=4988	actual=4988	OK
+7815	a1	-	Two Pair	JS JH 2H 2C	Abstract Joker	est=220	actual=220	OK
+7807	a2	-	Pair	JS JD	Half Joker,Zany Joker	est=660	actual=660	OK
+7818	a5	-	Full House	QS QC QD 4C 4C	Mystic Summit,Swashbuckler,Obelisk(foil),Odd Todd,Ramen,Blackboard	est=33730	actual=33730	OK
+7814	a5	-	Two Pair	8H 8D 3C 3D	Flash Card(foil),Misprint,Even Steven,Joker Stencil	est=9072	actual=8064	OK
+7807	a2	-	Pair	QS QH	Half Joker,Zany Joker	est=660	actual=660	OK
+7810	a1	-	Straight	AH KD QC JH TD		est=324	actual=324	OK
+7817	a3	The Flint	Two Pair	8H 8D 7C 7D	Jolly Joker,Joker(holo),Castle,Mystic Summit	est=2546	actual=2546	OK
+7804	a1	-	Flush	AH QH TH 9H 7H		est=328	actual=328	OK
+7813	a5	The Arm	Four of a Kind	AH AC AC(lucky) AC(mult)	Misprint,Credit Card(foil),Abstract Joker,Sly Joker(holo),Droll Joker(polychrome),Ancient Joker	est=19469	actual=22223	OK
+7807	a2	-	Pair	2S 2C	Half Joker,Zany Joker	est=308	actual=308	OK
+7803	a2	The Needle	Straight	9C 8H 7S(Goldseal) 6C 5S	Joker,Zany Joker,Crafty Joker,Bull(holo),Hallucination	est=1242	actual=1350	OK
+7815	a1	-	Two Pair	KH KC 7S 7C	Abstract Joker	est=270	actual=270	OK
+7806	a2	The Psychic	Pair	AS(steel) AD	Ice Cream,Abstract Joker,Greedy Joker	est=1638	actual=1638	OK
+7816	a3	The Window	Pair	6S 6S	Vagabond,Abstract Joker,Greedy Joker,Sly Joker,Clever Joker,Joker	est=1728	actual=1728	OK
+7809	a5	The Manacle	Flush	JS 9S 8S 6S 4S	Red Card,Rough Gem,Gros Michel,Blueprint,Ramen,Seltzer	est=18374	actual=18374	OK
+7813	a5	The Arm	Two Pair	QS QD 5H 5C	Misprint,Credit Card(foil),Abstract Joker,Sly Joker(holo),Droll Joker(polychrome),Ancient Joker	est=8325	actual=12150	MISS
+7806	a2	The Psychic	Pair	QS QD	Ice Cream,Abstract Joker,Greedy Joker	est=1540	actual=1540	OK
+7812	a5	The Arm	Flush	KS QS 9S 6S 3S	Cavendish,Fibonacci,Walkie Talkie,Blue Joker,Scary Face(holo),Brainstorm	est=30498	actual=30498	OK
+7816	a3	The Window	Two Pair	AS AH 5S 5H	Vagabond,Abstract Joker,Greedy Joker,Sly Joker,Clever Joker,Joker	est=4368	actual=4368	OK
+7809	a5	The Manacle	Two Pair	AH AC 3S 3D	Red Card,Rough Gem,Gros Michel,Blueprint,Ramen,Seltzer	est=12215	actual=12215	OK
+7813	a5	The Arm	Straight	AD KH QC JS TD	Misprint,Credit Card(foil),Abstract Joker,Sly Joker(holo),Droll Joker(polychrome),Ancient Joker	est=7860	actual=10611	MISS
+7807	a2	The Manacle	Pair	QH QD	Half Joker,Zany Joker,Sly Joker	est=1760	actual=1760	OK
+7816	a3	The Window	Full House	9S 9H 9C 2C 2D(DEBUFF)	Vagabond,Abstract Joker,Greedy Joker,Sly Joker,Clever Joker,Joker	est=5174	actual=5174	OK
+7808	a1	-	Pair	6C 6D		est=44	actual=44	OK
+7807	a2	The Manacle	Pair	9C 9D	Half Joker,Zany Joker,Sly Joker	est=1716	actual=1716	OK
+7812	a5	The Arm	Straight	JS(bonus) TD 9H 8C 7D	Cavendish,Fibonacci,Walkie Talkie,Blue Joker,Scary Face(holo),Brainstorm	est=64296	actual=64296	OK
+7801	a1	-	Two Pair	AH AC TS TC		est=124	actual=124	OK
+7810	a1	-	Full House	KS KC JS JH JC	Crafty Joker	est=360	actual=360	OK
+7815	a1	The Window	Flush	KH QH 9H 3H 2H	Joker Stencil	est=1656	actual=1656	OK
+7810	a1	-	Two Pair	QH QD TH TD	Crafty Joker	est=120	actual=120	OK
+7801	a1	-	Full House	9S 9C 9D 8S 8C		est=332	actual=332	OK
+7809	a5	The Manacle	Two Pair	JH JC TS TD(mult,Redseal)	Red Card,Rough Gem,Gros Michel,Blueprint,Ramen,Seltzer	est=22396	actual=22396	OK
+7804	a1	-	Pair	KS KC	Walkie Talkie	est=60	actual=60	OK
