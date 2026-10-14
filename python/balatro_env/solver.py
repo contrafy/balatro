@@ -28,7 +28,11 @@ SHORT = {2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7", 8: "8", 9: "9", 10: "T"
 CHIPV = {2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8, 9: 9, 10: 10, 11: 10, 12: 10, 13: 10, 14: 11}
 SUIT_DEBUFF = {"The Club": "C", "The Goad": "S", "The Window": "D", "The Head": "H"}
 HELD_JOKERS = {"Shoot the Moon", "Raised Fist", "Baron", "Blackboard"}  # estimate reads the held cards
-HD_JOKERS = {"Dusk", "Acrobat", "Banner", "Mystic Summit"}  # estimate reads hands/discards remaining
+HD_JOKERS = {"Dusk", "Acrobat", "Banner", "Mystic Summit", "Green Joker", "Ice Cream"}  # estimate reads hands/discards
+GROWTH_JOKERS = {"Square Joker", "Runner", "Spare Trousers", "Ride the Bus", "Green Joker", "Supernova", "Hiker",
+                 "Wee Joker"}
+TIE_P = 0.015  # p_clear differences below this are Monte-Carlo noise: rank those options by secondary value
+GROWTH_W = 0.5  # secondary value of one growth-joker trigger, in $ (an unused hand pays $1)
 PLAY, DISCARD = "PLAY", "DISCARD"
 
 
@@ -128,6 +132,9 @@ class RoundSolver:
         self.smeared = "Smeared Joker" in jn
         self.pareidolia = "Pareidolia" in jn
         self.card_sharp = "Card Sharp" in jn
+        self.growth_j = jn & GROWTH_JOKERS
+        hl0 = state.get("hand_levels") or {}
+        self.main_type = max(hl0, key=lambda k: int((hl0[k] or {}).get("played") or 0), default=None)
         self.suit_keys = ("SC", "HD") if self.smeared else ("S", "H", "C", "D")
         self.lim = int(state.get("highlight_limit") or 5)
         self.hand_size = int(state.get("hand_size") or 8)
@@ -181,6 +188,7 @@ class RoundSolver:
         steel = any("steel" in str(c.d.get("enhancement") or "").lower() for c in self.pool + [c for c in self.slots if c])
         self.held_dep = bool(jn & HELD_JOKERS) or steel
         self.hd_dep = bool(jn & HD_JOKERS)
+        self.final_dep = bool(jn & {"Dusk", "Acrobat"})  # final-hand jokers: holding a hand for the last play pays
         self._score_memo = {}
         self._cls_memo = {}
         self._samples = []
@@ -315,9 +323,25 @@ class RoundSolver:
 
     # ---- scoring ------------------------------------------------------------------------------------------------
     def _state(self, h, d):
+        """State at hands_remaining=h, discards_remaining=d of this round: Green Joker has gained +1 mult per hand
+        played and lost 1 per discard since the decision; Ice Cream has lost 5 chips per hand played."""
         st = self._st.get((h, d))
         if st is None:
-            st = self._st[(h, d)] = dict(self._base, hands_remaining=h, discards_remaining=d)
+            st = dict(self._base, hands_remaining=h, discards_remaining=d)
+            played, disc = self.h0 - h, self.d0 - d
+            if (played or disc) and self.jn & {"Green Joker", "Ice Cream"}:
+                js = []
+                for j in _lst(self._base.get("jokers")):
+                    ab = j.get("ability") or {}
+                    if j.get("name") == "Green Joker" and not j.get("debuff"):
+                        j = dict(j, ability=dict(ab, mult=max(0.0, float(ab.get("mult") or 0) + played - disc)))
+                    elif j.get("name") == "Ice Cream" and isinstance(ab.get("extra"), dict) and not j.get("debuff"):
+                        ex = ab["extra"]
+                        j = dict(j, ability=dict(ab, extra=dict(ex, chips=max(0.0, float(ex.get("chips") or 0)
+                                                                              - float(ex.get("chip_mod") or 5) * played))))
+                    js.append(j)
+                st["jokers"] = js
+            self._st[(h, d)] = st
         return st
 
     def score(self, played, held, h, d, ctx):
@@ -671,7 +695,7 @@ class RoundSolver:
         bs, bp, _bt = self.best_play(cards, h, d, ctx)
         if bs >= need or (h <= 1 and d <= 0) or not pile_cards:
             return PLAY, (self._pad(bp, cards, 5) if self.psychic else bp)
-        if self.hd_dep and h >= 2 and not self.psychic:
+        if self.final_dep and h >= 2 and not self.psychic:
             # Acrobat/Dusk/...: hold a hand that clears as the final hand; burn the hands before it with 1 junk card
             hold = self._hold(cards, h, d, ctx)
             if hold and hold[0] >= need:
@@ -692,12 +716,39 @@ class RoundSolver:
             return PLAY, self._pad(bp, cards, 5, avoid={id(cards[i]) for i in keep})
         return PLAY, self._fillers(bp, cards, keep, h, d, ctx, bs)
 
+    def _growth(self, sel, t):
+        """Growth-joker progress of one played hand: +1 per trigger of Square Joker (4 cards), Runner (Straight),
+        Spare Trousers (Two Pair), Ride the Bus (no scoring face; a face resets it: -1), Green Joker (+1 per hand),
+        Supernova (playing the most played type), Hiker (+1 per scoring card), Wee Joker (+1 per scoring 2)."""
+        g = 0.0
+        gj = self.growth_j
+        if "Square Joker" in gj and len(sel) == 4:
+            g += 1
+        if "Runner" in gj and t in ("Straight", "Straight Flush"):
+            g += 1
+        if "Spare Trousers" in gj and t in ("Two Pair", "Full House", "Flush House"):
+            g += 1
+        if "Green Joker" in gj:
+            g += 1
+        if "Supernova" in gj and t == self.main_type:
+            g += 1
+        if gj & {"Ride the Bus", "Hiker", "Wee Joker"}:
+            sc = [c for c in self.classify(sel)[1] if not c.debuff]
+            if "Ride the Bus" in gj:
+                g += -1 if any(c.face for c in sc) else 1
+            if "Hiker" in gj:
+                g += len(sc)
+            if "Wee Joker" in gj:
+                g += sum(1 for c in sc if c.rank == 2)
+        return g
+
     def rollout(self, first, hand, order, rng):
         """Play the round from the current decision: first = (kind, positions) in `hand`; later decisions by policy.
-        Returns (cleared, total scored, hands left, discards used)."""
+        Returns (cleared, total scored, hands left, discards used, growth-joker progress)."""
         h, d, need = self.h0, self.d0, self.need0
         lock, used, rtypes = self.ctx0
         total = 0.0
+        growth = 0.0
         pos = 0
         kind, sel = first[0], [hand[i] for i in first[1]]
         cards = list(hand)
@@ -709,6 +760,8 @@ class RoundSolver:
                 total += s
                 need -= s
                 h -= 1
+                if self.growth_j:
+                    growth += self._growth(sel, t)
                 if self.boss == "The Mouth" and lock is None:
                     lock = t
                 if self.boss == "The Eye":
@@ -716,20 +769,22 @@ class RoundSolver:
                 if self.card_sharp:
                     rtypes = rtypes | {t}
                 if need <= 0:
-                    return True, total, h, self.d0 - d
+                    return True, total, h, self.d0 - d, growth
                 if h <= 0:
-                    return False, total, 0, self.d0 - d
+                    return False, total, 0, self.d0 - d, growth
                 if self.hook and rest:
                     for _ in range(min(2, len(rest))):
                         rest.pop(rng.randrange(len(rest)))
             else:
                 d -= 1
+                if "Green Joker" in self.growth_j:
+                    growth -= 1
             n = 3 if self.serpent else max(0, self.hand_size - len(rest))
             rest.extend(order[pos:pos + n])
             pos += n
             cards = rest
             if not cards:
-                return False, total, h, self.d0 - d
+                return False, total, h, self.d0 - d, growth
             kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes))
 
     # ---- sampling ---------------------------------------------------------------------------------------------
@@ -810,7 +865,7 @@ class RoundSolver:
                         f"{t} {' '.join(c.label() for c in p)} est {int(s)} + filler(s) "
                         f"{' '.join(c.label() for c in fill[len(p):])} (draws {len(fill)} new cards)")
                     break
-        if self.hd_dep and h >= 2 and vis and not self.psychic:
+        if self.final_dep and h >= 2 and vis and not self.psychic:
             hold = self._hold(vis, h, d, ctx)
             if hold:
                 tot, j, fs, fp, ft = hold
@@ -835,25 +890,29 @@ class RoundSolver:
         return out
 
     def evaluate(self, cands, samples=400, time_budget_s=2.0):
-        """Successive halving on common sampled draw orders; returns ranked option dicts."""
+        """Successive halving on common sampled draw orders; returns ranked option dicts.
+        Ranking: options whose p_clear is within TIE_P of the best full-sample option count as tied on p_clear and are
+        ordered by secondary value = dollars from unused hands ($1 each) + GROWTH_W per growth-joker trigger, then
+        fewer discards used, then exp_score; the rest follow by p_clear."""
         t0 = time.perf_counter()
-        stats = [[0, 0, 0.0, 0.0, 0.0] for _ in cands]  # n, clears, total score, hands left, discards used
+        stats = [[0, 0, 0.0, 0.0, 0.0, 0.0] for _ in cands]  # n, clears, total score, hands left, discards, growth
 
         def step(i, upto):
             st = stats[i]
             first = (cands[i]["kind"], cands[i]["pos"])
             while st[0] < upto:
-                ok, tot, hl, du = self.run(first, st[0])
+                ok, tot, hl, du, g = self.run(first, st[0])
                 st[0] += 1
                 st[1] += ok
                 st[2] += tot
                 st[3] += hl
                 st[4] += du
+                st[5] += g
 
         def key(i):
             st = stats[i]
             n = max(1, st[0])
-            return (st[1] / n, st[3] / n, -st[4] / n, st[2] / n)
+            return (st[1] / n, (st[3] + GROWTH_W * st[5]) / n, -st[4] / n, st[2] / n)
 
         alive = list(range(len(cands)))
         s1 = min(samples, 16)
@@ -866,17 +925,32 @@ class RoundSolver:
             alive = sorted(alive, key=key, reverse=True)[:keep]
             if time.perf_counter() - t0 > time_budget_s:
                 break
+        # an under-sampled option that looks as good as the best full-sample one is noise until checked: top up the
+        # best 3 such challengers to the full count (outside the budget) so no noisy p is shown above a measured one
+        full = max(st[0] for st in stats) if stats else 0
+        best_full = max((st[1] / st[0] for st in stats if st[0] == full and full), default=0.0)
+        chal = sorted((i for i, st in enumerate(stats) if 0 < st[0] < full and st[1] / st[0] >= best_full - TIE_P),
+                      key=key, reverse=True)[:3]
+        for i in chal:
+            step(i, full)
         res = []
         for i, c in enumerate(cands):
-            n, cl, tot, hl, du = stats[i]
+            n, cl, tot, hl, du, g = stats[i]
             if not n:
                 continue
             res.append({"action": c["kind"], "cards": [self.slot_index[p] for p in c["pos"]], "p_clear": cl / n,
-                        "exp_score": tot / n, "hands_left": hl / n, "discards_used": du / n, "n": n, "note": c["note"],
+                        "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
+                        "value": (hl + GROWTH_W * g) / n, "discards_used": du / n, "n": n, "note": c["note"],
                         "hand": c.get("hand")})
         top_n = max((r["n"] for r in res), default=0)
-        res.sort(key=lambda r: (r["n"] >= min(top_n, 120), r["p_clear"], r["hands_left"], -r["discards_used"],
-                                r["exp_score"]), reverse=True)
+        full_n = min(top_n, 120)
+        top_p = max((r["p_clear"] for r in res if r["n"] >= full_n), default=0.0)
+
+        def rank(r):
+            tied = r["p_clear"] >= top_p - TIE_P
+            return (r["n"] >= full_n, tied, 1.0 if tied else r["p_clear"], r["value"], -r["discards_used"], r["exp_score"])
+
+        res.sort(key=rank, reverse=True)
         return res
 
 
@@ -897,12 +971,16 @@ def default_estimate():
 
 def best_round_plan(state, estimate_fn=None, *, samples=400, time_budget_s=2.0, seed=0):
     """Ranked options for the current SELECTING_HAND decision, best first:
-    [{action: 'PLAY'|'DISCARD', cards: [hand indices], p_clear, exp_score, note, hand, hands_left, discards_used, n}].
+    [{action: 'PLAY'|'DISCARD', cards: [hand indices], p_clear, exp_score, note, hand, hands_left, dollars, growth,
+    value, discards_used, n}].
     p_clear = P(clear the blind within the remaining hands) taking this action and then the solver's greedy policy
     (Monte-Carlo over n sampled draw orders); exp_score = mean chips scored over the rest of the round; hand = the
-    poker hand a PLAY makes (None for discards and plays with face-down cards). Options that reached the full sample
-    count rank first; ties break on more hands left, then fewer discards used, then exp_score. time_budget_s covers
-    candidate generation too (every candidate still gets the first 16 samples)."""
+    poker hand a PLAY makes (None for discards and plays with face-down cards); dollars = mean unused hands at the
+    clear ($1 each at cash-out); growth = mean growth-joker triggers this round (Square Joker, Runner, Spare Trousers,
+    Ride the Bus, Green Joker, Supernova, Hiker, Wee Joker); value = dollars + GROWTH_W * growth.
+    Options that reached the full sample count rank first; options within TIE_P of the best p_clear are ordered by
+    value, then fewer discards used, then exp_score. time_budget_s covers candidate generation too (every candidate
+    still gets the first 16 samples)."""
     if state.get("phase") not in (None, "SELECTING_HAND") or not _lst(state.get("hand")):
         return []
     if int(state.get("hands_remaining") or 0) <= 0:

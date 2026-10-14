@@ -126,20 +126,24 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   more often; it ignores money and later rounds, so the rule pick stands otherwise.
 - MONEY FLOOR (GOLD_ANALYSIS.md): from ante 2 keep $8 after anything except an xMult, the main-hand planet or a Buffoon
   pack (while owning <2 reliable/growth xMults); 8 of 20 missed xMults were unaffordable, deep runs bought them with
-  $11-22. Reroll only with $20+ left after it, at most 2 per shop, never over an affordable Buffoon pack. Arcana and
-  Spectral packs are worth little without a Vampire/Glass plan.
+  $11-22. Reroll only with $20+ left after it (rent due at round end kept), at most 2 per shop, never over an affordable
+  Buffoon pack. TIGHT (`shopadvise`): when the next blind's projected round is under 1.2x its need (recorded Gold
+  shops: 13-40% lost that blind, vs <=6% above 1.2x) the floor is OFF: spend on main-hand score now (7805 lost the
+  ante-5 boss by 132 holding $12). Credit Card: floor-exempt buys may go to -$20.
 - BUFFOON PACKS: ante 2-5 with <2 reliable/growth xMults they rank 80 (an xMult sighting in 18% of packs). Inside a pack
-  run `advise`: it ranks jokers with stickers, takes a decaying bridge (Popcorn, Ice Cream, Gros Michel) when you own no
-  scorer, and says SKIP when everything is sticker junk.
-- SCORE CHECK and GOLD CHECK (`shopadvise`): the best main hand of a round (Summit/Acrobat/Card Sharp active) vs boss/3
-  of the next ante; the printed ratio is calibrated on 1042 Gold shops (<0.35 died by the next ante 80% = EMERGENCY:
-  buy the cheapest multiplier through the floor; <0.7 died 60%: scoring jokers may break the floor; >=1 died 28%).
-  `shopadvise` lists every higher-ranked item it passes over and why. Targets: 1 reliable/growth xMult (incl. Acrobat,
-  Ramen, Stencil; card-trigger xMults like Photograph do not count: they multiply before +mult jokers) by the end of
-  ante 2, 2 by ante 5, 3 incl. a growing one by ante 7.
-- BOSS PREP: the ante's boss is known from its start. If it counters the build (Eye/Mouth vs Card Sharp, Plant vs face
-  jokers, Psychic vs Half Joker, suit bosses vs Flush, Wall/Violet/Needle vs a small hand), `shopadvise` ranks a counter
-  first (Luchador: sell it during the boss; Chicot; Mr. Bones; Director's Cut voucher) and keeps $10 for `rerollboss`
+  run `advise`: jokers are ranked by what they add to a round dealt from YOUR deck (`+N% round est now`; ties never go
+  by slot order), with stickers; a bridge must score now (Erosion on a full deck adds 0); SKIP when everything is junk.
+- SCORE CHECK and GOLD CHECK (`shopadvise`): your best hand over 40 deals from your deck (75th pct; sees Odd Todd,
+  Shoot the Moon, Splash...) vs boss/3 of the next ante; calibrated on 1120 Gold shops (ratio <0.35 died by the next
+  ante 84% = EMERGENCY: buy the cheapest multiplier through the floor; <0.7 died 65%: scoring jokers may break the floor;
+  >=1.5 died 18%). `shopadvise` lists every higher-ranked item it passes over and why. Targets: 1 reliable/growth xMult
+  (incl. Acrobat, Ramen, Stencil; card-trigger xMults like Photograph do not count: they multiply before +mult jokers)
+  by the end of ante 2, 2 by ante 5, 3 incl. a growing one by ante 7.
+- BOSS PREP (rules checked against blind.lua): The Eye refuses a repeated type in the round and The Needle gives one
+  hand, so both kill Card Sharp (and Blueprint/Brainstorm copies of it); The Mouth only locks the first type (Card Sharp
+  is fine); The Water sets discards to 0 (Banner dead, Mystic Summit always on); Plant vs face jokers; Psychic vs Half
+  Joker (5-card plays); suit bosses vs Flush; Wall/Violet/Needle/Flint/Arm vs a hand too small. Then `shopadvise` ranks
+  a counter first (Luchador: sell it during the boss; Chicot; Mr. Bones; Director's Cut) and keeps $10 for `rerollboss`
   when you own Director's Cut. 7802 reached ante 7 and died to The Eye with a Card Sharp engine.
 - BUILD: pair-family mains (17 of 28 reached ante 4); Flush/Straight mains reached it 0 of 6, so their jokers and
   planets are non-core. Plan for the next ante: ante 2 -> 3 is the steepest step (1000 -> 3200).

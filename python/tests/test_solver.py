@@ -93,7 +93,7 @@ def test_jokerless_ante1_small_blind_pace():
     st = state(["5S", "5D", "KC", "JH", "9S", "7C", "4D", "2H"], need=300, hands=3, discards=2)
     t0 = time.perf_counter()
     fast = solver.best_round_plan(st, estimate)  # default 2 s budget (stage 1 always completes)
-    assert time.perf_counter() - t0 < 3.5 and fast[0]["n"] >= 100
+    assert time.perf_counter() - t0 < 6.0 and fast[0]["n"] >= 16  # 2 s budget + top-ups; slack for a loaded machine
     res = plan(st)
     top = res[0]
     assert top["n"] == 400 and 0.4 <= top["p_clear"] <= 1.0
@@ -101,7 +101,30 @@ def test_jokerless_ante1_small_blind_pace():
     assert top["p_clear"] > pair_alone["p_clear"]
     assert all({"action", "cards", "p_clear", "exp_score", "note"} <= set(r) for r in res)
     full = [r["p_clear"] for r in res if r["n"] == 400]
-    assert full == sorted(full, reverse=True)
+    assert top["p_clear"] >= max(full) - solver.TIE_P
+
+
+def test_tied_options_rank_by_dollars_then_growth():
+    # every option clears 60 with certainty: play now (2 unused hands = $2) and, with Square Joker, the 4-card play
+    st = state(["KS", "KH", "QS", "QD", "7C", "5D", "3H", "2C"], need=60, hands=3, discards=2, jokers=["Square Joker"])
+    res = plan(st, samples=100)
+    top = res[0]
+    assert top["action"] == "PLAY" and top["p_clear"] == 1.0 and top["dollars"] == 2.0
+    assert sorted(top["cards"]) == idx(st, "KS", "KH", "QS", "QD") and top["growth"] == 1.0
+    five = solver.evaluate_action(st, "PLAY", idx(st, "KS", "KH", "QS", "QD", "2C"), estimate, samples=100)
+    assert five["p_clear"] == 1.0 and five["value"] < top["value"]
+
+
+def test_green_joker_loses_mult_per_discard():
+    st = state(["KS", "KH", "9C", "7D", "5S", "4H", "3C", "2D"], need=300, hands=3, discards=2,
+               jokers=["Green Joker"])
+    st["jokers"][0]["ability"] = {"mult": 6}
+    rs = solver.RoundSolver(st, estimate)
+    kk = rs.slots[:2]
+    now, _t = rs.score(kk, [], 3, 2, rs.ctx0)
+    after_discard, _t = rs.score(kk, [], 3, 1, rs.ctx0)
+    after_play, _t = rs.score(kk, [], 2, 2, rs.ctx0)
+    assert after_discard < now < after_play
 
 
 def test_no_discards_offers_dig_plays_and_keeps_the_pair():

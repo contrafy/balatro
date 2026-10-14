@@ -303,6 +303,8 @@ def test_no_reroll_without_20_dollars_left():
 def test_arcana_pack_respects_8_dollar_floor():
     d = shop(jokers=[joker("Joker", 1), joker("Jolly Joker", 2)], money=10, ante=3,
              boosters=[{"index": 1, "name": "Arcana Pack", "set": "Booster", "cost": 4}])
+    d["blind_select"]["choices"]["Small"]["chips"] = 100  # comfortable next blind: the floor holds (TIGHT lifts it)
+    d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2, "played": 3}}
     assert "pack 1" not in _advice(_out(cli.shop_advise, d))
 
 
@@ -506,3 +508,91 @@ def test_advise_shows_solver_and_keeps_one_advice_line():
     out = _out(cli.advise, d)
     assert sum(1 for ln in out.splitlines() if ln.startswith("ADVICE")) == 1
     assert "SOLVER " in out or "solver unavailable" not in out
+
+
+def _boss(d, name, chips):
+    d["blind_select"]["choices"]["Boss"] = {"name": name, "chips": chips, "state": "Upcoming"}
+    return d
+
+
+def test_boss_prep_facts_from_blind_lua():
+    # The Mouth locks one type (Card Sharp wants repeats: compatible); The Water sets discards to 0 (Summit always on)
+    sharp = [joker("Card Sharp", 1), joker("Jolly Joker", 2)]
+    assert "BOSS PREP" not in _out(cli.shop_advise, _boss(shop(jokers=sharp, ante=6, money=12), "The Mouth", 120000))
+    assert "BOSS PREP: The Eye" in _out(cli.shop_advise, _boss(shop(jokers=sharp, ante=6, money=12), "The Eye", 120000))
+    out = _out(cli.shop_advise, _boss(shop(jokers=[joker("Mystic Summit", 1), joker("Jolly Joker", 2)], ante=3, money=12), "The Water", 12800))
+    assert "Mystic Summit" not in "".join(ln for ln in out.splitlines() if "BOSS" in ln or "crippl" in ln.lower())
+
+
+def test_summit_counts_in_joker_share():
+    d = shop(jokers=[joker("Mystic Summit", 1), joker("Joker", 2)], ante=3)
+    d["discards_remaining"] = 3
+    assert cli.joker_share(d, d["jokers"][0], "Pair") >= 0.2
+
+
+def test_tight_blind_suspends_money_floor():
+    # 7805: $12 before a boss it could barely beat, LEAVE for the $10 floor, lost by 132
+    d = _boss(shop(jokers=[joker("Joker", 1)], ante=5, money=12, boosters=[{"index": 1, "name": "Arcana Pack", "cost": 4}]), "The Wheel", 50000)
+    d["blind_select"]["choices"]["Small"] = {"name": "Small Blind", "chips": 25000, "state": "Defeated"}
+    d["blind_select"]["choices"]["Big"] = {"name": "Big Blind", "chips": 37500, "state": "Defeated"}
+    out = _out(cli.shop_advise, d)
+    assert "TIGHT" in out and "LEAVE" not in _advice(out)
+
+
+def test_pack_ties_break_on_marginal_est():
+    # 7805: Eternal Hanging Chad and Eternal Scary Face both 90, slot order picked Chad; Scary adds far more to KK
+    d = {"phase": "PACK_OPENING", "stake": 8, "ante": 1, "money": 4, "joker_slots": 5, "jokers": [], "hand": [], "hand_levels": {},
+         "hands_per_round": 4, "pack": {"kind": "Buffoon", "choices_remaining": 1, "cards": [
+             {"name": "Hanging Chad", "set": "Joker", "eternal": True}, {"name": "Scary Face", "set": "Joker", "eternal": True}]}}
+    assert _advice(_out(cli.pack_advise, d)).startswith("ADVICE: PICK -> b pick 2")
+
+
+def test_half_joker_anchors_main_hand_over_more_straights():
+    # 7809: 6 Straights vs 4 Pairs + 1 Two Pair with Half Joker (<=3 cards) owned: the main hand is Pair
+    d = shop(jokers=[joker("Half Joker", 1), joker("Supernova", 2)], ante=3)
+    d["hand_levels"] = {"Pair": {"played": 4, "level": 1, "chips": 10, "mult": 2}, "Two Pair": {"played": 1, "level": 1, "chips": 20, "mult": 2},
+                        "Straight": {"played": 6, "level": 1, "chips": 30, "mult": 4}}
+    assert cli.main_hand(d) == "Pair"
+
+
+def test_pack_erosion_on_full_deck_is_not_a_bridge():
+    # 7809: Erosion ranked 90 with a 52-card deck (it adds 0)
+    deck = {"cards": [{"rank": r, "suit": s} for r in ("2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace")
+                      for s in ("Spades", "Hearts", "Clubs", "Diamonds")]}
+    d = {"phase": "PACK_OPENING", "stake": 8, "ante": 1, "money": 4, "joker_slots": 5, "jokers": [], "hand": [], "deck": deck,
+         "hand_levels": {"Pair": {"level": 1, "chips": 10, "mult": 2}}, "hands_per_round": 4,
+         "pack": {"kind": "Buffoon", "choices_remaining": 1, "cards": [{"name": "Erosion", "set": "Joker"}, {"name": "Jolly Joker", "set": "Joker"}]}}
+    assert _advice(_out(cli.pack_advise, d)).startswith("ADVICE: PICK -> b pick 2")
+
+
+def _hand_state(cards, jokers=(), need=300, hands=3, discards=0, ante=1):
+    hand = [{"index": i + 1, "rank": r, "suit": s} for i, (r, s) in enumerate(cards)]
+    return {"phase": "SELECTING_HAND", "stake": 8, "ante": ante, "hands_remaining": hands, "discards_remaining": discards, "hand_size": 8,
+            "hand": hand, "jokers": list(jokers), "hand_levels": {"Pair": {"level": 1, "chips": 10, "mult": 2}, "Two Pair": {"level": 1, "chips": 20, "mult": 2}},
+            "deck": {"cards": []}, "blind": {"name": "Small Blind", "boss": False, "chips_needed": need, "chips_scored": 0}}
+
+
+def test_fillers_never_break_a_held_pair():
+    # 7801: `play TWOPAIR 1 2 5 6 7` spent 2S while 22 was the pair the next hand needed
+    d = _hand_state([("King", "Spades"), ("King", "Hearts"), ("Queen", "Clubs"), ("Queen", "Diamonds"), ("2", "Spades"), ("2", "Hearts"), ("7", "Clubs"), ("5", "Diamonds")],
+                    need=5000, hands=3)
+    adv = cli._advise_rules
+    out = _out(adv, d)
+    a = _advice(out)
+    if "b play" in a:
+        played = a.split("b play ")[1].split("   ")[0].split()
+        assert not ({"5", "6"} & set(played) and not {"5", "6"} <= set(played))
+
+
+def test_square_joker_plays_exactly_four():
+    d = _hand_state([("King", "Spades"), ("King", "Hearts"), ("Queen", "Clubs"), ("Queen", "Diamonds"), ("9", "Spades"), ("7", "Hearts"), ("4", "Clubs"), ("3", "Diamonds")],
+                    jokers=[joker("Square Joker", 1)], need=50, hands=3)
+    a = _advice(_out(cli._advise_rules, d))
+    assert "b play TWOPAIR" in a and len([x for x in a.split("b play TWOPAIR ")[1].split("   ")[0].split() if x.isdigit()]) == 4
+
+
+def test_two_rentals_never_sell_the_only_xmult():
+    # 7807: ante 5, two rentals -> advised selling Acrobat (the only xMult) instead of decaying Popcorn
+    d = shop(jokers=[joker("Acrobat", 1, rental=True), joker("Popcorn", 2, rental=True), joker("Jolly Joker", 3), joker("Joker", 4)], ante=5, money=12)
+    a = _advice(_out(cli.shop_advise, d))
+    assert "b sell 1" not in a
