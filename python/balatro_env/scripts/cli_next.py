@@ -69,7 +69,11 @@ def _note_action(d, typ, params=None):
     if typ in ("SELL_JOKER", "SELL_CONSUMABLE") and params:
         area = "jokers" if typ == "SELL_JOKER" else "consumables"
         it = next((x for x in lst(d.get(area)) if x.get("index") == params.get("index")), None)
-        gone = [area, it.get("id")] if it is not None and it.get("id") is not None else None
+        gone = [area, [it.get("id")]] if it is not None and it.get("id") is not None else None
+    elif typ in ("PLAY_HAND", "DISCARD") and params:
+        # played / discarded cards must have left the hand (7817 JGH4NQBH: stale advise once after a discard)
+        ids = [x.get("id") for x in lst(d.get("hand")) if x.get("index") in (params.get("card_indices") or []) and x.get("id") is not None]
+        gone = ["hand", ids] if ids else None
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         with open(_last_action_file(), "w", encoding="utf-8") as f:
@@ -101,7 +105,8 @@ def _await_action_effect(d, timeout=5.0):
     timeout = 2.0 if noop_ok else (15.0 if trans else timeout)
 
     def pending(x):
-        return (_digest(x) == la.get("sig_before") or (gone and any(y.get("id") == gone[1] for y in lst(x.get(gone[0]))))
+        gone_ids = (gone[1] if isinstance(gone[1], list) else [gone[1]]) if gone else []
+        return (_digest(x) == la.get("sig_before") or (gone and any(y.get("id") in gone_ids for y in lst(x.get(gone[0]))))
                 or (trans and x.get("phase") == la.get("phase_before")))
     while pending(d) and time.time() - t0 < timeout:
         time.sleep(0.2)
@@ -529,16 +534,34 @@ def _fd_bounds(hand):
     """Face-down cards in a rank-sorted hand (descending: the game sorts by the real rank whatever the facing) lie between
     their visible neighbours: {index: (lo, hi)} in RANK_VAL units; {} when the visible cards are not in rank order
     (7806 BK2G3JSQ)."""
+    path = os.path.join(CACHE_DIR, f"{PORT}_fdbounds.json")
     vis = [RANK_VAL.get(_r(c), 0) for c in hand if c.get("rank") is not None]
-    if len(vis) < 2 or any(a < b for a, b in zip(vis, vis[1:])) or not any(c.get("rank") is None for c in hand):
+    if not any(c.get("rank") is None for c in hand):
         return {}
-    out = {}
+    if len(vis) < 2 or any(a < b for a, b in zip(vis, vis[1:])):
+        # not rank-sorted (a manual `move hand`): reuse the bounds computed while it was sorted, keyed by card id
+        # (7817 JGH4NQBH lost them after a move)
+        try:
+            with open(path, encoding="utf-8") as f:
+                by_id = json.load(f)
+        except Exception:
+            return {}
+        return {c.get("index"): tuple(by_id[str(c.get("id"))]) for c in hand if c.get("rank") is None and str(c.get("id")) in by_id}
+    out, by_id = {}, {}
     for p, c in enumerate(hand):
         if c.get("rank") is not None:
             continue
         hi = next((RANK_VAL.get(_r(x), 14) for x in reversed(hand[:p]) if x.get("rank") is not None), 14)
         lo = next((RANK_VAL.get(_r(x), 2) for x in hand[p + 1:] if x.get("rank") is not None), 2)
         out[c.get("index")] = (lo, hi)
+        if c.get("id") is not None:
+            by_id[str(c.get("id"))] = [lo, hi]
+    try:
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(by_id, f)
+    except Exception:
+        pass
     return out
 
 
@@ -2805,7 +2828,9 @@ def shop_advise_sim(d, budget_s=6.0):
         if st["rental"] and own_rent and ante_s < 6:
             both_x = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") and \
                 all(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in owned_r)
-            if not (both_x or sells_r):
+            # exception: a SIM jump of +0.30 whose money path stays >= 0 (Main 12:0x: 0.20 -> 0.83 at ante 1 was barred)
+            jump = key(r) - key0 >= 0.30 and (r.get("shop_money") is None or r["shop_money"] >= 0)
+            if not (both_x or sells_r or jump):
                 return False
         # a buy whose own money path goes negative before a later shop (rent) is a dead-shop buy, never NEEDED NOW
         if r.get("shop_money") is not None and r["shop_money"] < 0 <= ((base0 or {}).get("shop_money") if (base0 or {}).get("shop_money") is not None else 0) \
@@ -3076,7 +3101,8 @@ def _shop_rules(d):
         # the boss's own constraint: The Water 0 discards, normal hands (a deal's median best per hand, not the 75th pct;
         # 7802 KLV4P2RZ lost The Water by 18: projected ~9280/hand vs 5.7-6.5k real); The Needle 1 hand but all discards
         # (the best hand after digging: the 90th pct of a deal; 7806 J3REMTSE scored 7952 vs a 0.44x projection)
-        per = deck_best_est(d, pct=0.9 if bn_t == "The Needle" else 0.5) or best_hand
+        burg = any(j.get("name") == "Burglar" and not j.get("debuff") for j in jokers)  # Burglar: 0 discards, so no dig
+        per = deck_best_est(d, pct=0.9 if (bn_t == "The Needle" and not burg) else 0.5) or best_hand
         # The Needle sets 1 hand; Burglar's +3 is added at blind select after it (7813 7FVPDIEW: 4 hands)
         proj = int(per * ((1 + _hands_pr(d) - int(d.get("hands_per_round") or 3)) if bn_t == "The Needle" else _hands_pr(d)))
     elif bn_t == "The Manacle" and deck_best and best_hand:
@@ -3415,8 +3441,8 @@ def _shop_rules(d):
             mh_p, sh2 = (sh2, mh) if (ob_g and sh2) else (mh, sh2)
             good = name == PLANET_FOR.get(mh_p)
             if not good and sh2 and name == PLANET_FOR.get(sh2):
-                options.append(((20, "PLANET", f"buy {c['index']}", f"{name} ${cost} [planet for {sh2}, your Obelisk max type: you avoid playing it]", cost, False, False)) if ob_g else
-                               (66, "PLANET", f"buy {c['index']}", f"{name} ${cost} [planet for your second-most-played hand {sh2}: boss insurance]", cost, True, False))
+                options.append(((20, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [planet for {sh2}, your Obelisk max type: you avoid playing it]", cost, False, False)) if ob_g else
+                               (66, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [planet for your second-most-played hand {sh2}: boss insurance]", cost, True, False))
                 continue
             feeds = any(j.get("name") in ("Constellation", "Satellite", "Astronomer") for j in jokers)
             const = any(j.get("name") == "Constellation" and not j.get("debuff") for j in jokers)
@@ -3430,8 +3456,9 @@ def _shop_rules(d):
                 psc = max(psc, 82)  # Constellation: every planet used is +0.1x on every hand forever; $3 beats a $5+ reroll
             if ante <= 2 and (scoring_now <= 1 or not owns_mult) and not const and not (good and 0.85 <= sc_ratio <= 1.15 and ante >= 2):
                 psc = min(psc, 20)  # 0-1 scoring jokers at ante 1-2: a level on a jokerless hand is +10-20 points; buy a scorer
-            # planets are used on purchase: `buyuse` needs no consumable slot and feeds Constellation immediately
-            options.append((psc, "PLANET", f"{'buyuse' if feeds else 'buy'} {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
+            # planets are used on purchase: `buyuse` needs no consumable slot (full slots never block them: 7817 JGH4NQBH)
+            # and feeds Constellation immediately
+            options.append((psc, "PLANET", f"buyuse {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
         elif name == "Judgement":
             jsc = (75 if scoring_now < 2 else 62) if free > 0 else 5
             if any(j.get("name") == "Joker Stencil" for j in jokers):
@@ -3868,7 +3895,8 @@ def pack_advise(d):
         money = int(d.get("money") or 0)
         SPEC = {"The Soul": (100 if n_j < slots else 5, None, "a Legendary joker"),
                 "Black Hole": (90, None, "+1 level to every hand"),
-                "Wraith": ((max(5, 75 - 3 * max(money, 0)) if n_j < slots else 5) if not any(j.get("name") == "Joker Stencil" for j in jokers) else 15, None,
+                # 0 xMult and a free slot: a Rare is often the xMult the run lacks (7811 SH1F9PV5 took Cryptid over it)
+                "Wraith": ((max(5, 75 - 3 * max(money, 0), 72 if not strong_j else 0) if n_j < slots else 5) if not any(j.get("name") == "Joker Stencil" for j in jokers) else 15, None,
                            "a random Rare joker, money set to $0" + ("; it fills a slot your Joker Stencil counts" if any(j.get("name") == "Joker Stencil" for j in jokers) else "")),
                 "Aura": (70, tgt, "Foil/Holo/Polychrome on the target card"),
                 "Cryptid": (65 if glass else 45, glass or tgt, "2 copies of the target card"),

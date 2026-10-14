@@ -385,12 +385,13 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss
         if _active(j):
             a, b, c = _joker_round_effects(j)
             hs, ds, hp = hs + a, ds + b, hp + c
-    if any(j.get("name") == "Burglar" and _active(j) for j in now):
-        hp, ds = hp + 3, 0
+    burglars = sum(1 for j in now if j.get("name") == "Burglar" and _active(j))
+    if burglars:  # +3 hands per Burglar at blind select, all discards lost
+        hp, ds = hp + 3 * burglars, 0
     name = blind["name"]
     boss = blind["boss"] and name not in ("Verdant Leaf", "Crimson Heart", "Boss (unknown)")
-    if boss and name == "The Needle":
-        hp = 1
+    if boss and name == "The Needle":  # the Needle sets 1 hand first; Burglar's +3 lands after it
+        hp = 1 + 3 * burglars
     if boss and name == "The Water":
         ds = 0
     if boss and name == "The Manacle":

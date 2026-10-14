@@ -1,3 +1,5 @@
 # Run IJF5DIGF (port 7812, claude-sonnet-5-5) - Black Deck Gold Stake - IN PROGRESS
 
-Ante 1 (Economy/Foil/The Pillar 600, $4): started.
+Ante 1 (Economy/Foil/The Pillar 600, $4): Small: 2P QQ88 112 + 2P JJ44 96 + Trips 666 144. Shop $4: Buffoon pack -> Smeared{PERISHABLE} (Hearts=Diamonds, Spades=Clubs: 2-colour flushes, est 300-600 at ante 1). Big: Smeared flush 324 + 296. Shop $5: Walkie Talkie{ETERNAL} $4 (only scorer). Pillar: flush 504 + High TH 125 (Walkie).
+Ante 2 (Coupon/Uncommon/The Head 2000, $7): Small 1000 one-shot Flush 1176. Shop: Juggler $4. Big: Flush 912 + 640. Shop $12: Buffoon -> Even Steven{R}. Head debuffs red (Smeared): discarded debuffed cards, Flush 1152 + Straight 204 (cycle) + Flush 1296 = 2652/2000.
+Ante 3 (Economy/Economy/The Club 6400, $11): Smeared perished, sold. Buffoon -> Gros Michel (+15 mult), Blue Joker{R} $1 (+2 chips x 52 cards = +104 chips: a 1-card High Card makes 1600-2600!). Skipped Small (Economy +$9). Big 4800: Straight 4779 + High 4C 2280. Shop: Popcorn $5. Club: Broadway Straight 8319 one-shot.

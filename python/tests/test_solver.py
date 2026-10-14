@@ -200,6 +200,36 @@ def test_hanging_chad_retriggers_the_best_card_the_player_can_move_first():
     assert top["first_card"] == 2 and "move KD leftmost" in top["note"]
 
 
+def test_photograph_doubles_the_mult_added_before_the_first_face():
+    # 7805 ZFGUEC54: Photograph x2 fires on the first scoring face; per-card +mult (Lusty, Mult cards) placed before it
+    # is doubled, so the faces go after them (not leftmost)
+    st = state(["KS", "KC", "5H", "5D", "9C", "7D", "3C", "2D"], need=900, hands=3, discards=2,
+               jokers=["Photograph", "Lusty Joker"])
+    st["hand"][3]["enhancement"] = "m_mult"
+    rs = solver.RoundSolver(st, estimate)
+    tp = rs.slots[:4]
+    in_hand_order = estimate("Two Pair", [c.d for c in tp], [], st, played_n=4)[0]
+    best, _t = rs.score(tp, [], 3, 2, rs.ctx0)
+    assert best > in_hand_order
+    first, order = rs.best_order(tp)
+    assert first is None and set(order[:2]) == {3, 4} and set(order[2:]) == {1, 2}
+    top = next(r for r in plan(st, samples=40) if r["action"] == "PLAY" and sorted(r["cards"]) == [1, 2, 3, 4])
+    assert top["first_card"] is None and "scoring order left to right" in top["note"]
+
+
+def test_round_score_quantiles_from_a_shop_state():
+    # GoldAdvisor SCORE CHECK: a round played from the full deck with discards; Card Sharp's last-round flag is cleared
+    st = state(["KS"], need=300, hands=3, discards=2, jokers=["Card Sharp"])
+    st.update(phase="SHOP", hand=[], hands_per_round=4, discards_per_round=2)
+    for v in st["hand_levels"].values():
+        v["played_this_round"] = 1
+    q = solver.round_score_quantiles(st, estimate, n=20)
+    assert q["n"] == 20 and q["round"][0] <= q["round"][1] <= q["round"][2]
+    assert q["per_hand"][1] * 4 == pytest.approx(q["round"][1], rel=0.5)
+    one = solver.round_score_quantiles(st, estimate, n=20, hands=1, discards=0)
+    assert one["round"][1] < q["round"][1]
+
+
 def test_acrobat_x3_only_on_final_hand_and_forced_dig_is_reported_raw():
     # 7804 I9HDGAQA: 2 hands, 0 discards, 4 clubs kept by a dig; the 5th club is a plain hypergeometric draw
     st = state(["AC", "7C", "6C", "2C", "TS", "8D", "6H", "5H"], need=2000, hands=2, discards=0,
