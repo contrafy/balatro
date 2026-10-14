@@ -31,8 +31,8 @@ _Updated 13:00._
   - The advisor counted this copy chain as x9 and called the winning round UNWINNABLE. A fix is assigned to
     GoldAdvisor.
   - Post-mortem: `docs/runs/7802_IFYMR9UX.md`.
-- **Antes reached:** 1: 30, 2: 45, 3: 58, 4: 72, 5: 67, 6: 38, 7: 11, 8: 7. All three wins came after the advisor,
-  solver and shop-simulator upgrades: 0 wins in the first 191 runs, 2 in the 137 since 07:50.
+- **Antes reached:** 1: 30, 2: 45, 3: 58, 4: 72, 5: 67, 6: 38, 7: 11, 8: 7. The win rate is rising with the
+  advisor, solver and shop-simulator upgrades: 1 win in the first 191 runs (by 07:50), 2 in the 137 runs since.
 - **By model:**
 
   | model | runs | mean ante | reached ante 6+ | reached ante 8 | wins |
