@@ -51,21 +51,20 @@ _Updated 07:50._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 10:45:37 by `balatro-data status` (edits inside this block are overwritten). Player runs: 259 (250 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 11:00:42 by `balatro-data status` (edits inside this block are overwritten). Player runs: 263 (255 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (9)
+### Live runs (8)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | QEY21ZAA | 8 | BLIND_SELECT | 4 | 7 | 7 | Big Blind (13500) | SELECT_BLIND | Big 13500: 2P ~7400 + Pair ~4600 + High ~4000 clears without trips; the post-Big shop (~3, 3 views)… | 17s |
-| 7802 | port-7802 | claude-opus-5-5 | F64SACWK | 8 | PACK_OPENING | 1 | 1 | 2 | Small Blind (300) | SELECT_PACK_CARD {"index":1} | Misprint +0..23 mult (avg ~11) SIM 0.86 vs Madness 0.42; bridge for 5 rounds while hunting permanen… | 17s |
-| 7803 | port-7803 | claude-opus-5-5 | 7MUK4NI9 | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[3,5,8]} | keep KK pair + 4 spades (KS 6S 4S 2S) flush draw, solver p 0.93 vs 0.86 rule pick; keeps a made pai… | 3s |
-| 7804 | port-7804 | claude-opus-5-5 | AJGH6ECT | 8 | SELECTING_HAND | 5 | 8 | 2 | Small Blind 0/25000 | PLAY_HAND {"card_indices":[1,2,3,6,8]} | red flush est 10244 (Mystic on); keep 7H for the next red flush, 14756 left over 2 hands | 23s |
-| 7805 | port-7805 | claude-opus-5-5 | RTJZMPXF | 8 | SELECTING_HAND | 3 | 7 | 14 | The Water 1044/6400 | PLAY_HAND {"card_indices":[1,2,3,4]} | need 5356 in 2 hands, solver UNWINNABLE; best expected line Two Pair AAQQ est 620, keep 8765 straig… | 15s |
-| 7806 | port-7806 | claude-opus-5-5 | J3REMTSE | 8 | PACK_OPENING | 2 | 3 | 10 | Big Blind (1500) | SELECT_PACK_CARD {"index":1} | Uranus: Two Pair L3, main hand, SIM +0.14 | 12s |
-| 7807 | port-7807 | claude-opus-5-5 | G2HUKM9D | 8 | SHOP | 3 | 5 | 22 | Small Blind (3200) | SHOP_BUY_BOOSTER {"slot":1} | Jumbo Celestial SIM +0.05 best; levels cost no Stencil slot; 6 left | 8s |
-| 7809 | port-7809 | claude-opus-5-5 | 7C89CEFK | 8 | SELECTING_HAND | 2 | 4 | 8 | Small Blind 0/1000 | DISCARD {"card_indices":[5,6,7,8]} | no pair; keep AKQJ spades (flush/straight/pair draws), discards also enable Summit; solver p>=0.99 | 12s |
-| 7810 | port-7810 | claude-sonnet-5-5 | UIL7HPIQ | 8 | BLIND_SELECT | 5 | 8 | 11 | Big Blind (37500) | SKIP_BLIND | Economy tag doubles 1 to ~2 now; Big 37500 needs 12.5k x3 hands for no shop value; avoids rent | 3s |
+| 7801 | port-7801 | claude-fable-5-1 | QEY21ZAA | 8 | BLIND_SELECT | 5 | 9 | 4 | The Psychic (50000) | SELECT_BLIND | Boss The Psychic 50000 (5-card hands): plan FH (~34k) + two 2P (~10k each), hunt trips/FH with at m… | 9s |
+| 7802 | port-7802 | claude-opus-5-5 | F64SACWK | 8 | BLIND_SELECT | 3 | 6 | 24 | The Manacle (6400) | SELECT_BLIND | boss The Manacle 6400 (-1 hand size) | 3s |
+| 7803 | port-7803 | claude-opus-5-5 | 7MUK4NI9 | 8 | SHOP | 3 | 5 | 9 | Small Blind (3200) | SHOP_END | override Jumbo Standard (would leave , policy: Standard packs only with 5+ after); keep for Smiley … | 10s |
+| 7804 | port-7804 | claude-opus-5-5 | SL5MJZY1 | 8 | SELECTING_HAND | 2 | 4 | 0 | Big Blind 0/1500 | PLAY_HAND {"card_indices":[2,3,4,1]} | Pair QQ est 708 (Photograph+Ancient QH) of 1500, keep both discards for 2 hands | 5s |
+| 7805 | port-7805 | claude-opus-5-5 | R87RLKF6 | 8 | SHOP | 1 | 2 | 3 | Big Blind (450) | SHOP_END | left, Runner rental negative SIM; keep money for next joker | 4s |
+| 7807 | port-7807 | claude-opus-5-5 | G2HUKM9D | 8 | SELECTING_HAND | 5 | 9 | 21 | The House 0/50000 | DISCARD {"card_indices":[6,7,8]} | plan: Strength TS TC -> JJ for Trips JJJ (~42k) + fd1/fd2 (J..A) kickers; first discard junk fd6(8-… | 12s |
+| 7809 | port-7809 | claude-opus-5-5 | 7C89CEFK | 8 | SHOP | 4 | 8 | 31 | Small Blind (9000) | SHOP_BUY_BOOSTER {"slot":1} | Celestial SIM +0.07 (P clear 0.50->0.64); levels multiply through Stencil x4; 7 left | 7s |
+| 7810 | port-7810 | claude-sonnet-5-5 | 83YPG1WJ | 8 | BLIND_SELECT | 1 | 1 | 2 | Big Blind (450) | SELECT_BLIND | Big 450, must play | 3s |
 
 ### Results by model x stake x deck
 
@@ -74,8 +73,8 @@ _Generated 2026-10-14 10:45:37 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | claude-fable-5-1 | 8 | Black | 26 | 0 | 26 | 0 | 0 | 4.0 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 169 | 1 | 168 | 0 | 0 | 3.97 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 49 | 0 | 48 | 0 | 1 | 3.53 | 8 |
+| claude-opus-5-5 | 8 | Black | 173 | 1 | 172 | 0 | 0 | 3.95 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 50 | 0 | 49 | 0 | 1 | 3.58 | 8 |
 
 ### Deepest runs
 
@@ -94,28 +93,28 @@ _Generated 2026-10-14 10:45:37 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 259 files in manifest; schema_ok 259, schema invalid 0; replay_ok 245, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 151 / failed 0; gui (live) ok 116 / failed 0; cross-checked by both 22, disagreeing 0.
-- All files (incl. fuzz + replays): 449; schema_ok 447; replay_ok 251 (headless 151, gui 122); replay failed 0; awaiting replay 184; quarantined 2.
+- Player runs: 263 files in manifest; schema_ok 263, schema invalid 0; replay_ok 250, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 156 / failed 0; gui (live) ok 116 / failed 0; cross-checked by both 22, disagreeing 0.
+- All files (incl. fuzz + replays): 453; schema_ok 451; replay_ok 256 (headless 156, gui 122); replay failed 0; awaiting replay 184; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 2136 |
+| port-7805 | 2 | 2 | 2170 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1762 |
-| port-7803 | 1 | 1 | 2180 |
-| port-7804 | 1 | 1 | 1826 |
-| port-7807 | 1 | 1 | 2323 |
+| port-7802 | 1 | 1 | 1807 |
+| port-7803 | 1 | 1 | 2221 |
+| port-7804 | 1 | 1 | 1864 |
+| port-7807 | 1 | 1 | 2368 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1326 |
-| port-7806 | 0 | 0 | 2261 |
+| port-7801 | 0 | 0 | 1349 |
+| port-7806 | 0 | 0 | 2305 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 2110 |
-| port-7810 | 0 | 0 | 2492 |
+| port-7809 | 0 | 0 | 2156 |
+| port-7810 | 0 | 0 | 2526 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
@@ -155,4 +154,9 @@ _Generated 2026-10-14 10:45:37 by `balatro-data status` (edits inside this block
 - 09:14-09:20 GoldAdvisor cli.py 695b8716 -> dec92399 -> 70db0a0b: slot-command name guard (`buy Clever` / `buy 1 --expect Clever`, target always echoed); shop SIM ranked by rent-adjusted p_adj (delta_adj, dead later shops shown); BUY yields to SIM when its best is nothing; permanent beats perishable/rental on SIM ties; Credit Card debt spendable for survival rerolls, 0-scorer reroll keeps $5; growth xMults never "flat rentals"; face-down cards discarded first; Throwback skip needs 1.6x on handicap bosses; perishable-carrier and broke skips; early planets discouraged with 0-1 scorers; Stencil/Wraith penalties; Madness/Dagger now SIM-modelled.
 - 09:39 GoldAdvisor cli.py 70db0a0b -> d088f3c4: sell waits until the sold card leaves its area (it lingers while dissolving after money changes; 7805 stale-after-sell), `buy` re-polls /legal 4 s, slot-full rejections retried; test sell->buy race (fails on old, passes); Blueprint/Brainstorm copy target + ORDER FIRST; Obelisk tie warning; Raised Fist filler-aware est; The Arm prefers an L1/non-main clearing hand; Fool = its copy; cash-tag+rent skip; rental sells need share < 0.2; Riff-raff/Burglar/grown Obelisk kept; Burglar +3 hands in SCORE CHECK; Swashbuckler from ability.mult; eternal Troubadour/2nd eternal utility barred; SIM SATURATED -> rules decide. Tests 99.
 - 10:15-10:36 GoldAdvisor cli.py d088f3c4 -> fac63418 -> b87ce459: shop/pack SIM ranked by DrawSolver's terminal value (delta_value); pack picks follow the SIM (tie 0.01), a free sticker-free joker is never skipped, sticker bars yield to +0.15 rent-adjusted; rental SELL FIRST simulated; 2nd permanent rental needs both xMult or a bundled sell; pair-family main-hand dominance (score-weighted); face-down EV line + rank intervals (House/Fish/Wheel); The Hook held discount; Blackboard x3 in SCORE CHECK; Misprint range fixed; Fool/Wheel/Hermit/Immolate/Wasteful values; Mr. Bones kept below SCORE CHECK 1.5; broke skip at ante 3-4; D6 note. Tests 99.
+- 11:00 Model mix change: Sonnet's last 10 runs average ante 5.3 (7 of 10 reached ante 6), against Opus's last 30
+  at 4.0 and Fable's last 8 at 4.5. Sonnet improved as the advisor and the PLAYBOOK 2b checklist matured, so
+  7807 and 7809 move back to Sonnet as their runs finish, and idle 7808 restarts as Sonnet (no 429 since 03:30).
+  That gives 10 players: 1 Fable (7801), 5 Opus (7802-7806), 4 Sonnet (7807-7810). Sonnet also costs less
+  against the account rate limit.
 

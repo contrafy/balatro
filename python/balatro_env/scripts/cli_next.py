@@ -91,13 +91,17 @@ def _await_action_effect(d, timeout=5.0):
         return d
     t0 = time.time()
     gone = la.get("gone")
+    # a sort / reorder can legitimately change nothing (already in that order; face-down cards): wait briefly, no warning
+    # (7803 C5AF29KG: `sort rank` printed the warning twice)
+    noop_ok = la.get("type") in ("SORT_HAND", "REORDER")
+    timeout = 2.0 if noop_ok else timeout
 
     def pending(x):
         return _digest(x) == la.get("sig_before") or (gone and any(y.get("id") == gone[1] for y in lst(x.get(gone[0]))))
     while pending(d) and time.time() - t0 < timeout:
         time.sleep(0.2)
         d = wait_settled()
-    if pending(d):
+    if pending(d) and not noop_ok:
         print(f"(warning: the last {la.get('type')} is not visible in the state after {timeout:.0f}s; re-run `s` before acting)")
     else:
         la["confirmed"] = True
@@ -383,7 +387,11 @@ def show(d):
             pay += "; no round end, so your perishable carrier does not tick and stays alive for the boss"
         if stake_n >= 2 and bs.get("on_deck") == "Big" and thr_ok:
             big_t = (ch.get("Big") or {}).get("tag") or "Big Blind tag"
-            print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss {'with the 1.3x+ margin' if thr else 'with your carrier alive'}, so skip the Big too: {pay.replace(str(small.get('tag')), str(big_t)) if small.get('tag') else big_t}; "
+            big_tk = (ch.get("Big") or {}).get("tag_key")
+            # the Big's OWN tag (7804 AJGH6ECT: the text described the Small's Buffoon tag while the Big's was Rare)
+            base_pay = NOW_TAGS.get(tk) or LATER_TAGS.get(tk) or f"the {small.get('tag')} tag"
+            pay_b = ((NOW_TAGS.get(big_tk) if big_tk != tk else None) or LATER_TAGS.get(big_tk) or f"the {big_t}") + pay[len(base_pay):]
+            print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss {'with the 1.3x+ margin' if thr else 'with your carrier alive'}, so skip the Big too: {pay_b} ({big_t}); "
                   f"Boss Tag rerolls a Wall/Violet boss, Garbage/Skip/Economy pay money for the post-boss shop. The boss is never skipped.)")
         elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok) and skip_ok:
             gold = f" Skipping also avoids one round-end ({sum(1 for j in lst(d.get('jokers')) if _stk(j)['rental'])} rental charge(s), one perishable tick)." if stake_n >= 8 and any(_stk(j)["rental"] or _stk(j)["perishable"] for j in lst(d.get("jokers"))) else ""
@@ -1333,7 +1341,11 @@ def advise(d):
         # orchestrator 02:58: follow the solver when its calibrated p beats the rule pick by > 0.05; a PLAY that clears the
         # blind now also wins on a smaller model edge or, tied, on $1+ more value
         # an under-sampled option (low_n) never drives the switch
-        better_p = mine and not (top.get("low_n") or top.get("low_confidence")) and top["p_clear"] > mine["p_clear"] + 0.05
+        # PLAYBOOK 2b step 5: a DISCARD that breaks a made Pair/Two Pair/Trips needs a 0.10 margin (7805 RTJZMPXF broke
+        # QQ66 at +0.07)
+        made_pf = max((c for c in _candidates(d) if c[0] in ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")), key=lambda c: c[2], default=None)
+        breaks = top["action"] == "DISCARD" and made_pf is not None and bool(set(top.get("cards") or []) & set(made_pf[1]))
+        better_p = mine and not (top.get("low_n") or top.get("low_confidence")) and top["p_clear"] > mine["p_clear"] + (0.10 if breaks else 0.05)
         better_c = mine and not (top.get("low_n") or top.get("low_confidence")) and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
         if mine and not (better_p or better_c):
             sol.append("  (rule pick kept: the solver's best does not beat it by more than 0.05 calibrated p)")
@@ -2406,9 +2418,20 @@ def deck_best_est(d, samples=40, pct=0.75, seed=7):
                 hands_per_round=d.get("hands_per_round") or 3, _plan_fillers=True)
     keep_disc = dict(base, discards_remaining=int(d.get("discards_per_round") or 3))  # Banner/Delayed Gratification
     vals = []
+    splash = any(j.get("name") == "Splash" and not j.get("debuff") for j in lst(d.get("jokers")))
     for _ in range(samples):
         deal = [dict(c, index=i + 1, facing="front", debuff=False, highlighted=False) for i, c in enumerate(_deal_order(rng.sample(cards, hs), base))]
-        vals.append(max((c[2] for st in (base, keep_disc) for c in _candidates(dict(st, hand=deal))), default=0))
+        best_v = 0
+        for st in (base, keep_disc):
+            sd = dict(st, hand=deal)
+            for h_c, i_c, e_c in _candidates(sd):
+                if splash and len(i_c) < 5:
+                    # Splash: every played card scores: pad with the highest-chip cards (7805 RTJZMPXF: SCORE CHECK ignored it)
+                    pad = [c.get("index") for c in sorted((c for c in deal if c.get("index") not in i_c), key=lambda c: -CHIP_VAL.get(_r(c), 0))][:5 - len(i_c)]
+                    all_c = list(i_c) + pad
+                    e_c = max(e_c, estimate(h_c, _cards_by_idx(sd, all_c), _held(sd, all_c), sd, played_n=len(all_c))[0])
+                best_v = max(best_v, e_c)
+        vals.append(best_v)
     vals.sort()
     return vals[min(len(vals) - 1, int(pct * len(vals)))]
 
@@ -2548,7 +2571,11 @@ def shop_advise(d):
     rr_c = (d.get("shop") or {}).get("reroll_cost")
     d6_n = (f"REROLLS ARE CHEAP: the next reroll costs ${rr_c} (D6 Tag: starts at $0, +$1 each); hunt a scorer/xMult before leaving."
             if rr_c is not None and int(rr_c) <= 1 else None)
-    print("\n".join([x for x in (ob_n, mad_n, d6_n) if x] + lines))
+    rf = next((j for j in lst(d.get("jokers")) if j.get("name") in ("Riff-raff", "Riff-Raff") and not j.get("debuff")), None)
+    rf_n = (f"RIFF-RAFF makes nothing with your joker slots full ({len(lst(d.get('jokers')))}/{d.get('joker_slots')}): sell it (b sell {rf.get('index')}) "
+            "unless you free a slot before the next blind (7810 QBEEJKG4)"
+            if rf is not None and len(lst(d.get("jokers"))) >= int(d.get("joker_slots") or 5) else None)
+    print("\n".join([x for x in (ob_n, mad_n, d6_n, rf_n) if x] + lines))
 
 
 _SHOP_SIM = None
@@ -2691,7 +2718,7 @@ def shop_advise_sim(d, budget_s=6.0):
     m = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
     adv_cmd = f"{'pack' if m.group(1) == 'pack' else 'buy'} {m.group(2)}" if m else None
     sim_cmds = {r["option"].get("_cmd") for r in feas if r["option"].get("_cmd")}
-    keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING")) or \
+    keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING", "CAMPFIRE FEED")) or \
         (adv_cmd not in sim_cmds and adv.split("(")[0].strip() not in ("ADVICE: LEAVE -> b endshop", "ADVICE: REROLL -> b reroll") and gain < 0.05)
     mine0 = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
     g_rule = (key(mine0) - key(base)) if mine0 and base else 0.0
@@ -3380,6 +3407,18 @@ def _shop_rules(d):
         options = [(sc + (25 if cls.startswith("PLUS") else 0), cls, cmd, label, cost, True if cls.startswith("PLUS") else strong, ns)
                    for sc, cls, cmd, label, cost, strong, ns in options]
         print("  (ante 6+ with $40+: money is worth nothing unspent; flat +chips/+mult jokers weighted up, sell utility jokers to fit them)")
+    camp = next((j for j in jokers if j.get("name") == "Campfire" and not j.get("debuff")), None)
+    if camp is not None:
+        # Campfire: +x0.25 per card SOLD (resets after the boss): a joker bought and sold in the same shop at <= $1 net feeds
+        # it (a rental sold before the round end never pays rent; 7804 AJGH6ECT)
+        for c in lst(sh.get("jokers")):
+            if c.get("set") != "Joker" or _stk(c)["eternal"]:
+                continue
+            cost_c = int(c.get("cost") or 0)
+            net = cost_c - max(1, cost_c // 2)
+            if net <= 1 and cost_c <= money and (free > 0 or _joker_edition(c) == "negative"):
+                options.append((72, "FEED", f"buy {c['index']}", f"{c.get('name')}{stickers(c)} ${cost_c} [CAMPFIRE FEED: buy, then sell it at once (`b sell` the new last joker): "
+                                f"+x0.25 Campfire for ${net} net; Campfire resets after the boss]", cost_c, True, True))
     # the printed ranking is the final one: the ADVICE below walks this exact list top-down (skips are printed)
     options.sort(key=lambda t: -t[0])
     for o in options:
@@ -3877,7 +3916,7 @@ def _resolve_target(cmd, rest, ints, d):
         ints = [hits[0].get("index")]
     if ints:
         tgt = next((x for x in items if x.get("index") == ints[0]), None)
-        nm = (tgt or {}).get("name")
+        nm = (tgt or {}).get("name") or (card_str(tgt) if tgt and tgt.get("rank") is not None else None)  # Standard-pack cards have no name
         if want and (nm is None or want not in str(nm).lower()):
             print(f"REFUSED (nothing sent): {cmd} {ints[0]} is {nm!r} now, not '{want}' (indices shift after a reroll/pick/sell). Run `b s`."); sys.exit(1)
         print(f"(target: {cmd} {ints[0]} = {nm})")
@@ -4101,12 +4140,27 @@ def main():
         while d.get("phase") not in ("SELECTING_HAND", "PACK_OPENING") and time.time() - t0 < 12:
             time.sleep(0.3)  # right after `blind` / a pack pick the phase is still changing (7805)
             d = _with_known_jokers(wait_settled())
+        # route by the phase actually reached (7805 RTJZMPXF / 7806: "only works while selecting a hand" in a pack/shop)
         if d.get("phase") == "PACK_OPENING":
             pack_advise_sim(d)
+        elif d.get("phase") == "SHOP":
+            print("(advise in the shop = shopadvise)")
+            _mh_hyst_update(d)
+            d["_mh_hyst"] = _mh_hyst_load()
+            shop_advise_sim(d)
+        elif d.get("phase") == "BLIND_SELECT":
+            show(d)
         else:
             advise(d)
         return
     if cmd == "shopadvise":
+        t0 = time.time()
+        while d.get("phase") not in ("SHOP", "PACK_OPENING") and time.time() - t0 < 6:
+            time.sleep(0.3)
+            d = _with_known_jokers(wait_settled())
+        if d.get("phase") == "PACK_OPENING":
+            print("(a pack is open: pack advice)")
+            pack_advise_sim(d); return
         _mh_hyst_update(d)
         d["_mh_hyst"] = _mh_hyst_load()
         shop_advise_sim(d); return

@@ -36,8 +36,9 @@ PLANET_HAND = {"Pluto": "High Card", "Mercury": "Pair", "Uranus": "Two Pair", "V
                "Neptune": "Straight Flush", "Planet X": "Five of a Kind", "Ceres": "Flush House", "Eris": "Flush Five"}
 RENT = 3
 TIE_P = 0.02  # p differences below this are sampling noise: ties rank by mean score ratio, then money
-# Rent is money the next shops cannot spend. Gold shops convert ~$5 into a scorer worth ~+0.05..0.3 survival, so one
-# rent dollar is charged DOLLAR_P of p (heuristic); a later shop entered with negative money buys nothing.
+# Rent is money the next shops cannot spend: each rent dollar discounts the option's p by DOLLAR_P (heuristic: a $5
+# Gold scorer is worth ~+0.05..0.3 survival); each later shop entered with negative money (buys nothing) by
+# DEAD_SHOP_P. Multiplicative, so a doomed line (p ~ 0) is not ranked by its rent alone.
 DOLLAR_P = 0.01
 DEAD_SHOP_P = 0.05
 # Terminal value: after the horizon the end build is played once against the next boss; value = p_adj x (A + B x
@@ -144,6 +145,13 @@ def options_from_state(state, packs=False):
             opts.append({"label": tag, "levels": ["*"], "cost": cost})
         elif _is_playing_card(c):
             opts.append({"label": tag, "add_cards": [c], "cost": cost})
+    if ph == "SHOP" and any(j.get("name") == "Campfire" and not j.get("debuff") for j in _lst(state.get("jokers"))):
+        # Campfire feeding: buy a cheap item and sell it at once (+x0.25 per card sold, reset after the boss)
+        for c, cost in items:
+            sell = int(c.get("sell_cost") or max(1, cost // 2))
+            if cost <= money and cost - sell <= 2 and not (full and _is_joker(c)):
+                opts.append({"label": f"flip {c.get('name') or c.get('key')} ${cost} (Campfire)", "cost": cost,
+                             "flip": sell})
     if packs and ph == "SHOP":
         for b in _lst((state.get("shop") or {}).get("boosters")):
             cost = int(b.get("cost") or 0)
@@ -179,6 +187,14 @@ def apply_option(state, opt):
         money += int(j.get("sell_cost") or 0)
         jokers.remove(j)
         notes.append(f"sell {j.get('name')} +${int(j.get('sell_cost') or 0)}")
+    flips = len(sold) + (1 if opt.get("flip") is not None else 0)
+    money += int(opt.get("flip") or 0)
+    if flips:
+        for j in jokers:
+            if j.get("name") == "Campfire" and not j.get("debuff"):
+                j["ability"] = dict(j.get("ability") or {}, x_mult=max(1.0, float((j.get("ability") or {}).get("x_mult") or 1))
+                                    + 0.25 * flips)
+                notes.append(f"Campfire +x{0.25 * flips:.2f} (resets after the boss)")
     nj = opt.get("add_joker")
     if nj:
         if len(jokers) >= int(state.get("joker_slots") or 5) and _edition(nj) != "negative":
@@ -229,7 +245,20 @@ def apply_option(state, opt):
             nid += 1
         dk["cards"] = cards
         st["deck"] = dk
+        if opt.get("add_cards"):
+            _feed_hologram(jokers, len(opt["add_cards"]), notes)
     return st, None, notes
+
+
+def _feed_hologram(jokers, n, notes=None):
+    """Hologram gains x0.25 per playing card added to the deck."""
+    for j in jokers:
+        if j.get("name") == "Hologram" and not j.get("debuff") and n:
+            ab = dict(j.get("ability") or {})
+            ab["x_mult"] = max(1.0, float(ab.get("x_mult") or 1)) + 0.25 * n
+            j["ability"] = ab
+            if notes is not None:
+                notes.append(f"Hologram +x{0.25 * n:.2f}")
 
 
 # ---- round parameters per blind ------------------------------------------------------------------------------
@@ -307,11 +336,22 @@ def _rounds_left(state):
     return max(1, open_ + 3 * max(0, 8 - ante))
 
 
-def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None):
+def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss_passed=False):
     """Synthetic SELECTING_HAND state for a fresh round of `blind` played k round-ends from now; `added` are jokers
-    created since (Riff-raff); ob = (Obelisk x_mult, hand-type play counts) carried from the previous rounds."""
+    created since (Riff-raff); ob = (Obelisk x_mult, hand-type play counts) carried from the previous rounds;
+    boss_passed: a boss was beaten since (Campfire resets to x1)."""
     jokers = _lst(st.get("jokers"))
     now = _jokers_at(jokers, k, removed, growth) + [dict(j, index=len(jokers) + i + 1) for i, j in enumerate(added)]
+    feeders = [j.get("name") for j in now if _active(j)]
+    if k:
+        # cards added to the deck by owned jokers over k rounds feed Hologram (+x0.25 each): Certificate (1 per
+        # round), Marble Joker (a Stone card per blind), DNA (assumed 1 copied card per round)
+        fed = k * sum(feeders.count(n) for n in ("Certificate", "Marble Joker", "DNA"))
+        now = [dict(j) for j in now]
+        _feed_hologram(now, fed)
+    if boss_passed:
+        now = [dict(j, ability=dict(j.get("ability") or {}, x_mult=1.0)) if j.get("name") == "Campfire" else j
+               for j in now]
     hs = int(base.get("hand_size") or 8)
     ds = int(base.get("discards_per_round") or base.get("discards_remaining") or 0)
     hp = int(base.get("hands_per_round") or base.get("hands_remaining") or 1)
@@ -353,6 +393,11 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None):
         if main in ("Two Pair", "Full House", "Flush House"):
             now = [dict(j, ability=dict(j.get("ability") or {}, mult=float((j.get("ability") or {}).get("mult") or 0)
                                         + 4 * k)) if j.get("name") == "Spare Trousers" else j for j in now]
+    stones = k * feeders.count("Marble Joker")
+    if stones:  # Marble Joker: a Stone card per blind select
+        nid = max([int(c.get("id") or 0) for c in cards] + [0]) + 5000
+        cards = cards + [{"id": nid + i, "rank": None, "suit": None, "enhancement": "m_stone", "remaining": True}
+                         for i in range(stones)]
     return dict(st, phase="SELECTING_HAND", hand=[], jokers=now, money=int(st.get("money") or 0) - RENT * rentals * k,
                 hand_size=max(1, int(round(hs))), hands_remaining=max(1, int(hp)), discards_remaining=max(0, int(ds)),
                 blind={"name": name, "boss": boss, "chips_needed": blind["chips"], "chips_scored": 0, "disabled": False},
@@ -405,8 +450,9 @@ class _OptionSim:
         rs = self.solvers.get(key)
         if rs is None:
             jk = [_commons()[i] for i in added]
-            rs = self.sv.RoundSolver(_round_state(self.state, self.base, self.blinds[k], k, removed, growth, jk, ob),
-                                     self.est, seed=0)
+            boss_passed = any(b.get("kind") == "Boss" for b in self.blinds[:k])
+            rs = self.sv.RoundSolver(_round_state(self.state, self.base, self.blinds[k], k, removed, growth, jk, ob,
+                                                  boss_passed), self.est, seed=0)
             self.solvers[key] = rs
         return rs
 
@@ -845,9 +891,8 @@ def _value(r):
 
 
 def _p_adj(r):
-    """p_next charged for rent: DOLLAR_P per $ of rent over the horizon (all rentals) and, for eternal rentals,
-    per $ of rent for the rest of the run; with a horizon money path that goes negative, the dead shops cost
-    another DEAD_SHOP_P each."""
+    """p_next discounted for rent: DOLLAR_P per $ of rent over the horizon (all rentals) and, for eternal rentals,
+    per $ of rent for the rest of the run; DEAD_SHOP_P per later shop entered with negative money; at most 90%."""
     rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0)
     dead = r["dead_shops"] if "dead_shops" in r else sum(1 for m in r.get("money_path") or [] if m < 0)
-    return r["p_next"] - DOLLAR_P * rent - DEAD_SHOP_P * dead
+    return r["p_next"] * max(0.1, 1.0 - DOLLAR_P * rent - DEAD_SHOP_P * dead)

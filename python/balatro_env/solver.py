@@ -219,6 +219,7 @@ class RoundSolver:
         self.hd_dep = bool(jn & HD_JOKERS)
         self.final_dep = bool(jn & {"Dusk", "Acrobat"})  # final-hand jokers: holding a hand for the last play pays
         self.keep_discards = bool(jn & {"Banner", "Green Joker"})  # discards tax every later hand
+        self.blackboard = "Blackboard" in jn
         # scoring order matters (and the player can set it with `move hand`): first-card retrigger / first-face xMult,
         # or x-mult cards (Glass, polychrome) that should score after the additive ones
         xcards = any(self._xmult_card(c.d) for c in self.pool + [c for c in self.slots if c])
@@ -419,6 +420,11 @@ class RoundSolver:
         return float(r[0] if isinstance(r, tuple) else r)
 
     @staticmethod
+    def _black(c):
+        """Counts as a Spade or Club for Blackboard (Wild cards, Smeared groups); Stone cards do not."""
+        return bool(c.suits & {"S", "C", "SC"})
+
+    @staticmethod
     def _xmult_card(c):
         """A scoring card that multiplies mult (Glass, polychrome): scored after the additive cards."""
         return "glass" in str(c.get("enhancement") or "").lower() or c.get("edition") == "polychrome"
@@ -597,6 +603,15 @@ class RoundSolver:
             stones.sort(key=lambda c: -c.val)
             plays = plays + [p + stones[:lim - len(p)] for p in plays if len(p) < lim]
             plays.append(stones[:lim])
+        if self.blackboard:  # variants that play the red cards away so only black ones stay held
+            reds = sorted((c for c in cards if not self._black(c)), key=lambda c: c.val)
+            extra = []
+            for p in plays:
+                pids = {id(c) for c in p}
+                rest = [c for c in reds if id(c) not in pids]
+                if rest and len(p) + len(rest) <= lim:
+                    extra.append(p + rest)
+            plays = plays + extra
         if self.psychic:
             plays = [self._pad(p, cards, 5) for p in plays]
         return plays
@@ -818,6 +833,9 @@ class RoundSolver:
                     raw.append(frozenset(have + [best_by_rank[lo + F]]))
         byr = sorted(ranked, key=lambda i: (-cards[i].rank, -cards[i].val))
         raw += [frozenset(byr[:1]), frozenset(byr[:2]), frozenset(byr[:3])]
+        if self.blackboard:  # x3 needs only Spades/Clubs held: keep the black cards, throw the reds
+            black = frozenset(i for i in range(n) if self._black(cards[i]))
+            raw += [black, black | B]
         return self._normalize(cards, raw)
 
     def _normalize(self, cards, raw):
@@ -844,7 +862,11 @@ class RoundSolver:
         if room <= 0:
             return play
         pids = {id(c) for c in play}
-        junk = sorted((c for i, c in enumerate(cards) if i not in keep and id(c) not in pids), key=lambda c: c.val)[:room]
+        junk = sorted((c for i, c in enumerate(cards) if i not in keep and id(c) not in pids), key=lambda c: c.val)
+        if self.blackboard:  # red held cards cancel Blackboard: play them away first, whatever the keep set says
+            reds = sorted((c for c in cards if id(c) not in pids and not self._black(c)), key=lambda c: c.val)
+            junk = reds + [c for c in junk if self._black(c)]
+        junk = junk[:room]
         while junk:
             cand = play + junk
             cids = {id(c) for c in cand}

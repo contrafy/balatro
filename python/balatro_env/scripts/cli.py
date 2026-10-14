@@ -91,13 +91,17 @@ def _await_action_effect(d, timeout=5.0):
         return d
     t0 = time.time()
     gone = la.get("gone")
+    # a sort / reorder can legitimately change nothing (already in that order; face-down cards): wait briefly, no warning
+    # (7803 C5AF29KG: `sort rank` printed the warning twice)
+    noop_ok = la.get("type") in ("SORT_HAND", "REORDER")
+    timeout = 2.0 if noop_ok else timeout
 
     def pending(x):
         return _digest(x) == la.get("sig_before") or (gone and any(y.get("id") == gone[1] for y in lst(x.get(gone[0]))))
     while pending(d) and time.time() - t0 < timeout:
         time.sleep(0.2)
         d = wait_settled()
-    if pending(d):
+    if pending(d) and not noop_ok:
         print(f"(warning: the last {la.get('type')} is not visible in the state after {timeout:.0f}s; re-run `s` before acting)")
     else:
         la["confirmed"] = True
@@ -330,10 +334,11 @@ def show(d):
         if poor and ante_n <= 4 and tk and not riff and bs.get("on_deck") == "Small":
             skip_ok = True
             NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag (the shop after this Small would find you broke: ${d.get('money')})")
-        if (tk in cash and cash[tk] >= 5 and 3 * n_rent >= 6 and big_ok and ante_n <= 4 and not riff and bs.get("on_deck") == "Small"):
-            # a cash tag pays now AND the skip saves a round of rent (7801 D9KFK2PH: Garbage $10 with $6 rent was refused)
+        if (tk in cash and ((cash[tk] >= 5 and 3 * n_rent >= 6) or cash[tk] >= 12) and big_ok and ante_n <= 4 and not riff and bs.get("on_deck") == "Small"):
+            # a cash tag pays now AND the skip saves a round of rent (7801 D9KFK2PH: Garbage $10 with $6 rent was refused);
+            # $12+ alone beats the Small's ~$3 and its shop visit (7803 CS7C79XX: Handy)
             skip_ok = True
-            NOW_TAGS[tk] = f"${cash[tk]} right now, and the skip saves ${3 * n_rent} of rent"
+            NOW_TAGS[tk] = f"${cash[tk]} right now" + (f", and the skip saves ${3 * n_rent} of rent" if n_rent else "")
         thr = any(j.get("name") == "Throwback" and not j.get("debuff") for j in lst(d.get("jokers")))
         # a skip has no round end, so perishables do not tick: with a key scorer at <= 2 rounds left, skipping keeps it
         # alive for the boss (Main 08:xx, ~6 runs lost a perishable carrier the round before the boss)
@@ -1332,7 +1337,11 @@ def advise(d):
         # orchestrator 02:58: follow the solver when its calibrated p beats the rule pick by > 0.05; a PLAY that clears the
         # blind now also wins on a smaller model edge or, tied, on $1+ more value
         # an under-sampled option (low_n) never drives the switch
-        better_p = mine and not (top.get("low_n") or top.get("low_confidence")) and top["p_clear"] > mine["p_clear"] + 0.05
+        # PLAYBOOK 2b step 5: a DISCARD that breaks a made Pair/Two Pair/Trips needs a 0.10 margin (7805 RTJZMPXF broke
+        # QQ66 at +0.07)
+        made_pf = max((c for c in _candidates(d) if c[0] in ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")), key=lambda c: c[2], default=None)
+        breaks = top["action"] == "DISCARD" and made_pf is not None and bool(set(top.get("cards") or []) & set(made_pf[1]))
+        better_p = mine and not (top.get("low_n") or top.get("low_confidence")) and top["p_clear"] > mine["p_clear"] + (0.10 if breaks else 0.05)
         better_c = mine and not (top.get("low_n") or top.get("low_confidence")) and clears_now and (pm_top > pm_mine + 0.03 or (tied and top.get("value", 0) >= mine.get("value", 0) + 1.0))
         if mine and not (better_p or better_c):
             sol.append("  (rule pick kept: the solver's best does not beat it by more than 0.05 calibrated p)")
@@ -1734,7 +1743,8 @@ def _advise_rules(d):
     if summit and discards > 0 and best[2] < need:
         est0 = estimate(best[0], _cards_by_idx(d, best[1]), _held(d, best[1]), dict(d, discards_remaining=0), repeat=_repeat_flag(d, best[0]), played_n=len(best[1]))[0]
         junk = sorted((c for c in hand if c.get("index") not in best[1]), key=lambda c: (_held_value(c, d), CHIP_VAL.get(_r(c), 0) if c.get("rank") else 0))
-        if est0 >= need and junk:
+        # ... or when +15 lifts this hand 30%+ and hands remain to use it (7803 CS7C79XX: 16240 -> 22600)
+        if junk and (est0 >= need or (est0 >= 1.3 * best[2] and hands_left >= 2)):
             # Mystic Summit is +15 only at 0 discards left: burn them on junk, then the made hand clears (Main 06:xx: TT
             # discarded from a made pair that cleared with Summit on)
             burn = [c.get("index") for c in junk if not _held_value(c, d)][:5] or [junk[0].get("index")]
@@ -1900,8 +1910,10 @@ def _advise_rules(d):
                         keep.append(c.get("index")); why += ", keep face singles"
         else:
             # keep high cards / faces
-            hi = sorted(hand, key=lambda c: -CHIP_VAL.get(_r(c), 0))[:3]
-            keep = [c.get("index") for c in hi]; why = "no made hand: keep the 3 highest cards"
+            suit_j = {SUIT_JOKERS[n] for n in jnames_all if n in SUIT_JOKERS} | ({"S"} if "Arrowhead" in jnames_all else set()) | ({"C"} if "Onyx Agate" in jnames_all else set())
+            # suit-joker builds keep their suit (7802 CH39BUCC would have thrown the only spade at The House)
+            hi = sorted(hand, key=lambda c: (-(SUIT.get(c.get("suit")) in suit_j), -CHIP_VAL.get(_r(c), 0)))[:3]
+            keep = [c.get("index") for c in hi]; why = "no made hand: keep the 3 highest cards" + (" (your suit-joker suits first)" if suit_j else "")
         valuable = [c.get("index") for c in hand if not c.get("debuff") and c.get("index") not in keep
                     and (any(e in _enh(c) for e in ("Glass", "Steel", "Gold", "Mult", "Lucky")) or c.get("seal") == "Red" or c.get("edition"))]
         if valuable and len(keep) + len(valuable) < len(hand):
@@ -2402,9 +2414,20 @@ def deck_best_est(d, samples=40, pct=0.75, seed=7):
                 hands_per_round=d.get("hands_per_round") or 3, _plan_fillers=True)
     keep_disc = dict(base, discards_remaining=int(d.get("discards_per_round") or 3))  # Banner/Delayed Gratification
     vals = []
+    splash = any(j.get("name") == "Splash" and not j.get("debuff") for j in lst(d.get("jokers")))
     for _ in range(samples):
         deal = [dict(c, index=i + 1, facing="front", debuff=False, highlighted=False) for i, c in enumerate(_deal_order(rng.sample(cards, hs), base))]
-        vals.append(max((c[2] for st in (base, keep_disc) for c in _candidates(dict(st, hand=deal))), default=0))
+        best_v = 0
+        for st in (base, keep_disc):
+            sd = dict(st, hand=deal)
+            for h_c, i_c, e_c in _candidates(sd):
+                if splash and len(i_c) < 5:
+                    # Splash: every played card scores: pad with the highest-chip cards (7805 RTJZMPXF: SCORE CHECK ignored it)
+                    pad = [c.get("index") for c in sorted((c for c in deal if c.get("index") not in i_c), key=lambda c: -CHIP_VAL.get(_r(c), 0))][:5 - len(i_c)]
+                    all_c = list(i_c) + pad
+                    e_c = max(e_c, estimate(h_c, _cards_by_idx(sd, all_c), _held(sd, all_c), sd, played_n=len(all_c))[0])
+                best_v = max(best_v, e_c)
+        vals.append(best_v)
     vals.sort()
     return vals[min(len(vals) - 1, int(pct * len(vals)))]
 
@@ -2544,7 +2567,11 @@ def shop_advise(d):
     rr_c = (d.get("shop") or {}).get("reroll_cost")
     d6_n = (f"REROLLS ARE CHEAP: the next reroll costs ${rr_c} (D6 Tag: starts at $0, +$1 each); hunt a scorer/xMult before leaving."
             if rr_c is not None and int(rr_c) <= 1 else None)
-    print("\n".join([x for x in (ob_n, mad_n, d6_n) if x] + lines))
+    rf = next((j for j in lst(d.get("jokers")) if j.get("name") in ("Riff-raff", "Riff-Raff") and not j.get("debuff")), None)
+    rf_n = (f"RIFF-RAFF makes nothing with your joker slots full ({len(lst(d.get('jokers')))}/{d.get('joker_slots')}): sell it (b sell {rf.get('index')}) "
+            "unless you free a slot before the next blind (7810 QBEEJKG4)"
+            if rf is not None and len(lst(d.get("jokers"))) >= int(d.get("joker_slots") or 5) else None)
+    print("\n".join([x for x in (ob_n, mad_n, d6_n, rf_n) if x] + lines))
 
 
 _SHOP_SIM = None
@@ -2808,7 +2835,7 @@ def pack_advise_sim(d, budget_s=3.5):
         rule_pick = (re.search(r"b (pick \d+)", adv) or [None, None])[1]
         # the pack ADVICE follows the SIM ranking; the rule pick only wins a near-exact tie (7807 FI96BVNR: Venus over
         # a SIM-higher Mercury)
-        tied = [r for r in cands_s if key(r) >= top_k - 0.01]
+        tied = [r for r in cands_s if key(r) >= top_k - 0.005]
         best = next((r for r in tied if r["option"]["_cmd"] == rule_pick), None) or max(tied, key=key)
         if key(best) - key(base) > 0.02:
             sell_ix = best["option"].get("sell")
@@ -3338,6 +3365,8 @@ def _shop_rules(d):
             sc = 15  # a voucher that empties the wallet costs the next joker/planet; late ones cannot pay back before the run ends
         if name in ("Wasteful", "Recyclomancy") and any(j.get("name") == "Burglar" and not j.get("debuff") for j in jokers):
             sc = 5  # Burglar sets discards to 0: +1 discard is worth nothing (7809 D5KV79HL)
+        if name in ("Seed Money", "Money Tree", "Clearance Sale", "Liquidation") and (emergency or (ante >= 5 and sc_ratio < 1.0)):
+            sc = 5  # money compounding cannot pay back when the next boss already looks lost (7803 CS7C79XX)
         strong_v = False
         if threat and name in ("Director's Cut", "Retcon"):
             sc, strong_v = 88, True  # BOSS PREP: rerolls the boss that counters this build
@@ -3728,9 +3757,18 @@ def pack_advise(d):
             print(f"ADVICE: SKIP -> b skippack   (nothing here helps; best is {c.get('name')} at {sc})")
             return
         n_t = TV.get(c.get("name"), (0, 0, ""))[1]
-        tg = [str(x.get("index")) for x in tgt_cards[:n_t]] if n_t else []
+        tg_c = tgt_cards[:n_t]
+        if c.get("name") == "Death" and len(hand) >= 2:
+            # Death: the LEFT card becomes a copy of the RIGHT one: worst card left, best card right (7803 C5AF29KG picked
+            # two Aces, a no-op)
+            best_c = tgt_cards[0]
+            worst_c = min((x for x in hand if _r(x) != _r(best_c)), key=lambda x: (by_rank[_r(x)], CHIP_VAL.get(_r(x), 0)), default=None)
+            tg_c = sorted([worst_c, best_c], key=lambda x: hand.index(x)) if worst_c is not None else []
+            if worst_c is not None and hand.index(worst_c) > hand.index(best_c):
+                print(f"  (Death copies the RIGHT card onto the LEFT one: move {card_str(worst_c)} left of {card_str(best_c)} first with `b move hand`)")
+        tg = [str(x.get("index")) for x in tg_c] if n_t else []
         print(f"ADVICE: PICK -> b pick {i}{' ' + ' '.join(tg) if tg else ''}   ({c.get('name')}: {TV.get(c.get('name'), (0, 0, ''))[2]}"
-              + (f"; targets {' '.join(card_str(x) for x in tgt_cards[:n_t])} (your most common ranks)" if tg else "") + ")")
+              + (f"; targets {' '.join(card_str(x) for x in tg_c)}" if tg else "") + ")")
         return
     print("No pack advice for this pack type: pick per PLAYBOOK section 5 (enhance main-hand ranks), or `skippack` if nothing fits.")
 
@@ -3862,7 +3900,7 @@ def _resolve_target(cmd, rest, ints, d):
         ints = [hits[0].get("index")]
     if ints:
         tgt = next((x for x in items if x.get("index") == ints[0]), None)
-        nm = (tgt or {}).get("name")
+        nm = (tgt or {}).get("name") or (card_str(tgt) if tgt and tgt.get("rank") is not None else None)  # Standard-pack cards have no name
         if want and (nm is None or want not in str(nm).lower()):
             print(f"REFUSED (nothing sent): {cmd} {ints[0]} is {nm!r} now, not '{want}' (indices shift after a reroll/pick/sell). Run `b s`."); sys.exit(1)
         print(f"(target: {cmd} {ints[0]} = {nm})")
@@ -4086,12 +4124,27 @@ def main():
         while d.get("phase") not in ("SELECTING_HAND", "PACK_OPENING") and time.time() - t0 < 12:
             time.sleep(0.3)  # right after `blind` / a pack pick the phase is still changing (7805)
             d = _with_known_jokers(wait_settled())
+        # route by the phase actually reached (7805 RTJZMPXF / 7806: "only works while selecting a hand" in a pack/shop)
         if d.get("phase") == "PACK_OPENING":
             pack_advise_sim(d)
+        elif d.get("phase") == "SHOP":
+            print("(advise in the shop = shopadvise)")
+            _mh_hyst_update(d)
+            d["_mh_hyst"] = _mh_hyst_load()
+            shop_advise_sim(d)
+        elif d.get("phase") == "BLIND_SELECT":
+            show(d)
         else:
             advise(d)
         return
     if cmd == "shopadvise":
+        t0 = time.time()
+        while d.get("phase") not in ("SHOP", "PACK_OPENING") and time.time() - t0 < 6:
+            time.sleep(0.3)
+            d = _with_known_jokers(wait_settled())
+        if d.get("phase") == "PACK_OPENING":
+            print("(a pack is open: pack advice)")
+            pack_advise_sim(d); return
         _mh_hyst_update(d)
         d["_mh_hyst"] = _mh_hyst_load()
         shop_advise_sim(d); return
