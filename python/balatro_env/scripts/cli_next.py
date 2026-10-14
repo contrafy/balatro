@@ -423,6 +423,8 @@ def show(d):
             weak_hand = boss_c_s > 0 and best_s < boss_c_s / 2
             skip_ok = not weak_hand
         pay = NOW_TAGS.get(tk) or LATER_TAGS.get(tk) or f"the {small.get('tag')} tag"
+        if tk == "tag_economy" and cash.get(tk, 0) < 5:
+            pay = f"the Economy tag: only ${cash.get(tk, 0)} now (it doubles your ${money_n}, max +$40)"  # 7803 BWSASTCX
         if tk == "tag_boss" and boss_n in ("The Head", "The Club", "The Goad", "The Window", "The Hook", "The Ox", "The House", "The Fish",
                                            "The Tooth", "The Serpent", "The Pillar"):
             pay += f"; NOTE: the Boss Tag rerolls {boss_n}, which your build may handle; the replacement can be worse (The Wall, Violet Vessel...)"
@@ -1015,9 +1017,9 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Banner":
             chips += 30 * int(state.get("discards_remaining") or 0)
         elif n == "Misprint":
-            mult += float(state.get("_misprint_roll", 6))
+            mult += float(state.get("_misprint_roll", 11.5))
             if "_misprint_roll" not in state:
-                notes.append("Misprint random 0-23 mult, using conservative 6 (mean 11)")
+                notes.append("Misprint random 0-23 mult, using its mean 11.5 (7815 94FRAYL6: the old 6 ran ests 2-3x low)")
         elif n == "Baseball Card":
             # x1.5 for each Uncommon joker owned (rarity 2); with none it is x1 (Fable 7801: ranked 89 with 0 Uncommons)
             mult *= 1.5 ** sum(1 for x in lst(state.get("jokers")) if int(x.get("rarity") or 0) == 2 and not x.get("debuff") and x is not j)
@@ -1409,7 +1411,7 @@ def advise(d):
         def _sl(r):
             p = r["p_clear"]
             ps = ">=0.99" if p >= 0.995 else f"{p:.2f}"
-            return (f"p {ps} (calibrated, n={r.get('n')}{', low n' if r.get('low_n') else ''}{', low confidence' if r.get('low_confidence') else ''})"
+            return (f"round p {ps} (clears the blind with the later hands; calibrated, n={r.get('n')}{', low n' if r.get('low_n') else ''}{', low confidence' if r.get('low_confidence') else ''})"
                     + (f"  survive {r['p_survive']:.2f}" if r.get("p_survive") is not None and any(j.get("name") == "Mr. Bones" for j in lst(d.get("jokers"))) else "")
                     + f"  +${r.get('dollars', 0):.1f}" + (f" growth {r['growth']:.1f}" if r.get("growth") else "")
                     + f"  exp {int(r['exp_score'])}")
@@ -2299,6 +2301,10 @@ def _eternal_bar(d, aj):
     cls = classify_joker(nm, 0, main_hand(d))[0]
     if (cls.startswith("UTIL") or cls.startswith("AVOID")) and any(_stk(j)["eternal"] for j in lst(d.get("jokers"))):
         return f"a 2nd ETERNAL non-scorer ({nm}) locks another slot forever"
+    if not cls.startswith("XMULT") and int(d.get("ante") or 1) <= 4 and \
+            any(_stk(j)["eternal"] and not classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))):
+        # one eternal flat joker is enough: the slots are needed for the xMult hunt (7810 YL4M926A)
+        return f"a 2nd ETERNAL non-xMult ({nm}) locks another slot the xMult hunt needs"
     return None
 
 
@@ -2981,6 +2987,16 @@ def shop_advise_sim(d, budget_s=6.0):
         sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
         adv = (f"ADVICE: SELL then BUY -> b sell {sell_ix}  then  b {best['option']['_cmd']}" if sell_ix else f"ADVICE: BUY -> b {best['option']['_cmd']}") + \
             f"   (SIM: {best['label']} +{gain:.2f} P(clear all next 3 blinds))"
+    if adv.startswith("ADVICE: LEAVE") and "barred by a hard sticker rule" in adv and own_rent and mine0 is not None:
+        # name the swap the one-rental rule allows (7803 BWSASTCX: Supernova blocked by a chips-only Banner rental)
+        weak_r = min((j for j in lst(d.get("jokers")) if _stk(j)["rental"] and not _stk(j)["eternal"]), key=lambda j: owned_value(d, j, main_hand(d)), default=None)
+        if weak_r is not None:
+            adv += f"  [or swap: b sell {weak_r.get('index')} ({weak_r.get('name')})  then  b {adv_cmd} - the one-rental rule allows a swap]"
+    reroll_c = int((d.get("shop") or {}).get("reroll_cost") or 5)
+    if adv.startswith("ADVICE: LEAVE") and "EMERGENCY" in out_all and int(d.get("money") or 0) - reroll_c >= 1:
+        # the printed SCORE CHECK band says EMERGENCY: leaving with money contradicts it (7818 K9XMU63Y, Haiku); hunt a multiplier
+        sim.append(f"  (rule advice was: {adv[8:]})")
+        adv = f"ADVICE: REROLL -> b reroll   (EMERGENCY in SCORE CHECK: leaving with ${d.get('money')} does not fix the next boss; reroll for a multiplier (xMult > +mult scorer > Buffoon pack))"
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
     print("\n".join(lines))
 
@@ -3663,6 +3679,11 @@ def _shop_rules(d):
                 return (min(o[0], 55),) + tuple(o[1:])
             return (o[0] + bump,) + tuple(o[1:5]) + ((o[5] or bump > 0),) + tuple(o[6:])
         options = [_emerg(o) for o in options]
+    if tight:
+        # TIGHT vs the next blind: a joker that adds no score now (Hallucination, Flash Card, Vagabond, economy) is not a
+        # buy (7811 Y9VLHVKS)
+        options = [((min(o[0], 20),) + tuple(o[1:5]) + (False,) + tuple(o[6:])) if (o[2].startswith("buy") and o[1].startswith(("UTIL", "ECON", "AVOID", "MONEY"))) else o
+                   for o in options]
     if scoring_now == 0 and ante >= 3:
         # no scorer alive next ante: a scoring joker is the only thing that clears a blind; levels/packs/money come after
         options = [((max(o[0], 90) if _is_scoring(o[1]) and o[2].startswith("buy") and refused not in o[3] else (o[0] if "Buffoon" in o[3] else min(o[0], 45))),) + tuple(o[1:]) for o in options]

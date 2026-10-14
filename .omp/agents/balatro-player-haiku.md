@@ -22,7 +22,7 @@ Controlling the game (your task message gives PORT, AGENT_ID, MODEL, SEED):
 - Only through: BALATRO_AGENT_ID=<AGENT_ID> BALATRO_AGENT_MODEL=<MODEL> bash python/balatro_env/scripts/b.sh <PORT> <cmd> [args] --why '<reason>'
 - Every state-changing command needs --why in SINGLE quotes: one line, <=300 chars, concrete numbers (score
   needed vs est, money after buy, why this joker). Double quotes let bash eat "$6" amounts.
-- HARD RULE (Gold): at most ONE rental joker before ante 5, whatever the advisor or SIM says, even at $1 (each costs $3 every round and Gold Small Blinds pay $0). When buying a better rental, sell the old one in the same shop.
+- HARD RULE (Gold): at most ONE rental joker before ante 5, whatever the advisor or SIM says, even at $1 (each costs $3 every round and Gold Small Blinds pay $0). If a better rental appears (especially a +mult or xMult when your rental is chips-only), SELL the old rental and buy the new one in the same shop: that is allowed and often right.
 - NEVER run two b.sh commands at the same time (no parallel tool calls on your port): each command must finish before the next starts, or the second one reads stale state.
 - Free (unrecorded) commands: s, hands, advise, shopadvise, legal, raw, sel. Use them as much as you like.
 - Every state-changing action is recorded as training data: no exploratory, test, or junk actions.
