@@ -113,15 +113,15 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
 - FIRST SCORERS ADD MULT: with no +mult/xMult source, chips-only jokers (Sly, Clever, Scary...) barely scale on a base
   mult of 2-3; `shopadvise` prefers +mult jokers then. Hand-gated xMults (The Order, Trio, Family, Tribe) and suit-gated
   ones (Bloodstone, Ancient, Flower Pot, Seeing Double) only count when they fit your main hand / a Flush build.
-- MAIN HAND = most played hand (recent plays break ties); before 3 plays an owned hand-gated joker decides it (Clever
-  -> Two Pair). With Card Sharp it is the most played pair-family hand (Pair on ties): the type you can repeat each round.
-  Obelisk resets to x1 whenever you play your most played hand; `est` models that.
+- MAIN HAND = the type maximizing (typical est with your jokers and levels) x (how often you made it this run); a Two
+  Pair / Trips / Full House play also counts as "could have played a Pair". Before 3 plays an owned hand-gated joker
+  decides it (Clever -> Two Pair). Obelisk resets to x1 whenever you play your most played hand; `est` models that.
 - DEBUFFED jokers (`{DEBUFFED}` in `s`) do nothing and `est` leaves them out.
 - NO SCORER ALIVE NEXT ANTE (or <2 scorers at ante 1-3, or EMERGENCY): an affordable scorer is bought before any
   pack, reroll or leaving; a sticker's cost is small next to losing the run. Packs are already paid for: take a
   stickered scorer into a free slot.
-- PACE (`advise`): if your best hand x hands left < what the blind still needs, discard toward a bigger hand first
-  instead of banking a hand that cannot clear (7810 lost 216/300 that way).
+- PACE (`advise`): best hand now + later hands at 85% (printed) below the remaining need -> discard toward a bigger hand
+  first (7810 lost 216/300 banking 84s); once on pace, bank and keep the discard (7805 lost 192/300 over-discarding).
 - MONEY FLOOR (GOLD_ANALYSIS.md): from ante 2 keep $8 after anything except an xMult, the main-hand planet or a Buffoon
   pack (while owning <2 reliable/growth xMults); 8 of 20 missed xMults were unaffordable, deep runs bought them with
   $11-22. Reroll only with $20+ left after it, at most 2 per shop, never over an affordable Buffoon pack. Arcana and
@@ -131,7 +131,12 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   scorer, and says SKIP when everything is sticker junk.
 - SCORE CHECK and GOLD CHECK (`shopadvise`): your typical main hand vs boss/2 of this ante and boss/3 of the next
   (below boss/3: every run died; EMERGENCY = buy the cheapest multiplier first). Targets: 1 reliable/growth xMult
-  (incl. Acrobat, Ramen, Stencil) by the end of ante 2, 2 by ante 5, 3 incl. a growing one by ante 7.
+  (incl. Acrobat, Ramen, Stencil; card-trigger xMults like Photograph do not count: they multiply before +mult jokers)
+  by the end of ante 2, 2 by ante 5, 3 incl. a growing one by ante 7.
+- BOSS PREP: the ante's boss is known from its start. If it counters the build (Eye/Mouth vs Card Sharp, Plant vs face
+  jokers, Psychic vs Half Joker, suit bosses vs Flush, Wall/Violet/Needle vs a small hand), `shopadvise` ranks a counter
+  first (Luchador: sell it during the boss; Chicot; Mr. Bones; Director's Cut voucher) and keeps $10 for `rerollboss`
+  when you own Director's Cut. 7802 reached ante 7 and died to The Eye with a Card Sharp engine.
 - BUILD: pair-family mains (17 of 28 reached ante 4); Flush/Straight mains reached it 0 of 6, so their jokers and
   planets are non-core. Plan for the next ante: ante 2 -> 3 is the steepest step (1000 -> 3200).
 - `RIFF-RAFF` owned (and a free slot): never skip a blind, it makes 2 Common jokers when the blind is selected.

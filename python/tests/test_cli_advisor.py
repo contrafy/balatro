@@ -388,3 +388,72 @@ def test_pace_rule_discards_when_hands_cannot_clear():
          "hand": hand, "jokers": [], "hand_levels": {"Two Pair": {"chips": 20, "mult": 2, "level": 1}, "Pair": {"chips": 10, "mult": 2, "level": 1}},
          "blind": {"name": "Small Blind", "boss": False, "chips_needed": 300, "chips_scored": 0}}
     assert _advice(_out(cli.advise, d)).startswith("ADVICE: DISCARD")
+
+
+def test_main_hand_pair_over_leveled_two_pair():
+    # 7803: ten Pair plays (with Half Joker owned) vs three Two Pair plays must stay Pair even with Two Pair leveled higher
+    d = shop(jokers=[joker("Half Joker", 1)])
+    d["hand_levels"] = {"Pair": {"played": 10, "level": 2, "chips": 25, "mult": 3}, "Two Pair": {"played": 3, "level": 4, "chips": 80, "mult": 5}}
+    assert cli.main_hand(d) == "Pair"
+
+
+def test_order_note_moves_mult_left_of_xmult():
+    # `b order` lists old positions in their new order: +mult jokers must come first (left of the xMult)
+    d = shop(jokers=[joker("Cavendish", 1), joker("Joker", 2), joker("Jolly Joker", 3)], shop_jokers=[], money=4)
+    line = next(l for l in _out(cli.shop_advise, d).splitlines() if "ORDER FIRST" in l)
+    order = [int(x) for x in line.split("b order ")[1].split("   ")[0].split()]
+    assert order[-1] == 1 and set(order[:2]) == {2, 3}
+
+
+def test_erosion_with_full_deck_is_not_a_scorer():
+    d = shop(shop_jokers=[{"index": 1, "name": "Erosion", "set": "Joker", "cost": 1, "eternal": True, "rental": True}], money=8, ante=1)
+    d["deck"] = {"cards": [{"rank": "2", "suit": "Spades", "remaining": True}] * 52}
+    out = _out(cli.shop_advise, d)
+    assert "NEEDED NOW" not in out and "adds ~0 now" in out
+
+
+def test_scorer_outranks_utility_with_no_scorers_ante1():
+    # 7805: Astronomer (75) outranked Walkie Talkie (45) in a pack with 0 scorers; the ante-1 Big was lost 444/450
+    d = {"phase": "PACK_OPENING", "stake": 8, "ante": 1, "money": 2, "joker_slots": 6, "jokers": [], "hand": [], "hand_levels": {},
+         "pack": {"kind": "Buffoon", "choices_remaining": 1, "cards": [{"name": "Astronomer", "set": "Joker"}, {"name": "Walkie Talkie", "set": "Joker"}]}}
+    assert _advice(_out(cli.pack_advise, d)).startswith("ADVICE: PICK -> b pick 2")
+    s = shop(shop_jokers=[{"index": 1, "name": "Astronomer", "set": "Joker", "cost": 8}, {"index": 2, "name": "Walkie Talkie", "set": "Joker", "cost": 4}], money=10, ante=1)
+    assert "b buy 2" in _advice(_out(cli.shop_advise, s))
+
+
+def test_order_keeps_holo_xmult_with_xmults():
+    # 7803: [Clever, Joker, Supernova, Tribe(holo), Summit] got `order 2 3 4 5 1`, leaving Summit right of the Tribe
+    owned = [joker("Clever Joker", 1), joker("Joker", 2), joker("Supernova", 3), joker("The Tribe", 4, edition="holo"), joker("Mystic Summit", 5)]
+    d = shop(jokers=owned, money=4)
+    d["hand_levels"] = {"Flush": {"played": 6, "level": 2}}
+    line = next(l for l in _out(cli.shop_advise, d).splitlines() if "ORDER FIRST" in l)
+    order = [int(x) for x in line.split("b order ")[1].split("   ")[0].split()]
+    assert order[-1] == 4 and order.index(5) < order.index(4)
+
+
+def test_photograph_not_counted_as_xmult_target():
+    d = shop(jokers=[joker("Photograph", 1), joker("Jolly Joker", 2)], money=4, ante=3)
+    assert "GOLD CHECK: 0 reliable/growth xMult" in _out(cli.shop_advise, d)
+
+
+def test_main_hand_two_pair_with_clever_and_big_two_pair_plays():
+    # 7809: Clever owned, big plays Two Pair/Full House, a few Pairs -> Two Pair, not Pair
+    d = shop(jokers=[joker("Clever Joker", 1, ability={"t_chips": 80, "type": "Two Pair"})])
+    d["hand_levels"] = {"Pair": {"played": 4, "level": 1, "chips": 10, "mult": 2}, "Two Pair": {"played": 5, "level": 1, "chips": 20, "mult": 2},
+                        "Full House": {"played": 2, "level": 1, "chips": 40, "mult": 4}}
+    assert cli.main_hand(d) == "Two Pair"
+
+
+def test_no_reroll_into_unpaid_rent():
+    # two rentals = $6 due at round end: a $5 reroll from $8 would push the run negative
+    d = shop(jokers=[joker("Joker", 1, rental=True, perishable=True, perish_tally=4), joker("Jolly Joker", 2, rental=True, perishable=True, perish_tally=4)],
+             money=8, ante=1)
+    assert "REROLL" not in _advice(_out(cli.shop_advise, d))
+
+
+def test_boss_prep_eye_vs_card_sharp_buys_counter():
+    # 7802 died at ante 7 to The Eye with a Card Sharp repeat engine: a counter in the shop must come first
+    d = shop(jokers=[joker("Card Sharp", 1), joker("Jolly Joker", 2)], shop_jokers=[{"index": 1, "name": "Luchador", "set": "Joker", "cost": 5}], money=12, ante=6)
+    d["blind_select"]["choices"]["Boss"] = {"name": "The Eye", "chips": 120000, "state": "Upcoming"}
+    out = _out(cli.shop_advise, d)
+    assert "BOSS PREP: The Eye" in out and "b buy 1" in _advice(out)

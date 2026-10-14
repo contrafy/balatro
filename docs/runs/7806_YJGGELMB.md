@@ -1,0 +1,4 @@
+# Run YJGGELMB (port 7806, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
+
+Ante 1 (300 Uncommon / 450 D6 / The Psychic 600, $4): Small: disc 4 off-suit for heart flush, drew broadway Straight 324 one-shot. Shop $6: Mystic Summit $5. Big: 2 discards to arm Summit, Two Pair QQJJ 1020 one-shot. Shop $7: Riff-raff{PERISHABLE} $6 (advisor UNKNOWN 20, overrode). Psychic: Riff-raff -> Green + Gluttonous; dealt FH QQQTT, discarded 1+1 to arm Summit, FH QQQ77 1932 one-shot.
+Ante 2 (1000 Charm / 1500 Standard / The Hook 2000, $8): Celestial -> Mercury (Pair L2). Small: Riff-raff -> Shoot the Moon + foil Droll; dealt FH 1416 one-shot. Sold Green+Gluttonous at blind select -> Riff-raff made Clever + Splash. Big: Pair 9 + Splash fillers, QD held (Moon) 1920 one-shot. Shop $18: Uranus (2P L2), left $15 (advisor wanted Jumbo Celestial). Sold Splash -> Riff-raff made Wrathful. Hook: drew quad 7s while arming Summit, Two Pair JJ77 6936 one-shot.
