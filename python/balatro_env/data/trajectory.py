@@ -44,6 +44,16 @@ def find_trajectories(root: str | os.PathLike) -> list[Path]:
     return sorted(found.values())
 
 
+def dataset_files(root: str | os.PathLike) -> list[Path]:
+    """Trajectory files of a dataset root: `<root>/trajectories/**` (the recorder's layout); other JSONL files in
+    the root (manifest, orchestrator notes) are not trajectories. Falls back to `root` itself without that dir."""
+    root = Path(root)
+    base = root / "trajectories"
+    if base.is_dir():
+        return find_trajectories(base)
+    return find_trajectories(root) if root.exists() else []
+
+
 def open_text(path: str | os.PathLike):
     path = Path(path)
     if path.name.endswith(".gz"):

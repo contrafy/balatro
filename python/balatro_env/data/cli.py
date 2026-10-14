@@ -1,25 +1,24 @@
-"""`balatro-data` command line: validate | manifest | replay | fuzz | compress | seeds."""
+"""`balatro-data` command line: validate | manifest | replay | fuzz | compress | seeds | status | dashboard | dataops."""
 
 from __future__ import annotations
 
 import argparse
-import gzip
 import json
 import os
-import shutil
 import sys
 import time
 from pathlib import Path
 
 from balatro_env.data import seeds as seedmod
 from balatro_env.data.manifest import build_manifest, update_replay_result
-from balatro_env.data.trajectory import data_dir, find_trajectories, read_trajectory
+from balatro_env.data.status import LIVE_WINDOW_S, RUNS_DIR, STATUS_PATH
+from balatro_env.data.trajectory import data_dir, dataset_files, find_trajectories
 from balatro_env.data.validate import validate_trajectory
 
 
 def _expand(paths: list[str], root: Path) -> list[Path]:
     if not paths:
-        return find_trajectories(root) if root.exists() else []
+        return dataset_files(root)
     out: list[Path] = []
     for p in paths:
         out.extend(find_trajectories(p))
@@ -87,24 +86,10 @@ def cmd_fuzz(args: argparse.Namespace) -> int:
 
 
 def cmd_compress(args: argparse.Namespace) -> int:
-    root = data_dir(args.data_dir)
-    now = time.time()
-    done = 0
-    for f in [p for p in find_trajectories(root) if p.suffix == ".jsonl"] if root.exists() else []:
-        traj = read_trajectory(f)
-        stale = now - f.stat().st_mtime > args.min_age_s
-        if traj.end is None and not (args.include_unfinished and stale):
-            continue
-        gz = f.with_name(f.name + ".gz")
-        with open(f, "rb") as src, gzip.open(gz, "wb") as dst:
-            shutil.copyfileobj(src, dst)
-        if read_trajectory(gz).lines and len(read_trajectory(gz).lines) == len(traj.lines):
-            f.unlink()
-            done += 1
-            print(f"compressed {gz}")
-        else:
-            gz.unlink()
-            print(f"compression check failed, kept {f}", file=sys.stderr)
+    from balatro_env.data.dataops import compress_trajectories
+
+    done = compress_trajectories(args.data_dir, include_unfinished=args.include_unfinished, min_age_s=args.min_age_s,
+                                 include_superseded=args.include_superseded)
     print(f"{done} files compressed")
     return 0
 
@@ -120,6 +105,32 @@ def cmd_seeds(args: argparse.Namespace) -> int:
         return 0
     for s in seedmod.swarm_seeds(args.count):
         print(s)
+    return 0
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    from balatro_env.data.status import update_status_file
+
+    path, block, st = update_status_file(args.data_dir, args.out, args.runs_dir, live_window_s=args.live_window)
+    if args.print:
+        print(block)
+    c = st["counts"]
+    print(f"wrote {path}: {c['player_runs']} player runs ({c['finished']} finished, {c['live']} live)")
+    return 0
+
+
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    from balatro_env.data.dashboard import serve
+
+    serve(args.data_dir, args.host, args.port, args.runs_dir, args.live_window, args.refresh)
+    return 0
+
+
+def cmd_dataops(args: argparse.Namespace) -> int:
+    from balatro_env.data.dataops import DataOps
+
+    DataOps(args.data_dir, args.replay_port, args.status_out, args.runs_dir, include_fuzz=args.include_fuzz,
+            max_replays=args.max_replays, live_window_s=args.live_window).run(args.interval, once=args.once)
     return 0
 
 
@@ -158,6 +169,8 @@ def build_parser() -> argparse.ArgumentParser:
     c = sub.add_parser("compress", help="gzip finished trajectories")
     c.add_argument("--include-unfinished", action="store_true", help="also gzip end-less files older than --min-age-s")
     c.add_argument("--min-age-s", type=float, default=3600)
+    c.add_argument("--include-superseded", action="store_true",
+                   help="also gzip end-less files whose port has a newer trajectory (closed by a crash)")
     c.set_defaults(fn=cmd_compress)
 
     s = sub.add_parser("seeds", help="fresh training seeds (never eval/fuzz seeds)")
@@ -165,6 +178,33 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--check", metavar="SEED", help="exit 1 if SEED is reserved (eval or fuzz)")
     s.add_argument("--write-eval", action="store_true", help=argparse.SUPPRESS)
     s.set_defaults(fn=cmd_seeds)
+
+    st = sub.add_parser("status", help="regenerate the AUTO block of docs/SWARM_STATUS.md")
+    st.add_argument("--out", default=str(STATUS_PATH), help="status markdown file (default docs/SWARM_STATUS.md)")
+    st.add_argument("--runs-dir", default=str(RUNS_DIR), help="post-mortems dir (default docs/runs)")
+    st.add_argument("--live-window", type=float, default=LIVE_WINDOW_S,
+                    help="seconds since the last write for an open run to count as live")
+    st.add_argument("--print", action="store_true", help="also print the generated block")
+    st.set_defaults(fn=cmd_status)
+
+    d = sub.add_parser("dashboard", help="local auto-refreshing status page (stdlib HTTP server)")
+    d.add_argument("--port", type=int, default=8765)
+    d.add_argument("--host", default="127.0.0.1")
+    d.add_argument("--refresh", type=int, default=15, help="page auto-refresh seconds")
+    d.add_argument("--runs-dir", default=str(RUNS_DIR))
+    d.add_argument("--live-window", type=float, default=LIVE_WINDOW_S)
+    d.set_defaults(fn=cmd_dashboard)
+
+    o = sub.add_parser("dataops", help="loop: compress, validate, manifest, replay new runs, status")
+    o.add_argument("--replay-port", type=int, required=True, help="port of the dedicated replay instance")
+    o.add_argument("--interval", type=float, default=300, help="seconds between iteration starts")
+    o.add_argument("--once", action="store_true", help="run a single iteration and exit")
+    o.add_argument("--max-replays", type=int, default=None, help="cap replays per iteration")
+    o.add_argument("--include-fuzz", action="store_true", help="also replay FUZZ* runs")
+    o.add_argument("--status-out", default=str(STATUS_PATH))
+    o.add_argument("--runs-dir", default=str(RUNS_DIR))
+    o.add_argument("--live-window", type=float, default=LIVE_WINDOW_S)
+    o.set_defaults(fn=cmd_dataops)
     return p
 
 

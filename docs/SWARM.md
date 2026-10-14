@@ -85,6 +85,14 @@ $D replay data/trajectories/<date>/<file>.jsonl.gz --port <idle port> --update-m
 - `reject` lines in a trajectory mean the bridge refused an action. A few are fine; many from one agent mean its
   prompt or the CLI needs fixing.
 
+Unattended alternative (run as long-lived services; the replay port must not belong to any player):
+
+```bash
+python/.venv/Scripts/balatro-data dataops --replay-port 7820 --interval 300   # compress/validate/manifest/replay/status loop -> data/dataops.log
+python/.venv/Scripts/balatro-data dashboard --port 8765                       # http://127.0.0.1:8765/
+python/.venv/Scripts/balatro-data status --print                              # one-off refresh of docs/SWARM_STATUS.md
+```
+
 ## 5. Crash handling
 
 A crashed instance can keep its process alive while the bridge is gone. Check both:

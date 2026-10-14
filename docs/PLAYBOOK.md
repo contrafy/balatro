@@ -89,16 +89,32 @@ Gold includes every lower stake's modifier. Together with Black Deck (+1 joker s
 |---|---|
 | Black Deck | 3 hands per round, 6 joker slots (5 + 1) |
 | Red (2) | Small Blind pays $0 |
-| Green (3) + Purple (6) | blind requirements scale fastest (`scaling = 3`); ante 8 base is far above stake 1-2 numbers in section 7 |
+| Green (3) + Purple (6) | blind requirements scale fastest (`scaling = 3`): see the Gold targets in section 3 |
 | Black (4) | 30% of shop and pack jokers are Eternal: they can never be sold (dead weight forever if wrong) |
 | Blue (5) | -1 discard: with Black Deck you have 3 hands and 2 discards per round |
 | Orange (7) | 30% of shop and pack jokers are Perishable: debuffed (scores nothing) after 5 rounds |
 | Gold (8) | 30% of shop and pack jokers are Rental: cost $1 to buy, then -$3 at the end of every round |
 
-The stake 1-3 strategy below was learned on easier stakes; treat its numbers as lower bounds. Gold-specific lessons are
-added here as runs report them. Until then: read the sticker of every joker before buying (`ability.eternal`,
-`perishable` + `perish_tally`, `rental`), count a rental as -$3 per round (about -$15 per ante plus lost interest), and
-only keep a perishable joker as a short-term bridge.
+Stickers show in `s`/`shopadvise` as `{ETERNAL}`, `{PERISHABLE(n rounds left)}`, `{RENTAL(-$3/round)}`. Rent is charged
+and perishables tick at every round end, so a skipped blind skips both. `shopadvise`, pack `advise` and `s` encode:
+
+- SMALL BLIND SKIP: only for a tag that pays NOW (Buffoon = Mega Buffoon pack, Top-up = 2 jokers; needs a free slot) or,
+  for any other useful tag, with 2+ scoring jokers. Rare/Uncommon/Polychrome/Negative/Coupon tags pay in the NEXT shop,
+  after the Big Blind: two jokerless ante-1 Big Blinds were lost 328/450 and 448/450 that way. Ante 5+: never skip.
+- RENTAL: priced at -$3 x rounds left (a perishable rental only until it perishes). Take one only for a strong scorer;
+  never hold two before ante 5 (two drained 7808 to $0 by ante 2): `shopadvise` refuses the second and sells the
+  weaker one. A rental that is not a core scorer is sold. From ante 7 rent barely matters.
+- PERISHABLE: a bridge for 5 rounds (~1.7 antes). Plan with "scorers still alive next ante" (`shopadvise` prints it):
+  a joker with perish_tally <= blinds left this ante does not count, so buy its permanent replacement NOW. A perished
+  joker (`PERISHED`) scores nothing: sell it. Growth jokers (Hologram, Constellation...) are never worth it perishable.
+- ETERNAL: fine on a core scorer/xMult you would keep anyway; a weak/conditional Eternal joker is a lost slot for the
+  whole run (heavily penalised). Eternal jokers can never be sold: `sell` aborts, sell advice skips them.
+- NO SCORER ALIVE NEXT ANTE: scoring jokers come first (rerolls included), everything else is capped below them.
+- BUFFOON PACKS are discounted (most Gold pack jokers carry a sticker). Inside a pack run `advise`: it ranks the jokers
+  with stickers, takes a decaying bridge (Popcorn, Ice Cream, Gros Michel) when you own no scorer, and says SKIP when
+  everything is sticker junk.
+- PLAN FOR THE NEXT ANTE: `shopadvise` prints its Small/Big/Boss. Ante 2 -> 3 is the steepest step (1000 -> 3200): leave
+  ante 2 with an xMult or a leveled main hand, not with cash.
 
 ## 3. Scoring facts (verified in-game)
 
@@ -116,7 +132,8 @@ only keep a perishable joker as a short-term bridge.
 - Cards score in HAND ORDER (left to right as shown by `s`), not in the order you type indices. A Glass (x2) or
   Photograph face early in that order multiplies less than one late in it; `est` models the real order. A Glass card
   that shatters still scored its x2 first (shatter only removes it from the deck afterwards).
-- Misprint is +0..23 mult at random; `est` uses a conservative 6, so Misprint hands usually beat the estimate.
+- Misprint is +0..23 mult at random; `est` uses 6, so a Misprint hand lands below `est` about 1 time in 4 (7807: Trips
+  est 1314, actual 730 on a roll of 2). Do not rely on Misprint for an exact last-hand clear.
 - "If hand contains a Pair/Two Pair/Three of a Kind" jokers (Jolly, Sly, Mad, Clever, Zany, Wily, The Duo/Trio...) fire on
   every richer hand too: Two Pair, Full House and Four of a Kind all contain a Pair; Full House contains Two Pair and
   Three of a Kind; Four of a Kind contains a Pair and Three of a Kind but NOT Two Pair (verified: Clever/Mad Joker do not
@@ -124,10 +141,11 @@ only keep a perishable joker as a short-term bridge.
 - The Arm (boss): EVERY hand type you play that round loses one level, each time you play it. Play only unleveled types
   (or accept the loss) and never play your leveled main hand twice under The Arm.
 - The Hermit tarot doubles your money (max +$20). Use it when you hold $10-20.
-- Targets (Small/Big/Boss): a1 300/450/600 | a2 800/1200/1600 | a3 2000/3000/4000 | a4 5000/7500/10000 |
-  a5 11000/16500/22000 | a6 20000/30000/40000 | a7 35000/52500/70000 | a8 50000/75000/100000. Beat the a8 boss to win.
-  Your score per hand must roughly double every ante. Plan purchases for the NEXT ante, not the current one.
-- Black Deck: 3 hands, 3 discards, 6 joker slots, 8-card hand. Unused hands pay $1 each at cash out.
+- Gold targets (Small/Big/Boss; Black Deck, `scaling = 3`): a1 300/450/600 | a2 1000/1500/2000 | a3 3200/4800/6400 |
+  a4 9000/13500/18000 | a5 25000/37500/50000 | a6 60000/90000/120000 | a7 110000/165000/220000 |
+  a8 200000/300000/400000. Beat the a8 boss to win. Bosses can ask more (The Wall x2, Violet Vessel x3); the state's
+  `need` is authoritative. Ante 3 is ~3.2x ante 2: plan purchases for the NEXT ante, not the current one.
+- Black Deck at Gold: 3 hands, 2 discards, 6 joker slots, 8-card hand. Unused hands pay $1 each at cash out.
 
 ## 4. Hand decisions (do this every time)
 

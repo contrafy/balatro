@@ -1,0 +1,16 @@
+# Run YTZCKRK2 (port 7808, claude-sonnet-5-5) - Black Deck Gold Stake - LOSS at ante 2 blind The Water (428/2000)
+Ante 1: Small 300 / Big 450 / Boss The Club 600. Played Small (did NOT skip the Rare tag, per playbook): chased flush, Flush est 304 vs 300 (exact). Shop $6: Eternal Smiley Face $4 vs Buffoon Pack $4;
+  took the pack -> offered only Ice Cream (Perishable+Rental) and Riff-raff (Eternal+Rental): took Ice Cream (+100 chips, -5/hand). Big: diamond flush 656/450 in one hand. Boss Club: discarded 4 to chase 4 hearts, KH-QH-JH-9H-5H flush 696/600.
+  Money $-1..$9 all ante (rental drained $3/round).
+Ante 2 (GOLD requirements are 1000 / 1500 / 2000, not 800/1200/1600): Small 1000: straight 676 + full house 612 = 1288. Shop had The Trio rental $1: bought. Big 1500: Full House 222/99 est 1728 (Trio x3 + Ice Cream). Money -$5 -> $1 after cash out, so the shop before the boss was unaffordable (Odd Todd $4, Hanged Man $3).
+  Boss The Water (no discards) 2000: dealt AA TT, cycled junk twice (play 4 junk, keep AATT) hoping for an A/T (full house est ~1900); missed twice (33%, 39%), final Two Pair 254. 428/2000.
+Post-mortem:
+- Binding constraint: scaling/money. Two rental jokers cost $6/round, so money stayed ~$0-1 and I could not buy anything at the shop before the ante-2 boss; the build was one Trio (needs trips) and a perishable chip joker, no flat hand-level, no second scorer. A boss with no discards and 2000 needs a made hand dealt at once.
+- Decisions I would change: (1) Buffoon pack ($4) over Eternal Smiley Face ($4): both 30% sticker risk; pack gave only two sticker jokers. Smiley eternal (+5/face) is at least a permanent scorer with no rental; Gold makes rental/perishable packs very likely junk. (2) Did not buy Neptune/Jupiter-type planets because of the $4 floor; with $0 income that floor was meaningless. (3) At the Boss shop with $1 I could not fix anything; keep one rental joker at most.
+- Rules (if-then):
+  1. Gold ante 2 blinds are 1000/1500/2000 (stake-8 scaling): jokerless-flat 250/hand is dead; you need 600+/hand by ante 2 (flush/straight/FH with +100 chips or a Trio/xMult).
+  2. If a Rental joker is offered at $1 and it is xMult (The Trio), take it, but count -$3/round: after two rentals, money is ~0 so sell the perishing one the moment it is useless.
+  3. Under The Water (no discards): if you hold two pairs, play your junk cards (not the pairs) to cycle the draw, 4 outs ~33% per cycle for a full house; do it only when 2+ hands remain.
+  4. Ante 1 with 4 same-suit cards in an 8-card hand and 2 discards: chasing the flush worked 3 of 3 times (est within 1% of actual).
+Bridge issues: none. CLI printed `ROUND_EVAL` money before cash out already net of rental (-$1, -$5).
+Advisor/CLI defects: (a) `s` at ante-1 Small said `b skip` for a Rare tag even though the playbook says the tag only pays after the Big; (b) `hands` est for a plain high card 110 vs actual 85 (the junk-cycle play); (c) shopadvise rated Smiley Face 90 / Buffoon pack 88 but does not warn that Buffoon packs on Gold can be 2x sticker jokers (Rental/Perishable/Eternal); (d) `s` said Gold ante 2 Small 800 in the playbook table but actual blind is 1000 (table a2 is stake<=2 numbers).
