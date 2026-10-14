@@ -303,9 +303,9 @@ def _rounds_left(state):
     return max(1, open_ + 3 * max(0, 8 - ante))
 
 
-def _round_state(st, base, blind, k, removed, growth=(), added=()):
+def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None):
     """Synthetic SELECTING_HAND state for a fresh round of `blind` played k round-ends from now; `added` are jokers
-    created since (Riff-raff)."""
+    created since (Riff-raff); ob = (Obelisk x_mult, hand-type play counts) carried from the previous rounds."""
     jokers = _lst(st.get("jokers"))
     now = _jokers_at(jokers, k, removed, growth) + [dict(j, index=len(jokers) + i + 1) for i, j in enumerate(added)]
     hs = int(base.get("hand_size") or 8)
@@ -332,14 +332,21 @@ def _round_state(st, base, blind, k, removed, growth=(), added=()):
     rentals = sum(1 for j in jokers if j.get("rental"))
     cards = [dict(c, remaining=True) for c in _lst((st.get("deck") or {}).get("cards"))]
     hl = st.get("hand_levels") or {}
-    if k and hl:
+    if ob is not None and hl:
+        counts = dict(ob[1])
+        hl = {h: dict(v, played=counts.get(h, int(v.get("played") or 0))) for h, v in hl.items()}
+        now = [dict(j, ability=dict(j.get("ability") or {}, x_mult=ob[0])) if j.get("name") == "Obelisk" else j
+               for j in now]
+    elif k and hl:
         # growth over the k rounds already played, assuming ~2 plays of the most played type per round: Supernova
         # reads that type's play count; Spare Trousers gains +2 mult per Two Pair-family play
         main = max(hl, key=lambda h: int((hl[h] or {}).get("played") or 0))
         names = {j.get("name") for j in now if _active(j)}
         if "Supernova" in names:
             hl = dict(hl, **{main: dict(hl[main], played=int(hl[main].get("played") or 0) + 2 * k)})
-        if "Spare Trousers" in names and main in ("Two Pair", "Full House", "Flush House"):
+    if k and hl and any(j.get("name") == "Spare Trousers" and _active(j) for j in now):
+        main = max(hl, key=lambda h: int((hl[h] or {}).get("played") or 0))
+        if main in ("Two Pair", "Full House", "Flush House"):
             now = [dict(j, ability=dict(j.get("ability") or {}, mult=float((j.get("ability") or {}).get("mult") or 0)
                                         + 4 * k)) if j.get("name") == "Spare Trousers" else j for j in now]
     return dict(st, phase="SELECTING_HAND", hand=[], jokers=now, money=int(st.get("money") or 0) - RENT * rentals * k,
@@ -388,12 +395,12 @@ class _OptionSim:
         self.destroyed = 0
         self.created = 0
 
-    def solver(self, k, removed, growth=(), added=()):
-        key = (k, removed, growth, added)
+    def solver(self, k, removed, growth=(), added=(), ob=None):
+        key = (k, removed, growth, added, ob)
         rs = self.solvers.get(key)
         if rs is None:
             jk = [_commons()[i] for i in added]
-            rs = self.sv.RoundSolver(_round_state(self.state, self.base, self.blinds[k], k, removed, growth, jk),
+            rs = self.sv.RoundSolver(_round_state(self.state, self.base, self.blinds[k], k, removed, growth, jk, ob),
                                      self.est, seed=0)
             self.solvers[key] = rs
         return rs
@@ -437,6 +444,7 @@ class _OptionSim:
         removed = set()
         growth = {}
         added = []
+        ob = None  # Obelisk x_mult and play counts carried from round to round
         grng = random.Random(f"{self.seed}:gros:{s}")
         all_ok = True
         for k, blind in enumerate(self.blinds):
@@ -446,7 +454,7 @@ class _OptionSim:
                         removed.add(g)
             if self.daggers or self.madness or self.riffraff:
                 self._select_blind(blind, removed, growth, grng, added)
-            rs = self.solver(k, frozenset(removed), tuple(sorted(growth.items())), tuple(sorted(added)))
+            rs = self.solver(k, frozenset(removed), tuple(sorted(growth.items())), tuple(sorted(added)), ob)
             rng = random.Random(f"{self.seed}:{k}:{s}")
             pool = rs.pool
             perm = list(range(len(pool)))
@@ -457,6 +465,8 @@ class _OptionSim:
             ids = {id(c) for c in sel}
             first = (kind, tuple(i for i, c in enumerate(hand) if id(c) in ids))
             ok, tot, hl, _du, _g = rs.rollout(first, hand, order, rng)[:5]
+            if getattr(rs, "last_ob", None) is not None:
+                ob = (round(rs.last_ob[0], 1), rs.last_ob[1])
             st = self.stats[k]
             st[0] += 1
             st[2] += min(1.0, tot / max(1.0, rs.need0))
@@ -557,6 +567,7 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
             r["notes"].append(f"Riff-raff creates {sim.created / n:.1f} Common joker(s) over these blinds")
         r["money_path"] = _money_path(state, sim.state, blinds, sim.stats, r["money_after"])
         r["shop_money"] = min(r["money_path"]) if r["money_path"] else r["money_after"]
+        r["dead_shops"] = sum(1 for m in r["money_path"] if m < 0)
         r["rent_horizon"] = r["rent_per_round"] * len(blinds)
         if r["shop_money"] < 0:
             r["notes"].append(f"rent drives money to ${r['shop_money']} before a later shop: that shop is dead")
@@ -669,6 +680,8 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
     rng = random.Random(f"{seed}:virtual:{r['label']}")
     keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money")
+    cost = int(o.get("cost") or 0)
+    dead = 0.0
     acc = dict.fromkeys(keys, 0.0)
     acc_bl = [0.0] * len(base["p_blinds"])
     picks = Counter()
@@ -685,7 +698,10 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
                     names.append(n)
             cards = [by_label.get(f"_pack Celestial: {n}") for n in names]
         cands = [c for c in cards if c is not None and c.get("p_next") is not None] + [base]
-        best = max(cands, key=lambda c: (_p_adj(c), c["score_ratio"], c.get("money_after") or 0))
+        best = max(cands, key=lambda c: (_p_adj(c) - DEAD_SHOP_P * sum(1 for m in c.get("money_path") or []
+                                                                      if 0 <= m < cost), c["score_ratio"],
+                                         c.get("money_after") or 0))
+        dead += sum(1 for m in best.get("money_path") or [] if m - cost < 0)
         picks[best["label"]] += 1
         for k in keys:
             acc[k] += best.get(k) or 0.0
@@ -695,7 +711,8 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         r[k] = acc[k] / PACK_VIRTUAL
     r["p_blinds"] = [p / PACK_VIRTUAL for p in acc_bl]
     r["money_after_rent"] = r["money_after"] - r["rent_per_round"] * n_blinds
-    r["shop_money"] -= int(o.get("cost") or 0)  # sub-options were simulated with the pack's cost unpaid
+    r["shop_money"] -= cost  # sub-options were simulated with the pack's cost unpaid
+    r["dead_shops"] = dead / PACK_VIRTUAL
     subs = [by_label[k] for k in by_label if k.startswith(f"_pack {plan['kind']}:")]
     r["n"] = min([s["n"] for s in subs if s.get("n")] + [base["n"]])
     top = ", ".join(f"{('skip' if lab == base['label'] else lab.split(': ', 1)[1])} {c / PACK_VIRTUAL:.0%}"
@@ -777,5 +794,5 @@ def _p_adj(r):
     per $ of rent for the rest of the run; with a horizon money path that goes negative, the dead shops cost
     another DEAD_SHOP_P each."""
     rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0)
-    dead = sum(1 for m in r.get("money_path") or [] if m < 0)
+    dead = r["dead_shops"] if "dead_shops" in r else sum(1 for m in r.get("money_path") or [] if m < 0)
     return r["p_next"] - DOLLAR_P * rent - DEAD_SHOP_P * dead

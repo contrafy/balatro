@@ -62,12 +62,18 @@ def _last_action_file():
     return os.path.join(CACHE_DIR, f"{PORT}_last_action.json")
 
 
-def _note_action(d, typ):
-    """Before a state-changing action: remember the decision content it must change."""
+def _note_action(d, typ, params=None):
+    """Before a state-changing action: remember the decision content it must change; for a sell, also the id that must
+    leave its area (the sold card stays in G.jokers while it dissolves, after money already changed: 7805 T9QEI78Z)."""
+    gone = None
+    if typ in ("SELL_JOKER", "SELL_CONSUMABLE") and params:
+        area = "jokers" if typ == "SELL_JOKER" else "consumables"
+        it = next((x for x in lst(d.get(area)) if x.get("index") == params.get("index")), None)
+        gone = [area, it.get("id")] if it is not None and it.get("id") is not None else None
     try:
         os.makedirs(CACHE_DIR, exist_ok=True)
         with open(_last_action_file(), "w", encoding="utf-8") as f:
-            json.dump({"step_before": d.get("step"), "sig_before": _digest(d), "type": typ, "ts": time.time(), "confirmed": False}, f)
+            json.dump({"step_before": d.get("step"), "sig_before": _digest(d), "type": typ, "ts": time.time(), "confirmed": False, "gone": gone}, f)
     except Exception:
         pass
 
@@ -84,10 +90,14 @@ def _await_action_effect(d, timeout=5.0):
     if la.get("confirmed") or time.time() - float(la.get("ts") or 0) > 120:
         return d
     t0 = time.time()
-    while _digest(d) == la.get("sig_before") and time.time() - t0 < timeout:
+    gone = la.get("gone")
+
+    def pending(x):
+        return _digest(x) == la.get("sig_before") or (gone and any(y.get("id") == gone[1] for y in lst(x.get(gone[0]))))
+    while pending(d) and time.time() - t0 < timeout:
         time.sleep(0.2)
         d = wait_settled()
-    if _digest(d) == la.get("sig_before"):
+    if pending(d):
         print(f"(warning: the last {la.get('type')} is not visible in the state after {timeout:.0f}s; re-run `s` before acting)")
     else:
         la["confirmed"] = True
@@ -311,11 +321,15 @@ def show(d):
         # broke: after the Small's ~$3 (and its rent) the shop could not buy a $4 joker; skip if the Big is beatable as is
         # (7804/7807: "take the shop" at $<=3 or negative money)
         big_c = int((ch.get("Big") or {}).get("chips") or 0)
-        big_ok = big_c > 0 and (deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * int(d.get("hands_per_round") or 3) >= big_c
+        big_ok = big_c > 0 and (deck_best_est(d) or typical_est(d, main_hand(d), best=True)) * _hands_pr(d) >= big_c
         poor = (money_b + 3 - 3 * n_rent < 4) and (n_rent >= 1 or (big_ok and ante_n >= 2))
         if poor and ante_n <= 4 and tk and not riff and bs.get("on_deck") == "Small":
             skip_ok = True
             NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag (the shop after this Small would find you broke: ${d.get('money')})")
+        if (tk in cash and cash[tk] >= 5 and 3 * n_rent >= 6 and big_ok and ante_n <= 4 and not riff and bs.get("on_deck") == "Small"):
+            # a cash tag pays now AND the skip saves a round of rent (7801 D9KFK2PH: Garbage $10 with $6 rent was refused)
+            skip_ok = True
+            NOW_TAGS[tk] = f"${cash[tk]} right now, and the skip saves ${3 * n_rent} of rent"
         thr = any(j.get("name") == "Throwback" and not j.get("debuff") for j in lst(d.get("jokers")))
         # a skip has no round end, so perishables do not tick: with a key scorer at <= 2 rounds left, skipping keeps it
         # alive for the boss (Main 08:xx, ~6 runs lost a perishable carrier the round before the boss)
@@ -331,7 +345,7 @@ def show(d):
             hard_b = (ch.get("Boss") or {}).get("name") in ("The House", "The Fish", "The Mark", "The Wheel", "The Psychic", "The Eye", "The Mouth",
                                                              "The Needle", "The Water", "The Pillar", "The Serpent", "The Manacle", "The Hook",
                                                              "Crimson Heart", "Cerulean Bell", "Amber Acorn", "Verdant Leaf", "Violet Vessel", "The Wall")
-            thr_ok = boss_c_t > 0 and best_t * int(d.get("hands_per_round") or 3) >= (1.6 if hard_b else 1.3) * boss_c_t
+            thr_ok = boss_c_t > 0 and best_t * _hands_pr(d) >= (1.6 if hard_b else 1.3) * boss_c_t
             if thr_ok and bs.get("on_deck") == "Small" and tk:
                 skip_ok = True
                 NOW_TAGS.setdefault(tk, f"the {small.get('tag')} tag")
@@ -840,7 +854,9 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
         elif n == "Bootstraps":
             mult += 2 * (int(state.get("money") or 0) // 5)
         elif n == "Swashbuckler":
-            mult += sum(int(j2.get("sell_cost") or 0) for j2 in jokers if j2 is not j)
+            # card.lua update(): ability.mult = sell values of every other joker (debuffed included), kept current by the
+            # game (7806: the summed sell_cost read 15-28% low)
+            mult += float(ab.get("mult") or 0) or sum(int(j2.get("sell_cost") or 0) for j2 in jokers if j2 is not j)
         elif n == "Fortune Teller":
             mult += float(ab.get("mult") or 0)
         elif n == "Erosion":
@@ -941,7 +957,21 @@ def _obelisk_resets(d, hand_name):
     p = int((hl.get(hand_name) or {}).get("played") or 0) + 1
     return not any(k != hand_name and (v or {}).get("visible", True) and int((v or {}).get("played") or 0) >= p for k, v in hl.items())
 
-
+def _obelisk_tie_note(d):
+    """Obelisk + 2+ visible types tied at the max play count: playing ANY of them makes it the strict max and resets
+    Obelisk (7803 CLA5SVN7 lost at ante 7). Returns a warning line or None."""
+    ob = next((j for j in lst(d.get("jokers")) if j.get("name") == "Obelisk" and not j.get("debuff")), None)
+    if ob is None:
+        return None
+    hl = {k: int((v or {}).get("played") or 0) for k, v in (d.get("hand_levels") or {}).items() if (v or {}).get("visible", True)}
+    m = max(hl.values(), default=0)
+    tied = sorted(k for k, n in hl.items() if n == m and m > 0)
+    if len(tied) < 2:
+        return None
+    x = (ob.get("ability") or {}).get("x_mult")
+    return (f"OBELISK WARNING: {' and '.join(tied)} are tied at {m} plays: playing ANY of them resets Obelisk"
+            + (f" (now x{x})" if x else "") + ". Keep one sacrificial type clearly ahead: when you must reset, reset with one of them"
+            " (it then leads by 1) and play the others; never leave the types you play tied at the top.")
 
 
 def _repeat_flag(d, hand_name):
@@ -1130,6 +1160,13 @@ def _candidates(d):
     return cands
 
 
+def _hands_pr(d, jokers=None):
+    """Hands per blind: round_resets.hands (Grabber/vouchers included) plus Burglar's +3, which the game adds when the
+    blind is set and the bridge's hands_per_round does not show (7805 UH5NGY7A: SCORE CHECK on 3 hands with Burglar)."""
+    js = lst(d.get("jokers")) if jokers is None else jokers
+    return int(d.get("hands_per_round") or 3) + 3 * sum(1 for j in js if j.get("name") == "Burglar" and not j.get("debuff"))
+
+
 ORDER_JOKERS = {"Hanging Chad", "Photograph"}  # retrigger / x2 on the FIRST scored (face) card: hand order matters
 GROWTH_X = {"Throwback", "Hologram", "Constellation", "Lucky Cat", "Campfire", "Glass Joker", "Vampire", "Madness", "Obelisk",
             "Ramen", "Steel Joker", "Caino", "Canio", "Yorick", "Hit the Road", "Joker Stencil"}  # xMults that grow: never "flat rentals"
@@ -1168,6 +1205,30 @@ def _round_solver():
         spec.loader.exec_module(mod)
         _SOLVER = mod
     return _SOLVER
+
+
+def _copy_order_tip(d):
+    """Blueprint copies its right neighbour, Brainstorm the leftmost joker: when moving one to another slot raises the
+    round est by 3%+, return the `b order` line (7806: Blueprint sat rightmost copying nothing)."""
+    jokers = lst(d.get("jokers"))
+    if not any(j.get("name") in ("Blueprint", "Brainstorm") for j in jokers) or (d.get("blind") or {}).get("name") == "Amber Acorn":
+        return None
+    mh = main_hand(d)
+    base_o = list(range(1, len(jokers) + 1))
+    cands = []
+    for ci, cj in enumerate(jokers):
+        if cj.get("name") in ("Blueprint", "Brainstorm"):
+            for pos in range(len(jokers)):
+                o = [x for x in base_o if x != ci + 1]
+                o.insert(pos, ci + 1)
+                cands.append(o)
+    cur_e = round_est(d, mh)
+    best_o = max(cands, key=lambda o: round_est(d, mh, [jokers[i - 1] for i in o]))
+    best_e = round_est(d, mh, [jokers[i - 1] for i in best_o])
+    if best_o == base_o or best_e < 1.03 * cur_e:
+        return None
+    return (f"ORDER FIRST (free): b order {' '.join(map(str, best_o))}   (copy joker re-targeted; left to right AFTER: "
+            f"{', '.join(str(jokers[i - 1].get('name')) for i in best_o)}; round est {cur_e} -> {best_e})")
 
 
 def advise(d):
@@ -1245,7 +1306,8 @@ def advise(d):
                    "this play clears the blind now; " + (f"tied clear chance, +{dv:.1f} value ($ left / growth)" if tied else f"{pt:.0%} vs {pr_:.0%}"))
             adv = f"ADVICE: {top['action']} -> {cmd}   (solver: {why}; {top['note']})"
         lines = lines[:adv_i] + sol + [adv] + lines[adv_i + 1:]
-    print("\n".join(lines))
+    tip = _copy_order_tip(d) if d.get("phase") == "SELECTING_HAND" and d.get("hands_played", 0) == 0 else None
+    print("\n".join([x for x in (_obelisk_tie_note(d), tip) if x] + lines))
 
 
 def _advise_rules(d):
@@ -1496,7 +1558,13 @@ def _advise_rules(d):
                     bonus += (200 if "Glass" in enh_f else 0) + (40 if enh_f.startswith("Mult") else 0) + (30 if "Bonus" in enh_f else 0) + (25 if "Lucky" in enh_f else 0)
                     out.append((-(CHIP_VAL.get(r, 0) + bonus), i, SUIT.get(c.get("suit"))))
                 else:
-                    out.append((CHIP_VAL.get(r, 0), i, SUIT.get(c.get("suit"))))
+                    # fillers leave the hand: keep ranks your jokers reward (Fibonacci/Hack/Scholar/Walkie/Even/Odd) for the
+                    # next hands (7809 threw Fibonacci ranks as fillers); Raised Fist wants the low cards gone instead
+                    fav = ((("Fibonacci" in jnames_all and r in {"A", "2", "3", "5", "8"}) or ("Hack" in jnames_all and r in {"2", "3", "4", "5"})
+                            or ("Scholar" in jnames_all and r == "A") or ("Walkie Talkie" in jnames_all and r in {"T", "4"})
+                            or ("Even Steven" in jnames_all and r in {"2", "4", "6", "8", "T"}) or ("Odd Todd" in jnames_all and r in {"A", "3", "5", "7", "9"}))
+                           and "Raised Fist" not in jnames_all)
+                    out.append((CHIP_VAL.get(r, 0) + (20 if fav else 0), i, SUIT.get(c.get("suit"))))
         if "Blackboard" in jnames_all:
             # Blackboard x3 needs every HELD card to be a Spade or Club: play the red cards as fillers first
             out = [(k - 1000 if su in ("H", "D") else k, i, su) for k, i, su in out]
@@ -1552,14 +1620,31 @@ def _advise_rules(d):
             rescored.append((h_c, i_c, e_c))
         cands = rescored
         best = max(cands, key=lambda t: t[2])
+    elif not psychic and any(n in jnames_all for n in ("Raised Fist", "Blackboard")):
+        # held-card jokers see the hand AFTER the fillers leave it: Raised Fist scores the lowest card still held, and the
+        # fillers are the low cards (7810 Pair est 315 vs 765, 7802 2600 vs 5700)
+        rescored = []
+        for h_c, i_c, e_c in cands:
+            fl_c = fillers(i_c, h_c) if len(i_c) < 5 else []
+            if fl_c:
+                all_c = i_c + fl_c
+                e_c = max(e_c, estimate(h_c, _cards_by_idx(d, i_c), _held(d, all_c), d, repeat=_repeat_flag(d, h_c), played_n=len(all_c))[0])
+            rescored.append((h_c, i_c, e_c))
+        cands = rescored
+        best = max(cands, key=lambda t: t[2])
     if best[2] >= need:
         # prefer the cheapest hand that still clears
         ok = [c for c in cands if c[2] >= need]
         mh_now = main_hand(d)
         PAIR_FAMILY = ("Pair", "Two Pair", "Three of a Kind", "Full House", "Four of a Kind")
         # any of these clears; prefer the hand we are building (main hand, then pair family) so levels and Supernova stay consolidated
-        pick = max(ok, key=lambda t: (t[0] == mh_now, t[0] in PAIR_FAMILY, t[2], -len(t[1])))
-        if pick[2] < 1.25 * need:
+        arm = boss_name == "The Arm"
+        lvl_of = lambda h: int(((d.get("hand_levels") or {}).get(h) or {}).get("level") or 1)
+        # any of these clears; prefer the hand we are building (main hand, then pair family) so levels and Supernova stay
+        # consolidated. The Arm takes a level from the played type: there a clearing L1 hand (no loss) or any hand that is
+        # not the main one comes first (7801 D9KFK2PH played a 2nd Two Pair while an L1 Full House cleared)
+        pick = max(ok, key=lambda t: ((lvl_of(t[0]) <= 1, t[0] != mh_now) if arm else (False, False), t[0] == mh_now, t[0] in PAIR_FAMILY, t[2], -len(t[1])))
+        if pick[2] < 1.25 * need and not (arm and pick[2] >= 1.1 * need):
             # a thin margin is est risk (7810 The Eye last hand: Two Pair 5874 vs need 5350 over a Full House 10036): take the biggest
             pick = max(ok, key=lambda t: (t[2], -len(t[1])))
         why = "" if pick[2] == max(c[2] for c in ok) else f"; a bigger {max(ok, key=lambda t: t[2])[0]} also clears but {pick[0]} is the hand you are leveling"
@@ -1940,6 +2025,20 @@ AVOID_JOKERS = {"Madness": "destroys one of your jokers every blind", "Ceremonia
                 "Troubadour": "-1 hand per round: Black Deck has only 3",
                 "Merry Andy": "-1 hand size"}
 
+def _eternal_bar(d, aj):
+    """Eternal jokers the 3-blind SIM undervalues the cost of: an eternal Troubadour (-1 hand for the rest of the run)
+    and a 2nd eternal utility (Drunkard/Juggler...) that locks a slot forever (Main 09:xx: 7806 AUZQFYQE, 7809 31V7KZ1X)."""
+    if not _stk(aj)["eternal"]:
+        return None
+    nm = aj.get("name")
+    if nm in ("Troubadour", "Merry Andy"):
+        return f"ETERNAL {nm}: {AVOID_JOKERS[nm]} for the rest of the run"
+    cls = classify_joker(nm, 0, main_hand(d))[0]
+    if (cls.startswith("UTIL") or cls.startswith("AVOID")) and any(_stk(j)["eternal"] for j in lst(d.get("jokers"))):
+        return f"a 2nd ETERNAL non-scorer ({nm}) locks another slot forever"
+    return None
+
+
 
 def classify_joker(name, cost, mh):
     desc = JOKER_DESC.get(name, "")
@@ -2092,7 +2191,7 @@ def typical_est(d, mh, jokers=None, best=False):
 def round_est(d, mh, jokers=None):
     """est of a round: ordinary hands at the round start plus the final hand (Mystic Summit after the discards are spent,
     Acrobat/Dusk on the final hand) - the measure every joker's contribution is taken on."""
-    h = int(d.get("hands_per_round") or 3)
+    h = _hands_pr(d, jokers)
     return typical_est(d, mh, jokers) * (h - 1) + typical_est(d, mh, jokers, best=True)
 
 
@@ -2137,7 +2236,7 @@ def deck_round_est(d, jokers=None, samples=30, seed=11):
     hs = int(d.get("hand_size") or 8)
     if len(cards) < hs:
         return None
-    h = int(d.get("hands_per_round") or 3)
+    h = _hands_pr(d, jokers)
     base = dict(d, phase="SELECTING_HAND", blind={}, jokers=lst(d.get("jokers")) if jokers is None else jokers)
     st_ord = dict(base, hands_remaining=h, discards_remaining=int(d.get("discards_per_round") or 3))
     st_fin = dict(base, hands_remaining=1, discards_remaining=0)
@@ -2326,7 +2425,12 @@ def shop_advise(d):
         cmd_sf = sf.split("SELL FIRST: ")[1].split("   ")[0]
         lines = [(f"ADVICE: SELL FIRST -> {cmd_sf}  then  {ln.split(' -> ', 1)[1] if ' -> ' in ln else ln[8:]}   (after the sell, joker indices right of it shift down by 1: re-run shopadvise)"
                   if ln.startswith("ADVICE:") else ln) for ln in lines]
-    print("\n".join(lines))
+    ob_n = _obelisk_tie_note(d)
+    mad = next((j for j in lst(d.get("jokers")) if j.get("name") == "Madness" and not j.get("debuff")), None)
+    mad_n = (f"MADNESS (x{(mad.get('ability') or {}).get('x_mult') or '?'}): selecting the next Small/Big destroys a random non-eternal joker "
+             "(not at the boss). A joker bought now may be the one lost: buy before the boss shop only, or sell Madness once you own 2+ scorers."
+             if mad is not None else None)
+    print("\n".join([x for x in (ob_n, mad_n) if x] + lines))
 
 
 _SHOP_SIM = None
@@ -2430,7 +2534,7 @@ def shop_advise_sim(d, budget_s=6.0):
         if not floor_off and r.get("money_after") is not None and int(r.get("money_after") or 0) < floor_v and int(r["option"].get("cost") or 0) > 0 \
                 and r["option"].get("_cmd") != adv_cmd0 and key(r) - key0 < 0.15:
             return False
-        return True
+        return not _eternal_bar(d, aj)
     base = next((r for r in feas if not r["option"].get("_cmd")), None)
     cands_s = [r for r in feas if r["option"].get("_cmd") and allowed(r)]
     best = None
@@ -2446,8 +2550,19 @@ def shop_advise_sim(d, budget_s=6.0):
     sim_cmds = {r["option"].get("_cmd") for r in feas if r["option"].get("_cmd")}
     keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING")) or \
         (adv_cmd not in sim_cmds and adv.split("(")[0].strip() not in ("ADVICE: LEAVE -> b endshop", "ADVICE: REROLL -> b reroll") and gain < 0.05)
-    if "MAIN SCALING" in adv and gain >= 0.05:
-        keep_rule = False  # a main-hand planet levels forever (beyond the SIM's 3 blinds); only a clearly better buy replaces it
+    mine0 = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
+    g_rule = (key(mine0) - key(base)) if mine0 and base else 0.0
+    if "MAIN SCALING" in adv and (gain >= 0.05 or g_rule < -0.03):
+        # a main-hand planet levels forever (beyond the SIM's 3 blinds); only a clearly better buy replaces it, or the SIM
+        # showing the buy itself hurts (7807: Mercury cost Bootstraps a $5 bracket, ratio 0.54 vs 0.60)
+        keep_rule = False
+    saturated = (not all_zero and base is not None and (base.get("p_next") or 0) >= 0.9
+                 and all(abs(key(r) - key(base)) < 0.02 for r in feas if r is not base))
+    if saturated:
+        # every option reads ~+0.00 because the next 3 blinds are already won: the SIM has no signal for the ante jump
+        # beyond them (7807 SWXRQQVU ante 2); the rules (next-ante SCORE CHECK, levels, scorers) decide
+        sim.append("  SIM SATURATED: the next 3 blinds clear with or without any buy (all deltas < 0.02); ranking by the rules / next-ante SCORE CHECK instead")
+        keep_rule = True
     if not keep_rule:
         if best is not None and gain > 0.02:
             new_cmd = best["option"]["_cmd"]
@@ -2521,10 +2636,13 @@ def pack_advise_sim(d, budget_s=3.5):
     def allowed(r):
         aj = r["option"].get("add_joker") or {}
         st = _stk(aj)
-        # packs are already paid: only an unsellable rental or a second PERMANENT rental is barred
-        return not (st["eternal"] and st["rental"] and ante_s < 7) and not (st["rental"] and not st["perishable"] and own_rent and ante_s < 6)
+        # packs are already paid: an unsellable rental, a second PERMANENT rental, or a run-long eternal cost is barred
+        return (not (st["eternal"] and st["rental"] and ante_s < 7) and not (st["rental"] and not st["perishable"] and own_rent and ante_s < 6)
+                and not _eternal_bar(d, aj))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
-        f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f} ({r.get('delta') or 0:+.2f} vs skipping)")
+        f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else f"P(clear all next 3 blinds) {r.get('p_next') or 0:.2f}, rent-adjusted {key(r):.2f} ({r.get('delta_adj', r.get('delta')) or 0:+.2f} vs skipping)")
+        + ("" if allowed(r) or not r["option"].get("_cmd") else
+           f"  [BARRED: {_eternal_bar(d, r['option'].get('add_joker') or {}) or 'eternal rental before ante 7 / 2nd permanent rental before ante 6'}]")
         for r in sorted(feas, key=key, reverse=True)[:6]]
     adv = lines[adv_i]
     base = next((r for r in feas if not r["option"].get("_cmd")), None)
@@ -2545,7 +2663,9 @@ def pack_advise_sim(d, budget_s=3.5):
         elif any(r["option"].get("_cmd") == rule_pick and r["option"].get("add_joker") for r in feas):
             # only a JOKER pick can be worse than skipping (stickers, a slot); a free planet/card never is
             sim.append(f"  (rule advice was: {adv[8:]})")
-            adv = "ADVICE: SKIP -> b skippack   (SIM: no pick raises survival over the next 3 blinds by more than 0.02)"
+            barred = [r for r in feas if r["option"].get("_cmd") and not allowed(r) and key(r) - key(base) > 0.02]
+            adv = ("ADVICE: SKIP -> b skippack   (SIM: no pick raises survival over the next 3 blinds by more than 0.02"
+                   + (f"; {barred[0]['label']} would, but its stickers are barred: an unsellable or 2nd permanent rental drains the run)" if barred else ")"))
     lines = lines[:adv_i] + sim + [adv] + lines[adv_i + 1:]
     print("\n".join(lines))
 
@@ -2610,7 +2730,7 @@ def _shop_rules(d):
     # calibrated on 1120 recorded Gold shops (deck p75 best-hand est / (next boss / 3) vs died by the next ante; AUC 0.77,
     # synthetic KK hand 0.74): <0.35 died 84%, 0.35-0.7 65%, 0.7-1 38%, 1-1.5 31%, >=1.5 18%. EMERGENCY = lowest band.
     surv = deck_best if deck_best is not None else best_hand
-    sc_ratio = surv / (boss_next / 3) if boss_next else 9
+    sc_ratio = surv / (boss_next / _hands_pr(d)) if boss_next else 9  # Burglar +3 hands (7805 UH5NGY7A)
     emergency = ante >= 2 and boss_next and sc_ratio < 0.35
     if ante >= 2:
         band = "84%" if sc_ratio < 0.35 else "65%" if sc_ratio < 0.7 else "38%" if sc_ratio < 1 else "31%" if sc_ratio < 1.5 else "18%"
@@ -2662,15 +2782,33 @@ def _shop_rules(d):
     # placed right of a holo Tribe)
     pure_plus = [i for i, j in enumerate(jokers) if _main_plus(j) and not _main_x(j)]
     first_x = next((i for i, j in enumerate(jokers) if _main_x(j)), None)
-    if first_x is not None and any(i > first_x for i in pure_plus):
+    has_copy = any(j.get("name") in ("Blueprint", "Brainstorm") for j in jokers)
+    if (first_x is not None and any(i > first_x for i in pure_plus)) or has_copy:
         x_idx = [i for i, j in enumerate(jokers) if _main_x(j)]
         desired = [i + 1 for i in pure_plus] + [i + 1 for i in range(len(jokers)) if i not in pure_plus and i not in x_idx] + [i + 1 for i in x_idx]
+        if has_copy:
+            # Blueprint copies its right neighbour, Brainstorm the leftmost joker: show what they copy now (7806: Blueprint
+            # sat rightmost copying nothing; moving it took the SIM 0.43 -> 0.90)
+            for ci, cj in enumerate(jokers):
+                if cj.get("name") == "Blueprint":
+                    print(f"  Blueprint (slot {ci + 1}) copies: {jokers[ci + 1].get('name') if ci + 1 < len(jokers) else 'NOTHING (it is rightmost)'}")
+                elif cj.get("name") == "Brainstorm":
+                    print(f"  Brainstorm (slot {ci + 1}) copies: {jokers[0].get('name') if jokers[0] is not cj else 'NOTHING (it is leftmost)'}")
         # verify with est on the whole order: Brainstorm copies the LEFTMOST joker and Blueprint the one to its right, so a
         # move can change what they copy (7805: the tip would have moved Brainstorm off its Stencil target)
         cands_o = [desired]
         if len(jokers) <= 5:
             import itertools
             cands_o += [[i + 1 for i in p] for p in itertools.permutations(range(len(jokers)))]
+        else:
+            # 6+ jokers: every single move of a copy joker to every slot
+            base_o = list(range(1, len(jokers) + 1))
+            for ci, cj in enumerate(jokers):
+                if cj.get("name") in ("Blueprint", "Brainstorm"):
+                    for pos in range(len(jokers)):
+                        o = [x for x in base_o if x != ci + 1]
+                        o.insert(pos, ci + 1)
+                        cands_o.append(o)
         cur_e = round_est(d, mh)
         best_o = max(cands_o, key=lambda o: round_est(d, mh, [jokers[i - 1] for i in o]))
         best_e = round_est(d, mh, [jokers[i - 1] for i in best_o])
@@ -2687,6 +2825,11 @@ def _shop_rules(d):
     ENGINE_KEEP = {"Splash", "Four Fingers", "Shortcut", "Smeared Joker", "Pareidolia", "Blueprint", "Brainstorm", "Sock and Buskin", "Hack", "Dusk", "Mime", "Seltzer", "Hanging Chad"}
     if sc_ratio < 1.0:
         ENGINE_KEEP.add("Mr. Bones")  # under-scaled (SCORE CHECK < 1.0): Bones is the run-saver, never the sell target (Main 06:xx)
+    ENGINE_KEEP.add("Burglar")  # +3 hands engine (7805: called "weakest")
+    if len(jokers) < slots:
+        ENGINE_KEEP.add("Riff-raff")  # 2 Commons at the next blind select while a slot is free (7807 SWXRQQVU)
+    if any(j.get("name") == "Obelisk" and float((j.get("ability") or {}).get("x_mult") or 1) >= 2.5 for j in jokers):
+        ENGINE_KEEP.add("Obelisk")  # a grown Obelisk is never sold on a SIM that resets it (7803)
     def keep_value(j):
         """how much selling this joker would hurt: class score, economy jokers cheap from ante 4, editions add value,
         a perishable that dies before the run ends and a rental's -$3/round lower it; a joker that carries a big share
@@ -2721,7 +2864,8 @@ def _shop_rules(d):
     for j in [x for x in sellable_j if x.get("id") not in fresh]:
         cls_r = classify_joker(j.get("name"), 0, mh)[0]
         if (_stk(j)["rental"] and ante <= 6 and keep_value(j) <= 45 and j.get("name") not in ENGINE_KEEP and j.get("name") not in GROWTH_X
-                and not _is_scoring(cls_r) and not cls_r.startswith("XMULT") and _joker_edition(j) not in ("holo", "foil", "polychrome")):
+                and not _is_scoring(cls_r) and not cls_r.startswith("XMULT") and _joker_edition(j) not in ("holo", "foil", "polychrome")
+                and joker_share(d, j, mh) < 0.2):  # 7801 D9KFK2PH: Jolly/Misprint carrying half the mult were sold as "not core"
             print(f"  SELL FIRST: b sell {j.get('index')}   ({j.get('name')} [{cls_r}] is a RENTAL and not a core scorer: it costs $3 every round (~${3 * rounds_left} if kept to the end); selling returns $1 and stops the charge)")
             sold = j
             break
@@ -2729,7 +2873,7 @@ def _shop_rules(d):
     if sold is None and len(non_rental_scorers) >= 2 and ante <= 6:
         flat_r = [j for j in rentals if j.get("id") not in fresh and not _stk(j)["eternal"] and not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") and j.get("name") not in TYPE_X_JOKERS
                   and j.get("name") not in GROWTH_X
-                  and joker_share(d, j, mh) < 0.3 and j.get("name") != "Mr. Bones"]  # 7805: The Trio was called a "flat rental"
+                  and joker_share(d, j, mh) < (0.3 if sc_ratio >= 1.1 else 0.15) and j.get("name") != "Mr. Bones"]  # 7805: The Trio was called a "flat rental"
         if flat_r:
             sold = min(flat_r, key=keep_value)
             print(f"  SELL FIRST: b sell {sold.get('index')}   ({sold.get('name')}{stickers(sold)} is a flat RENTAL and {len(non_rental_scorers)} non-rental scorers carry your hands: "
@@ -2762,7 +2906,7 @@ def _shop_rules(d):
     # (7802 reached ante 7 and died to The Eye with a Card Sharp repeat engine).
     owned_n = {j.get("name") for j in jokers if not j.get("debuff")}
     boss_chips = int(boss_c.get("chips") or 0) if boss_ahead else 0
-    hands_r = int(d.get("hands_per_round") or 3)
+    hands_r = _hands_pr(d)
     face_names = {"Smiley Face", "Scary Face", "Photograph", "Sock and Buskin", "Triboulet", "Business Card", "Pareidolia", "Midas Mask"}
     threat = None
     # blind.lua: The Eye refuses any hand type already played this round, so Card Sharp (x3 on a type already played this
@@ -3381,6 +3525,16 @@ def pack_advise(d):
               "The Emperor": (30, 0, "2 random tarots"), "The High Priestess": (35, 0, "2 random planets"),
               "The Star": (25 if mh == "Flush" else 10, 3, "3 cards to Diamonds"), "The Moon": (25 if mh == "Flush" else 10, 3, "3 cards to Clubs"),
               "The Sun": (25 if mh == "Flush" else 10, 3, "3 cards to Hearts"), "The World": (25 if mh == "Flush" else 10, 3, "3 cards to Spades")}
+        ltp = str((d.get("run") or {}).get("last_tarot_planet") or "")
+        if ltp.startswith("c_") and ltp != "c_fool":
+            # The Fool creates a copy of the last tarot/planet used (run.last_tarot_planet): rank it as that card (7801 D9KFK2PH)
+            words = " ".join(w.capitalize() for w in ltp[2:].split("_")).replace(" Of ", " of ")
+            lt_name = next((n for n in (words, "The " + words) if n in TV or n in PLANET_FOR.values()), words)
+            if lt_name in PLANET_FOR.values():
+                f_sc = 75 if lt_name == PLANET_FOR.get(mh) else 25
+            else:
+                f_sc = max(5, TV.get(lt_name, (15, 0, ""))[0] - 5)
+            TV["The Fool"] = (f_sc, 0, f"a {lt_name} (copy of the last tarot/planet used; needs a free consumable slot, then `use` it)")
         ranked_t = sorted(((TV.get(c.get("name"), (15, 0, "?"))[0], i, c) for i, c in tarots), key=lambda t: -t[0])
         print(f"Pack advisor: Arcana, choose {pk.get('choices_remaining')}")
         for sc, i, c in ranked_t:
@@ -3774,15 +3928,27 @@ def main():
                 print("--seed only applies to `start`"); sys.exit(1)
             params["seed"] = seed
         pre_checks(cmd, typ, params, ints, d)
+        t_l = time.time()
+        while not legal_match(LEGAL, typ, params) and time.time() - t_l < 4.0:
+            # a sold/used card is still dissolving for ~1 s after the state settles (the game's slot count includes it):
+            # re-read /legal before refusing (7805 T9QEI78Z: `buy` right after `sell` said NOT LEGAL / slots full)
+            time.sleep(0.4)
+            LEGAL = get("legal")
         if not legal_match(LEGAL, typ, params):
             explain_illegal(LEGAL, typ, params, d); sys.exit(2)
         if cmd == "play" and rest and rest[0].upper() in HAND_WORDS:
             play_type_check(rest, ints, d)
-    _note_action(d_raw, typ)
+    _note_action(d_raw, typ, params)
     for attempt in range(4):
         r = act(typ, params)
-        if r.get("ok") or not r.get("retry") or attempt == 3:
+        transient = not r.get("ok") and re.search(r"slot|full|no room|not legal|illegal", str(r.get("error") or ""), re.I)
+        if r.get("ok") or not (r.get("retry") or transient) or attempt == 3:
             break
+        if transient and not r.get("retry"):
+            # a just-sold card can still occupy its slot while it dissolves (7805 T9QEI78Z): wait and resend once settled
+            print(f"(bridge refused: {r.get('error')}; a sold card may still be dissolving, retrying in 1 s)")
+            time.sleep(1.0)
+            continue
         print(f"(bridge not settled: {r.get('error')}; waiting, then rebuilding the action from fresh state)")
         d_fresh = wait_settled()
         params2 = _remap_params(typ, params, d_raw, d_fresh)

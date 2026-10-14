@@ -200,3 +200,18 @@ def test_obelisk_growth_carries_across_simulated_rounds():
     later = [key[4] for key in sim.solvers if key[0] > 0]
     assert later and all(ob is not None for ob in later)
     assert any(ob[0] > 1.0 for ob in later)  # non-max types played in a round raise the next round's Obelisk
+
+
+def test_terminal_boss_values_the_end_of_horizon_build():
+    # 7807 SWXRQQVU / 7803 KLHEEA8D: the 3-blind horizon saturates at ~1.0, so the end build is also played once
+    # against the next boss; a joker that perishes inside the horizon loses that terminal value
+    st = shop_state(ante=1, small="Defeated")
+    term = shop_sim.terminal_blind(st, 3, BLIND_BASE)
+    assert (term["ante"], term["kind"], term["chips"]) == (2, "Boss", 2000)
+    keep = joker("Joker", ability={"mult": 4})
+    dies = joker("Joker", ability={"mult": 4}, perishable=True, perish_tally=2)
+    res = by_label(run(st, [{"label": "base"}, {"label": "keep", "add_joker": keep, "cost": 2},
+                            {"label": "dies", "add_joker": dies, "cost": 2}], budget_s=10, min_samples=48))
+    assert res["keep"]["p_term"] > res["dies"]["p_term"] + 0.05
+    assert res["keep"]["value"] > res["dies"]["value"]
+    assert all(r["terminal"] == "a2 boss 2000" for r in res.values())

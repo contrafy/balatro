@@ -219,6 +219,10 @@ class RoundSolver:
         self.hd_dep = bool(jn & HD_JOKERS)
         self.final_dep = bool(jn & {"Dusk", "Acrobat"})  # final-hand jokers: holding a hand for the last play pays
         self.keep_discards = bool(jn & {"Banner", "Green Joker"})  # discards tax every later hand
+        # scoring order matters (and the player can set it with `move hand`): first-card retrigger / first-face xMult,
+        # or x-mult cards (Glass, polychrome) that should score after the additive ones
+        xcards = any(self._xmult_card(c.d) for c in self.pool + [c for c in self.slots if c])
+        self.order_dep = bool(jn & {"Hanging Chad", "Photograph"}) or xcards
         lucky = any("lucky" in str(c.d.get("enhancement") or "").lower() for c in self.pool + [c for c in self.slots if c])
         self.jokerless = not jn  # calibration segment: no active joker
         self.random_fx = bool(self.n_misprint or self.n_blood or self.n_space or lucky)
@@ -407,12 +411,58 @@ class RoundSolver:
         counts[t] = p
         return (ob[0] + self._ob_extra) if other_more else 1.0, tuple(sorted(counts.items()))
 
-    def _est(self, t, scd, hd, st, rep, n):
+    def _est_raw(self, t, scd, hd, st, rep, n):
         if self._kw:
             r = self._est_fn(t, scd, hd, st, repeat=rep, played_n=n)
         else:
             r = self._est_fn(t, scd, hd, st)
         return float(r[0] if isinstance(r, tuple) else r)
+
+    @staticmethod
+    def _xmult_card(c):
+        """A scoring card that multiplies mult (Glass, polychrome): scored after the additive cards."""
+        return "glass" in str(c.get("enhancement") or "").lower() or c.get("edition") == "polychrome"
+
+    def _orders(self, scd):
+        """Scoring orders the player can set with `move hand`: each card in turn first (Hanging Chad retriggers it,
+        Photograph doubles the first face), the rest additive cards first and x-mult cards last."""
+        if not self.order_dep or len(scd) < 2:
+            return [scd]
+        slots = sorted(c.get("index") or 0 for c in scd)
+        out = []
+        for f in range(len(scd)):
+            rest = sorted((c for i, c in enumerate(scd) if i != f), key=self._xmult_card)
+            out.append([dict(c, index=ix) for c, ix in zip([scd[f]] + rest, slots)])
+        return out
+
+    def _est(self, t, scd, hd, st, rep, n):
+        """estimate of the play in its best scoring order (estimate scores cards in index order)."""
+        return max(self._est_raw(t, o, hd, st, rep, n) for o in self._orders(scd))
+
+    def best_first(self, play, held=()):
+        """Hand index of the card to move leftmost so the play scores its best (None when order does not matter)."""
+        if not self.order_dep:
+            return None
+        t, sc, _m = self.classify(play)
+        scd = [c.d for c in sc]
+        st = self._state(self.h0, self.d0, self.ctx0[3])
+        hd = [c.d for c in held if c.known]
+        orders = self._orders(scd)
+        vals = [self._est_raw(t, o, hd, st, None, len(play)) for o in orders]
+        if max(vals) - min(vals) < 1:
+            return None
+        best = orders[vals.index(max(vals))][0]
+        return next((c.d.get("index") for c in sc if c.d.get("id") == best.get("id")), None)
+
+    def _first_for(self, cand):
+        """best_first for a PLAY candidate of known cards (hand index), else None."""
+        if cand["kind"] != PLAY or not self.order_dep:
+            return None
+        play = [self.slots[p] for p in cand["pos"]]
+        if any(c is None for c in play):
+            return None
+        held = [c for c in self.slots if c is not None and c not in play]
+        return self.best_first(play, held)
 
     def _components(self, t, sc, played, held, h, d, rep, ob=None):
         """Score of a play split into its random parts (estimate itself is deterministic):
@@ -436,7 +486,19 @@ class RoundSolver:
             first = lucky[0]
             scd2 = [dict(c.d, perma_mult=float(c.d.get("perma_mult") or 0) + 20) if c is first else c.d for c in sc]
             lucky_inc = self._est(t, scd2, hd, st, rep, n) - s6
-        n_blood = sum(1 for c in sc if c.suit == "H" and not c.debuff) * self.n_blood
+        # Bloodstone: x1.5 in the card phase of each scoring Heart (1 in 2), not on the final score. estimate leaves it
+        # out, so score k triggered Hearts by giving them a card-phase x1.5 (a polychrome edition) and keep the
+        # ratios to the untriggered score
+        blood = ()
+        if self.n_blood and s6 > 0:
+            hearts = [i for i, c in enumerate(sc) if not c.debuff and ("H" in c.suits or "HD" in c.suits)
+                      and c.d.get("edition") != "polychrome"]
+            ratios = [1.0]
+            for k in range(1, len(hearts) + 1):
+                trig = set(hearts[:k])
+                scd_k = [dict(c.d, edition="polychrome") if i in trig else c.d for i, c in enumerate(sc)]
+                ratios.append(self._est(t, scd_k, hd, st, rep, n) / s6)
+            blood = tuple(ratios)
         space = 0.0
         if self.n_space:
             hl = dict(st.get("hand_levels") or {})
@@ -447,7 +509,7 @@ class RoundSolver:
             v["level"] = int(v.get("level") or 1) + 1
             hl[t] = v
             space = self._est(t, scd, hd, dict(st, hand_levels=hl), rep, n) - s6
-        return base, slope, self.n_misprint, lucky_inc, len(lucky), n_blood, space, self.n_space
+        return base, slope, self.n_misprint, lucky_inc, len(lucky), blood, space, self.n_space
 
     def score(self, played, held, h, d, ctx, rng=None):
         """(score, hand type) of playing `played` while `held` stays in hand. Without rng: the planning value with
@@ -477,14 +539,19 @@ class RoundSolver:
             self._score_memo[key] = comp
         if not self.random_fx:
             return comp, t
-        base, slope, n_mis, lucky_inc, n_lucky, n_blood, space, n_space = comp
+        base, slope, n_mis, lucky_inc, n_lucky, blood, space, n_space = comp
+        q = 1.0 - 0.5 ** self.n_blood  # a Heart triggers at least one Bloodstone
         if rng is None:
-            return (base + slope * 11.5 * n_mis + 0.2 * n_lucky * lucky_inc + 0.25 * n_space * space) * 1.25 ** n_blood, t
+            rb = 1.0
+            if len(blood) > 1:
+                hn = len(blood) - 1
+                rb = sum(math.comb(hn, k) * q ** k * (1 - q) ** (hn - k) * r for k, r in enumerate(blood))
+            return (base + slope * 11.5 * n_mis + 0.2 * n_lucky * lucky_inc + 0.25 * n_space * space) * rb, t
         m = sum(rng.randint(0, 23) for _ in range(n_mis))
         hits = sum(rng.random() < 0.2 for _ in range(n_lucky))
-        k = sum(rng.random() < 0.5 for _ in range(n_blood))
+        k = sum(rng.random() < q for _ in range(len(blood) - 1)) if len(blood) > 1 else 0
         up = sum(rng.random() < 0.25 for _ in range(n_space))
-        return (base + slope * m + hits * lucky_inc + up * space) * 1.5 ** k, t
+        return (base + slope * m + hits * lucky_inc + up * space) * (blood[k] if blood else 1.0), t
 
     def _gen_plays(self, cards):
         """Candidate plays: every rank group and its 2..5 subsets, two pairs, full houses, the best flush per suit
@@ -889,6 +956,7 @@ class RoundSolver:
         discards used, growth-joker progress, cards played)."""
         h, d, need = self.h0, self.d0, self.need0
         lock, used, rtypes, ob = self.ctx0
+        self.last_ob = ob  # Obelisk state at the end of this rollout (shop_sim carries it to the next round)
         total = 0.0
         growth = 0.0
         n_played = 0
@@ -900,7 +968,7 @@ class RoundSolver:
             rest = [c for c in cards if id(c) not in ids]
             if kind == PLAY:
                 s, t = self.score(sel, rest, h, d, (lock, used, rtypes, ob), rng)
-                ob = self._obelisk_after(ob, t)
+                ob = self.last_ob = self._obelisk_after(ob, t)
                 total += s
                 need -= s
                 h -= 1
@@ -1125,7 +1193,11 @@ class RoundSolver:
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
                         "discards_used": du / n, "n": n, "low_n": n < min(MIN_N, samples), "note": c["note"],
-                        "hand": c.get("hand")})
+                        "hand": c.get("hand"), "first_card": self._first_for(c)})
+        for r in res:
+            if r["first_card"] is not None:
+                lab = next(x.label() for x in self.slots if x is not None and x.d.get("index") == r["first_card"])
+                r["note"] += f" [move {lab} leftmost: scores first]"
         top_n = max((r["n"] for r in res), default=0)
         full_n = min(top_n, 120)
         top_p = max((r["p_model"] for r in res if r["n"] >= full_n), default=0.0)

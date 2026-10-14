@@ -1194,7 +1194,11 @@ class RoundSolver:
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
                         "discards_used": du / n, "n": n, "low_n": n < min(MIN_N, samples), "note": c["note"],
                         "hand": c.get("hand"), "first_card": self._first_for(c)})
+        # slices where p is less trustworthy: few samples, final-hand jokers (Acrobat/Dusk slice is mis-calibrated on
+        # recorded data), face-down cards (their identity is sampled)
+        shaky = self.final_dep or bool(self.fd_pos)
         for r in res:
+            r["low_confidence"] = r["low_n"] or shaky
             if r["first_card"] is not None:
                 lab = next(x.label() for x in self.slots if x is not None and x.d.get("index") == r["first_card"])
                 r["note"] += f" [move {lab} leftmost: scores first]"

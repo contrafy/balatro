@@ -165,13 +165,18 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   your rounds show `AVOID(-N% round est)`; Negative jokers bring their own slot.
 - AMBER ACORN: the CLI caches your face-up jokers per port; under Acorn `advise` estimates with them, shows the range
   over joker orders, suggests a 1-card High Card probe (it infers the order from the score) and then a `b order`.
-- THROWBACK owned: see WINNING LINE (skip Small and Big while your rounds beat the boss by 1.3x+; `s` says when).
+- THROWBACK owned: see WINNING LINE (skip Small and Big while your rounds beat the boss by 1.3x+, 1.6x+ vs handicap
+  bosses like The House/Fish/Psychic; `s` says when). A skip has no round end: a perishable carrier does not tick, so
+  `s` also suggests skipping to keep a key perishable (<= 2 rounds left) alive for the boss.
 - SIM IS PRIMARY (`shopadvise`, pack `advise`): every affordable joker/planet/playing card (or pack pick) is played
-  through the next 3 blinds; the ADVICE takes the best SIM gain over buying nothing (score ratio when every p < 0.05).
-  Rule scores only break SIM ties (within 0.03) and decide what the SIM cannot model: packs, vouchers, tarots, boss
-  counters, sells first, main-hand planets (they level forever). Hard rules stay: no eternal rental before ante 7, no
-  second rental before ante 6, the $ floor unless TIGHT/EMERGENCY or a +0.15 SIM gain. A free planet in a pack is
-  never skipped.
+  through the next 3 blinds; the ADVICE takes the best rent-adjusted SIM gain over buying nothing (score ratio when
+  every p < 0.05). Rule scores only break SIM ties (within 0.03; a permanent joker beats a perishable/rental one) and
+  decide what the SIM cannot model: packs, vouchers, tarots, boss counters, sells first, main-hand planets (they level
+  forever). Hard rules stay: no eternal rental before ante 7, no second rental before ante 6, the $ floor unless
+  TIGHT/EMERGENCY or a +0.15 SIM gain. A free planet in a pack is never skipped. Credit Card: in EMERGENCY the -$20
+  debt is spendable on rerolls for a scorer.
+- INDICES SHIFT after a reroll/pick/sell: use a name guard, `b buy Clever` or `b buy 1 --expect Clever` (refused on a
+  mismatch); every slot command echoes its target name.
 - THE MOUTH: the first played hand locks the type for all 3 hands. Open with a type you can repeat (main hand / Pair),
   never a one-off Straight/Flush/Full House unless that one hand clears the whole blind; keep a discard until the lock.
   A locked High Card is any single card. Owning Burglar (0 discards) before The Mouth: sell it or lock High Card.
@@ -198,7 +203,8 @@ run that proved it. 2a explains the why; this is the what. Where a rule here and
 2. Ratio < 0.35 = EMERGENCY, < 0.7 or TIGHT = floor OFF: spend to $0 on the best SIM multiplier. Else keep $8 (ante 2+).
 3. Sell first: perished jokers (keep them with Abstract), a flat rental once 2 other scorers carry, Gros Michel spares.
 4. Buy order: r/g xMult > next-boss counter > $3 main-hand planet > Buffoon pack (<2 xMult) > +mult/+chips scorer >
-   Celestial pack > reroll ($20+ left after, max 2). Run `s` again after every buy/sell (stale output seen in 19 runs).
+   Celestial pack > reroll ($20+ left after, max 2). Buy with a name guard (`b buy 1 --expect Clever`); indices shift
+   after reroll/pick/sell. Run `s` again after every buy/sell (stale output seen in 19 runs).
 5. `endshop`, then at blind select apply the skip rules below (default: play).
 
 **Each hand (in order):**
@@ -246,8 +252,10 @@ run that proved it. 2a explains the why; this is the what. Where a rule here and
 
 **Ante 5+: skip-to-boss, Throwback, Obelisk**
 - Never skip at ante 5+ (5 of 6 skippers died) unless one of the next three lines applies.
-- Throwback owned and your 3-hand round (75th pct) >= 1.3x this ante's boss: skip Small AND Big every ante (+x0.25 each,
-  tags pay now). 9IIGB2FF won with 9 skips (x3.75); N5BDCVFH tried at 0.9x vs The House and died [4 + 7 post-mortems].
+- Throwback owned and your 3-hand round (75th pct) >= 1.3x this ante's boss (1.6x vs handicap bosses: House, Fish,
+  Mark, Wheel, Psychic, Eye, Mouth, Needle, Water, Pillar, Serpent, Manacle, Hook, Wall, ante-8 finishers): skip Small
+  AND Big every ante (+x0.25 each, tags pay now). 9IIGB2FF won with 9 skips (x3.75); N5BDCVFH tried at 0.9x vs The
+  House and died [4 + 7 post-mortems].
 - Without Throwback: skip both when Small and Big each need > 2.5x your typical hand and Mr. Bones/a perishable carry the
   boss, or you are rent-broke (6XN584I7, CMVCIW9Q, 2J1M1T5I, 41KHYKNY) [6].
 - Big Blind tag = Boss Tag and the boss is The Wall/Violet Vessel: skip the Big to reroll the boss [4].

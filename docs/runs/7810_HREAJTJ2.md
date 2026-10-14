@@ -1,3 +1,5 @@
 # Run HREAJTJ2 (port 7810, claude-sonnet-5-5) - Black Deck Gold Stake - IN PROGRESS
 
-Ante 1 (Rare/Polychrome/The Window 600, $4): started.
+Ante 1 (Rare/Polychrome/The Window 600, $4): Small: disc for spade draw -> Straight 280 + Two Pair 92 = 372/300. Shop $5: Shoot the Moon $5 (+13 mult per held Queen; only scorer offered). Big: A-5 straight 220 + Two Pair 88 44 660 (QH held). Window: High Card A 432 (2 Queens held) + Two Pair JJ66 1456.
+Ante 2 (Holo/D6/The Hook 2000, $12): EMERGENCY 0.21 -> holo Midas Mask $10 (+10 mult). Skipped Small (Holo tag, $2 broke). Big: Two Pair AAJJ 1550/1500 (est). Shop: free holo Faceless Joker + Even Steven $4. Hook: Pair 99 616 (Hook discarded held QS: est 980 -> 616), Straight 7-J 2368.
+Ante 3 (Coupon/Top-up/The Head 6400, $10): Abstract $4, Scary Face $4 (+30 chips/face; chips are the multiplicand under flat +mult), Jumbo Celestial -> Uranus (Two Pair L2). Small: Pair TT 1350 + Two Pair KK44 2160. Big: High Card K 2340 + Four Tens 7400. Head: Two Pair KK55 3485 + Straight 3906. 0 xMult, flat build ~5k/hand.

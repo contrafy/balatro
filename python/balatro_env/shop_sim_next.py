@@ -40,6 +40,10 @@ TIE_P = 0.02  # p differences below this are sampling noise: ties rank by mean s
 # rent dollar is charged DOLLAR_P of p (heuristic); a later shop entered with negative money buys nothing.
 DOLLAR_P = 0.01
 DEAD_SHOP_P = 0.05
+# Terminal value: after the horizon the end build is played once against the next boss; value = p_adj x (A + B x
+# p_term). Equal weights (heuristic): surviving now matters as much as the build's next-ante strength.
+TERM_A = 0.5
+TERM_B = 0.5
 
 
 def _lst(v):
@@ -378,7 +382,7 @@ def _commons():
 
 
 class _OptionSim:
-    def __init__(self, sv, est, state, blinds, seed):
+    def __init__(self, sv, est, state, blinds, seed, n_eval=None):
         self.sv, self.est, self.state, self.base, self.blinds, self.seed = sv, est, state, None, blinds, seed
         self.solvers = {}
         self.jokers = _lst(state.get("jokers"))
@@ -389,6 +393,7 @@ class _OptionSim:
         self.riffraff = [i for i, j in enumerate(self.jokers) if j.get("name") == "Riff-raff" and _active(j)]
         self.slots = int(state.get("joker_slots") or 5)
         self.stats = [[0, 0, 0.0, 0.0] for _ in blinds]  # per blind: n, survived, sum min(1, total/need), $ hands
+        self.n_eval = len(blinds) if n_eval is None else n_eval  # blinds after n_eval are the terminal check only
         self.joint = 0
         self.n = 0
         self.bones_used = 0
@@ -482,7 +487,8 @@ class _OptionSim:
                 removed.add(bones_left[0])
                 self.bones_used += 1
             st[1] += ok
-            all_ok = all_ok and ok
+            if k < self.n_eval:
+                all_ok = all_ok and ok
         self.joint += all_ok
         self.n += 1
 
@@ -501,7 +507,9 @@ def _resolve_weakest(sv, est, state, blinds, budget_s, seed):
     return best["option"]["sell"][0]
 
 
-def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_samples=400):
+def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_samples=400, term=None):
+    """Simulate every option over `blinds`; with a terminal blind `term` (the next boss after the horizon) also play
+    one round of it with the end-of-horizon build (p_term, not part of p_next)."""
     t0 = time.perf_counter()
     sims, res = [], []
     for opt in options:
@@ -509,7 +517,7 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         r = {"label": opt.get("label") or "option", "option": opt, "feasible": err is None, "error": err,
              "notes": notes, "money_after": int(st.get("money") or 0) if err is None else None}
         if err is None:
-            sim = _OptionSim(sv, est, st, blinds, seed)
+            sim = _OptionSim(sv, est, st, blinds + ([term] if term else []), seed, n_eval=len(blinds))
             sim.base = state
             sims.append((r, sim))
             rentals = sum(1 for j in _lst(st.get("jokers")) if j.get("rental"))
@@ -550,15 +558,20 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         n = max(1, sim.n)
         r["n"] = sim.n
         r["p_next_model"] = sim.joint / n
-        r["p_blinds_model"] = [st[1] / max(1, st[0]) for st in sim.stats]
+        nb = len(blinds)
+        r["p_blinds_model"] = [st[1] / max(1, st[0]) for st in sim.stats[:nb]]
         # the solver's map from greedy-policy p to players' clear rate (jokerless rounds stay raw)
         r["p_blinds"] = [sv.calibrate(p, sim.solver(k, frozenset()).jokerless)
                          for k, p in enumerate(r["p_blinds_model"])]
         r["p_next"] = 1.0
         for p in r["p_blinds"]:
             r["p_next"] *= p
-        r["score_ratio"] = sum(st[2] / max(1, st[0]) for st in sim.stats) / max(1, len(sim.stats))
-        r["dollars"] = sum(st[3] / max(1, st[0]) for st in sim.stats)
+        r["score_ratio"] = sum(st[2] / max(1, st[0]) for st in sim.stats[:nb]) / max(1, nb)
+        r["dollars"] = sum(st[3] / max(1, st[0]) for st in sim.stats[:nb])
+        if term:
+            tst = sim.stats[nb]
+            r["p_term"] = sv.calibrate(tst[1] / max(1, tst[0]), sim.solver(nb, frozenset()).jokerless)
+            r["score_ratio_term"] = tst[2] / max(1, tst[0])
         if sim.bones_used:
             r["notes"].append(f"Mr. Bones saved {sim.bones_used / n:.2f} blinds per run")
         if sim.destroyed:
@@ -679,7 +692,8 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
     if r["money_after"] < 0:
         return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
     rng = random.Random(f"{seed}:virtual:{r['label']}")
-    keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money")
+    keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money",
+            "p_term", "score_ratio_term")
     cost = int(o.get("cost") or 0)
     dead = 0.0
     acc = dict.fromkeys(keys, 0.0)
@@ -698,9 +712,9 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
                     names.append(n)
             cards = [by_label.get(f"_pack Celestial: {n}") for n in names]
         cands = [c for c in cards if c is not None and c.get("p_next") is not None] + [base]
-        best = max(cands, key=lambda c: (_p_adj(c) - DEAD_SHOP_P * sum(1 for m in c.get("money_path") or []
-                                                                      if 0 <= m < cost), c["score_ratio"],
-                                         c.get("money_after") or 0))
+        best = max(cands, key=lambda c: (_value(c) - DEAD_SHOP_P * sum(1 for m in c.get("money_path") or []
+                                                                       if 0 <= m < cost), c.get("score_ratio_term") or 0,
+                                         c["score_ratio"], c.get("money_after") or 0))
         dead += sum(1 for m in best.get("money_path") or [] if m - cost < 0)
         picks[best["label"]] += 1
         for k in keys:
@@ -709,6 +723,9 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
             acc_bl[i] += p
     for k in keys:
         r[k] = acc[k] / PACK_VIRTUAL
+    if base.get("p_term") is None:  # terminal check off
+        r.pop("p_term")
+        r.pop("score_ratio_term")
     r["p_blinds"] = [p / PACK_VIRTUAL for p in acc_bl]
     r["money_after_rent"] = r["money_after"] - r["rent_per_round"] * n_blinds
     r["shop_money"] -= cost  # sub-options were simulated with the pack's cost unpaid
@@ -724,7 +741,8 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
     return r
 
 
-def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=None, seed=0, min_samples=24):
+def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=None, seed=0, min_samples=24,
+                  terminal=True):
     """Value shop/pack options by P(survive the next `blinds` blinds).
 
     options: list of dicts (default options_from_state(state)); each may contain
@@ -763,7 +781,9 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
         names = {j.get("index"): j.get("name") for j in _lst(state.get("jokers"))}
         options = [dict(o, sell=[w], label=f"{o.get('label')} (sell {names.get(w)})") if o.get("sell") == "weakest" and w
                    else o for o in options if not (o.get("sell") == "weakest" and not w)]
-    res = _run(sv, est, state, options, bl, max(0.1, budget_s - (time.perf_counter() - t0)), seed, min_samples)
+    term = terminal_blind(state, len(bl), getattr(cli, "BLIND_BASE", None)) if terminal else None
+    res = _run(sv, est, state, options, bl, max(0.1, budget_s - (time.perf_counter() - t0)), seed, min_samples,
+               term=term)
     base = next((r for r in res if r["feasible"] and _is_base(r["option"])), None)
     if packs:
         by_label = {r["label"].split(" (sell ")[0]: r for r in res if r["label"].startswith("_pack ")}
@@ -774,19 +794,40 @@ def value_options(state, options=None, *, budget_s=4.0, blinds=3, estimate_fn=No
     bp = base["p_next"] if base else None
     for r in res:
         r["blinds"] = [f"a{b['ante']} {b['name']} {b['chips']}" for b in bl]
+        r["terminal"] = f"a{term['ante']} boss {term['chips']}" if term else None
         r["delta"] = (r["p_next"] - bp) if (r.get("p_next") is not None and bp is not None) else None
         r["p_adj"] = _p_adj(r) if r.get("p_next") is not None else None
         r["delta_adj"] = (r["p_adj"] - _p_adj(base)) if (r["p_adj"] is not None and base) else None
-    top = max((r["p_adj"] for r in res if r.get("p_adj") is not None), default=0.0)
+        r["value"] = _value(r) if r.get("p_next") is not None else None
+        r["delta_value"] = (r["value"] - _value(base)) if (r["value"] is not None and base) else None
+    top = max((r["value"] for r in res if r.get("value") is not None), default=0.0)
 
     def rank(r):
-        if r.get("p_adj") is None:
-            return (0, 0, 0.0, 0.0, 0)
-        tied = r["p_adj"] >= top - TIE_P
-        return (1, tied, 1.0 if tied else r["p_adj"], r["score_ratio"], r.get("shop_money", r["money_after"]))
+        if r.get("value") is None:
+            return (0, 0, 0.0, 0.0, 0.0, 0)
+        tied = r["value"] >= top - TIE_P
+        return (1, tied, 1.0 if tied else r["value"], r.get("score_ratio_term") or 0.0, r["score_ratio"],
+                r.get("shop_money", r["money_after"]))
 
     res.sort(key=rank, reverse=True)
     return res
+
+
+def terminal_blind(state, n, blind_base):
+    """The first boss after the n simulated blinds (next ante's boss when the horizon ends on a boss), unknown
+    effect: the requirement the end-of-horizon build must meet next."""
+    if not blind_base:
+        return None
+    ahead = upcoming_blinds(state, n + 6, blind_base)
+    return next((dict(b, name="Boss (unknown)", boss=False) for b in ahead[n:] if b["kind"] == "Boss"), None)
+
+
+def _value(r):
+    """Ranking value: rent-adjusted P(survive the horizon) x (TERM_A + TERM_B x P(the end-of-horizon build clears the
+    next boss)). Fading jokers (Popcorn, perishables, Gros Michel) and saving money stop looking free once the
+    horizon is survived anyway."""
+    p_term = r.get("p_term")
+    return _p_adj(r) * (1.0 if p_term is None else TERM_A + TERM_B * p_term)
 
 
 def _p_adj(r):

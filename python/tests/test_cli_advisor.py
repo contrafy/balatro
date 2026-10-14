@@ -816,3 +816,52 @@ def test_port_lock_reentrant_sequentially(tmp_path, monkeypatch):
         pass
     with cli._PortLock(timeout=2):
         pass
+
+
+def _fake_bridge(monkeypatch, dissolve_s=0.8):
+    """In-process bridge: a sold joker leaves G.jokers only after `dissolve_s` (money changes at once), and SHOP_BUY is
+    legal only while a joker slot is free - the 7805 T9QEI78Z sell-then-buy race."""
+    import time as _t
+    st = {"money": 10, "jokers": [joker("Joker", 1, id=101), joker("Jolly Joker", 2, id=102)], "gone": None, "bought": False}
+
+    def state():
+        js = [j for j in st["jokers"] if not (st["gone"] and j["id"] == st["gone"][0] and _t.time() >= st["gone"][1])]
+        js = [dict(j, index=i) for i, j in enumerate(js, 1)]
+        d = shop(jokers=js, shop_jokers=[dict(joker("Clever Joker", 1, id=201), cost=4)] if not st["bought"] else [], money=st["money"])
+        d.update(joker_slots=2, settled=True, step=1)
+        return d
+
+    def get(path):
+        d = state()
+        if path == "legal":
+            acts = [{"type": "SELL_JOKER", "params": {"index": {"one_of": [j["index"] for j in d["jokers"]]}}}, {"type": "SHOP_END", "params": {}}]
+            if len(d["jokers"]) < 2 and not st["bought"]:
+                acts.append({"type": "SHOP_BUY", "params": {"slot": {"one_of": [1]}}})
+            return {"phase": "SHOP", "settled": True, "actions": acts}
+        return d
+
+    def act(typ, params):
+        d = state()
+        if typ == "SELL_JOKER":
+            st["money"] += 1
+            st["gone"] = (d["jokers"][params["index"] - 1]["id"], _t.time() + dissolve_s)
+            return {"ok": True}
+        if typ == "SHOP_BUY":
+            if len(d["jokers"]) >= 2:
+                return {"ok": False, "error": "no joker slot free"}
+            st["bought"] = True
+            return {"ok": True}
+        return {"ok": False, "error": "unexpected"}
+    monkeypatch.setattr(cli, "get", get)
+    monkeypatch.setattr(cli, "act", act)
+    return st
+
+
+def test_sell_then_immediate_buy_waits_for_the_dissolve(tmp_path, monkeypatch):
+    monkeypatch.setattr(cli, "CACHE_DIR", str(tmp_path))
+    st = _fake_bridge(monkeypatch)
+    for argv in (["sell", "1", "--why", "free a slot"], ["buy", "1", "--expect", "Clever", "--why", "scorer"]):
+        monkeypatch.setattr(cli.sys, "argv", ["cli"] + argv)
+        with contextlib.redirect_stdout(io.StringIO()):
+            cli.main()
+    assert st["bought"]
