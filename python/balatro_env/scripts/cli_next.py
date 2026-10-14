@@ -1388,6 +1388,22 @@ def _round_q(d, **kw):
         return None
 
 
+def _boss_kw(d, boss):
+    """round_score_quantiles kwargs for a round against `boss`: its rule (passed as boss=, applied by the solver) and the
+    round shape it sets (The Water 0 discards, The Needle 1 + 3 per Burglar hands, The Manacle -1 hand size)."""
+    if not boss:
+        return {}
+    burg_n = sum(1 for j in lst(d.get("jokers")) if j.get("name") == "Burglar" and not j.get("debuff"))
+    kw = {"boss": boss}
+    if boss == "The Water":
+        kw["discards"] = 0
+    elif boss == "The Needle":
+        kw["hands"] = 1 + 3 * burg_n
+    elif boss == "The Manacle":
+        kw["hand_size"] = max(1, int(d.get("hand_size") or 8) - 1)
+    return kw
+
+
 def _round_solver():
     """python/balatro_env/solver.py loaded by path (the package __init__ imports torch)."""
     global _SOLVER
@@ -3310,15 +3326,19 @@ def _shop_rules(d):
     sc_ratio = surv / (boss_next / _hands_pr(d)) if boss_next else 9  # Burglar +3 hands (7805 UH5NGY7A)
     # the upcoming boss of THIS ante at its real chips (The Wall 4x, Violet Vessel 6x) binds too: the worse ratio counts
     # (7815 4798FA1L lost The Wall 32375/36000 while SCORE CHECK compared against a regular 18000 boss)
+    # ... and with its own rule (DrawSolver's round under that boss: Flint halves, Arm -1 level, Plant/suit debuffs,
+    # Psychic 5 cards, Eye/Mouth types, Hook, Serpent; Water/Needle/Manacle round shape) (7812 U3F6V6SP: The Flint)
+    bn_this = (ch_now.get("Boss") or {}).get("name") if boss_this else None
+    rq_t = _round_q(dict(d, jokers=[j for j in jokers if alive_next(j)], _misprint_roll=11.5, _plan_fillers=True), **_boss_kw(d, bn_this)) if bn_this else None
     if boss_this:
-        sc_ratio = min(sc_ratio, surv / (boss_this / _hands_pr(d)))
+        sc_ratio = min(sc_ratio, (rq_t["round"][1] / boss_this) if rq_t else surv / (boss_this / _hands_pr(d)))
     emergency = ante >= 2 and bool(boss_next or boss_this) and sc_ratio < 0.35
     if ante >= 2:
         band = "84%" if sc_ratio < 0.35 else "65%" if sc_ratio < 0.7 else "38%" if sc_ratio < 1 else "31%" if sc_ratio < 1.5 else "18%"
         print(f"  SCORE CHECK: " + (f"a simulated round with discards (median of {rq['n']} rounds, jokers alive next ante) ~{int(rq['round'][1])} = ~{surv}/hand"
                                     if rq else f"best hand of a deal from your deck (75th pct of 40 deals, current jokers/levels) ~{deck_best}" if deck_best is not None
                                     else f"best {mh if mh != 'undecided' else 'Pair'} of a round (KK, current jokers/levels) ~{best_hand}")
-              + (f" vs {(ch_now.get('Boss') or {}).get('name') or 'boss'} {boss_this} this ante (/3 = {boss_this // 3})" if boss_this else "")
+              + (f" vs {bn_this or 'boss'} {boss_this} this ante (/3 = {boss_this // 3}" + (f"; its round under its own rule ~{int(rq_t['round'][1])}" if rq_t else "") + ")" if boss_this else "")
               + (f", boss/3 {boss_next // 3} next ante" if boss_next else "") + (f" (ratio {sc_ratio:.2f} vs the harder one; recorded Gold runs at this ratio died {band} by the next ante)" if (boss_next or boss_this) else "")
               + (": EMERGENCY: buy the cheapest multiplier, through the money floor (reliable/growth xMult > conditional xMult > Buffoon pack > main-hand planet)" if emergency else ""))
     # TIGHT: the next blind's projected round (ordinary hands + the final hand, scaled to your deck) under 1.2x its need
@@ -3341,10 +3361,7 @@ def _shop_rules(d):
         proj = int(round_est(d, mh) * ((deck_best_est(d, hs_delta=-1) or deck_best) / best_hand))
     # discard-aware projection: DrawSolver's round simulation with the boss's own constraint (Water 0 discards, Needle
     # 1 + 3 per Burglar hands, Manacle -1 hand size); the deal-based numbers above are the fallback
-    burg_n = sum(1 for j in jokers if j.get("name") == "Burglar" and not j.get("debuff"))
-    kw_b = ({"discards": 0} if bn_t == "The Water" else {"hands": 1 + 3 * burg_n} if bn_t == "The Needle" else
-            {"hand_size": max(1, int(d.get("hand_size") or 8) - 1)} if bn_t == "The Manacle" else {})
-    rq_b = (rq if (rq and not kw_b) else _round_q(d, **kw_b)) if need_next else None
+    rq_b = (rq_t if (nk == "Boss" and rq_t) else rq if (rq and bn_t not in ("The Water", "The Needle", "The Manacle")) else _round_q(d, **_boss_kw(d, bn_t))) if need_next else None
     if rq_b:
         proj = int(rq_b["round"][1])
     # the last shop before a boss: below 1.25x the floor is off too (dying with money is the worst outcome)

@@ -520,3 +520,21 @@ def test_tower_targets_a_junk_card_not_a_joker_scorer():
     res = solver.consumable_options(st, estimate, time_budget_s=2, samples=20)
     four = next(c["index"] for c in st["hand"] if c["rank"] == "4")
     assert res and four not in res[0]["targets"]
+
+
+def test_obelisk_policy_avoids_resets_and_quantiles_take_a_boss():
+    # 7804 9BFAAC9S: Obelisk x3.4; the round policy reset it with the most played type and projected 2.5-5k/hand
+    st = state(["KS", "KD", "9C", "7H", "5S", "4C", "3D", "2D"], need=10 ** 9, hands=4, discards=0,
+               jokers=["Obelisk"])
+    st["jokers"][0]["ability"] = {"x_mult": 3.4, "extra": 0.2}
+    for k, v in st["hand_levels"].items():
+        v["played"] = {"Pair": 9, "High Card": 3}.get(k, 0)
+    rs = solver.RoundSolver(st, estimate)
+    raw_s, _p, raw_t = rs.best_play(rs.slots, 4, 0, rs.ctx0, raw=True)
+    s, _p, t = rs.best_play(rs.slots, 4, 0, rs.ctx0)
+    assert raw_t == "Pair" and t != "Pair"  # Pair KK resets x3.4 for the 3 later hands
+    flint = solver.round_score_quantiles(st, estimate, n=20, boss="The Flint")
+    plain = solver.round_score_quantiles(st, estimate, n=20)
+    assert flint["round"][1] < plain["round"][1]
+    needle = solver.round_score_quantiles(dict(st, jokers=[]), estimate, n=10, boss="The Needle")
+    assert needle["per_hand"] == needle["round"]  # one hand
