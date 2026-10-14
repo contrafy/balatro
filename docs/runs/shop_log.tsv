@@ -8059,3 +8059,10 @@
 7818	a3	$4	jokers=3/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | TAROT:The Devil $3 | PLANET:Earth $3 | PACK:Standard Pack $4 | VOUCHER:Hone $10
 7811	a3	$16	jokers=4/6	xmult_owned=1	PACK:Celestial Pack $4 | PACK:Jumbo Arcana Pack $6 | TAROT:The Empress $3 | VOUCHER:Magic Trick $10
 7817	a3	$16	jokers=6/6	xmult_owned=0	PACK:Jumbo Celestial Pack $6 | PACK:Arcana Pack $4 | VOUCHER:Wasteful $10
+7810	a4	$13	jokers=6/6	xmult_owned=0	PLUS:Supernova{PERISHABLE(5 rounds left)} $5 | PACK:Jumbo Arcana Pack $6 | PACK:Standard Pack $4 | VOUCHER:Hone $10 | PLUS(rare condition):Square Joker{ETERNAL,RENTAL(-$3/round)} $1
+7812	a7	$22	jokers=6/6	xmult_owned=1	PACK:Jumbo Celestial Pack $6 | UTIL:Reserved Parking{PERISHABLE(5 rounds left)} $6 | VOUCHER:Crystal Ball $10 | PACK:Jumbo Buffoon Pack $6 | ECON:Egg{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7803	a3	$30	jokers=6/6	xmult_owned=0	PLUS(bridge: +42% on your Full House now; decays):Ice Cream{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1 | VOUCHER:Grabber $10 | TAROT:The Moon $3 | PACK:Standard Pack $4
+7808	a1	$5	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Telescope $10 | PACK:Jumbo Standard Pack $6 | UTIL:Chaos the Clown{ETERNAL} $4 | UTIL:Business Card{ETERNAL} $4
+7802	a4	$21	jokers=6/6	xmult_owned=0	PLANET:Uranus $3 | PACK:Jumbo Arcana Pack $6 | PACK:Jumbo Arcana Pack $6 | TAROT:The Devil $3 | VOUCHER:Director's Cut $10
+7817	a3	$10	jokers=6/6	xmult_owned=0	PACK:Arcana Pack $4 | VOUCHER:Wasteful $10
+7804	a2	$5	jokers=3/6	xmult_owned=0	TAROT:The Lovers $0 | PACK:Arcana Pack $0 | PACK:Celestial Pack $0 | VOUCHER:Tarot Merchant $10 | AVOID(decays):Turtle Bean{PERISHABLE(5 rounds left)} $0

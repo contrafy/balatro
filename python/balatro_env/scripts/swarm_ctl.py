@@ -47,10 +47,20 @@ def find_pid(port):
     return None
 
 
+# Long-lived instances grow (~160 MB fresh, 450+ MB after hours); recycle between runs to keep RAM free.
+RECYCLE_MB = 600
+
+
+def working_set_mb(pid):
+    out = subprocess.run(["powershell", "-NoProfile", "-Command", f"(Get-Process -Id {pid}).WorkingSet64"],
+                         capture_output=True, text=True).stdout.strip()
+    return int(out) // (1024 * 1024) if out.isdigit() else 0
+
+
 def ensure_instance(port):
-    if healthy(port):
-        return "ok"
     pid = find_pid(port)
+    if healthy(port) and not (pid and working_set_mb(pid) > RECYCLE_MB):
+        return "ok"
     if pid:
         subprocess.run(["taskkill", "-F", "-PID", str(pid)], capture_output=True)
         time.sleep(2)

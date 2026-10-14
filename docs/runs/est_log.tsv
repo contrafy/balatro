@@ -11387,3 +11387,10 @@
 7812	a7	-	Pair	7H 7C	Swashbuckler,Brainstorm,Blue Joker,Odd Todd,Blueprint,Card Sharp	est=164835	actual=164835	OK
 7813	a4	-	High Card	QS JH TS	Splash,Zany Joker,Half Joker,Walkie Talkie,Mystic Summit,Smiley Face	est=2250	actual=2250	OK
 7810	a3	The Arm	Two Pair	QS QD TS TC	Spare Trousers,Jolly Joker,Odd Todd,Smiley Face,Acrobat(holo),Golden Joker	est=6840	actual=6840	OK
+7808	a1	-	Full House	KH KD 3H 3C 3D		est=276	actual=276	OK
+7813	a4	-	Pair	7H 7C 4H	Splash,Zany Joker,Half Joker,Walkie Talkie,Mystic Summit,Smiley Face	est=1558	actual=1558	OK
+7807	a4	The House	High Card	AH	Lusty Joker,Scholar,Red Card(holo),Clever Joker,Loyalty Card	est=3024	actual=3024	OK
+7804	a2	-	Straight	JS TH 9S 8C 7S	Supernova,Wrathful Joker,Even Steven	est=1776	actual=1776	OK
+7806	a1	-	Straight	TD 9C 8H 7H 6S		est=280	actual=280	OK
+7803	a3	The Pillar	Two Pair	AS AH 3S 3C	Egg(foil),Bootstraps,Wily Joker,Banner,Mr. Bones(holo),Abstract Joker	est=6004	actual=6004	OK
+7806	a1	-	Three of a Kind	KS KC KD		est=180	actual=180	OK
