@@ -2833,7 +2833,8 @@ def shop_advise_sim(d, budget_s=6.0):
         keep_rule = True
     noise = base is not None and not saturated and (max((r.get("p_next") or 0) for r in feas) < 0.15
                                                     or all(abs(key(r) - key(base)) < 0.05 for r in feas if r is not base))
-    if noise and not (mine0 is not None and not allowed(mine0)):
+    # ... but a survival-forced pick (NEEDED NOW / EMERGENCY) still has to help (7810 Banner{ETERNAL} at -0.01)
+    if noise and not (mine0 is not None and not allowed(mine0)) and not (("NEEDED NOW" in adv or "EMERGENCY" in adv) and g_rule <= 0):
         # every option is under p 0.15 (or within 0.05 of buying nothing): the SIM is noise here and cannot switch the
         # advice; the rule line decides (7818 L7B2D714 bought a $6 Jumbo Celestial to $0 twice on +0.04/+0.03)
         sim.append("  SIM NOISE: every option is under P 0.15 or within 0.05 of buying nothing; the rule line decides")
@@ -3038,6 +3039,12 @@ def _shop_rules(d):
     # calibrated on 1120 recorded Gold shops (deck p75 best-hand est / (next boss / 3) vs died by the next ante; AUC 0.77,
     # synthetic KK hand 0.74): <0.35 died 84%, 0.35-0.7 65%, 0.7-1 38%, 1-1.5 31%, >=1.5 18%. EMERGENCY = lowest band.
     surv = deck_best if deck_best is not None else best_hand
+    dying = [j for j in jokers if not alive_next(j)]
+    if dying and deck_best is not None:
+        # the next ante is played without the perishables that die before it (7808 Q5BS4BKK: 1.55 with a dying Stencil,
+        # 0.11 after it perished)
+        surv = deck_best_est(dict(d, jokers=[j for j in jokers if alive_next(j)])) or surv
+        print(f"  (SCORE CHECK for the next ante without {', '.join(str(j.get('name')) for j in dying)}: perishes before it)")
     sc_ratio = surv / (boss_next / _hands_pr(d)) if boss_next else 9  # Burglar +3 hands (7805 UH5NGY7A)
     emergency = ante >= 2 and boss_next and sc_ratio < 0.35
     if ante >= 2:
@@ -3064,6 +3071,8 @@ def _shop_rules(d):
         proj = int(round_est(d, mh) * ((deck_best_est(d, hs_delta=-1) or deck_best) / best_hand))
     # the last shop before a boss: below 1.25x the floor is off too (dying with money is the worst outcome)
     tight = bool(need_next) and proj < (1.25 if nk == "Boss" else 1.2) * need_next
+    if emergency:
+        floor = 0  # EMERGENCY: any joker view (reroll / Buffoon / Arcana with a target) beats interest (7806 3J6IMQB9)
     if tight:
         floor = 0
         print(f"  TIGHT: next blind ({(ch_now.get(nk) or {}).get('name') or nk}) needs {need_next}; projected round ~{proj} ({proj / need_next:.2f}x < {'1.25' if nk == 'Boss' else '1.2'}x"
@@ -3405,7 +3414,7 @@ def _shop_rules(d):
                 psc = max(psc, 90)  # SCORE CHECK within ~15% of the next boss: one level decides it (7807 7SDPD63B lost The Goad by 31 holding $16)
             if const and ante >= 4 and n_x_now <= 1:
                 psc = max(psc, 82)  # Constellation: every planet used is +0.1x on every hand forever; $3 beats a $5+ reroll
-            if ante <= 2 and scoring_now <= 1 and not const and not (good and 0.85 <= sc_ratio <= 1.15 and ante >= 2):
+            if ante <= 2 and (scoring_now <= 1 or not owns_mult) and not const and not (good and 0.85 <= sc_ratio <= 1.15 and ante >= 2):
                 psc = min(psc, 20)  # 0-1 scoring jokers at ante 1-2: a level on a jokerless hand is +10-20 points; buy a scorer
             # planets are used on purchase: `buyuse` needs no consumable slot and feeds Constellation immediately
             options.append((psc, "PLANET", f"{'buyuse' if feeds else 'buy'} {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
@@ -3450,7 +3459,7 @@ def _shop_rules(d):
             near_c = ante >= 2 and 0.85 <= sc_ratio <= 1.15 and mh != "undecided"
             if near_c:
                 csc = max(csc, 75 - big)  # within ~15% of the next boss: a main-hand level decides it (7807 7SDPD63B)
-            elif ante <= 2 and scoring_now <= 1 and not feeds:
+            elif ante <= 2 and (scoring_now <= 1 or not owns_mult) and not feeds:  # 0-1 scorers or no +mult joker (7818 L7B2D714)
                 csc = min(csc, 15 - big)  # 0-1 scoring jokers at ante 1-2: levels on a jokerless hand barely move it (Main 08:xx)
             options.append((csc + big + (15 if feeds else 0), "PACK", f"pack {c['index']}", f"{name} ${cost} [hand level gamble: {note}{'; feeds Constellation' if feeds else ''}]", cost, ante >= 2 and (telescope or mh == "undecided") and not (ante <= 2 and scoring_now <= 1), False))
         elif "Buffoon" in name:

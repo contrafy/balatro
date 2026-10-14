@@ -311,7 +311,8 @@ def test_arcana_pack_respects_8_dollar_floor():
              boosters=[{"index": 1, "name": "Arcana Pack", "set": "Booster", "cost": 4}])
     d["blind_select"]["choices"]["Small"]["chips"] = 100  # comfortable next blind: the floor holds (TIGHT lifts it)
     d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2, "played": 3}}
-    assert "pack 1" not in _advice(_out(cli.shop_advise, d))
+    out = _out(cli.shop_advise, d)
+    assert "EMERGENCY" in out or "pack 1" not in _advice(out)  # EMERGENCY lifts the floor for any joker view (7806 3J6IMQB9)
 
 
 def test_flat_rental_sold_when_two_others_carry():
