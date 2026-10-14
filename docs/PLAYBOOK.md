@@ -187,6 +187,134 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   normal hand and ~94k on the final hand at ante 5-6, and cleared ante 7. It lacked a growing xMult for ante 8: from
   ante 6 on, buy one (Hologram, Constellation, Lucky Cat, Glass via Justice).
 
+## 2b. Gold Stake checklist (distilled)
+
+Distilled from 218 Gold runs (`data/swarm_results.jsonl` top_lessons, 1 win: 7807_9IIGB2FF) plus the IF-THEN rules in
+their `docs/runs/*.md`. `[N]` = runs whose lesson states the rule; `†N` = runs that died at that boss; a seed = the
+run that proved it. 2a explains the why; this is the what. Where a rule here and in 2a differ, 2a wins.
+
+**Each shop (in order):**
+1. `s` + `shopadvise`: note SCORE CHECK ratio, next boss, every sticker, every perish tally, money after rent.
+2. Ratio < 0.35 = EMERGENCY, < 0.7 or TIGHT = floor OFF: spend to $0 on the best SIM multiplier. Else keep $8 (ante 2+).
+3. Sell first: perished jokers (keep them with Abstract), a flat rental once 2 other scorers carry, Gros Michel spares.
+4. Buy order: r/g xMult > next-boss counter > $3 main-hand planet > Buffoon pack (<2 xMult) > +mult/+chips scorer >
+   Celestial pack > reroll ($20+ left after, max 2). Run `s` again after every buy/sell (stale output seen in 19 runs).
+5. `endshop`, then at blind select apply the skip rules below (default: play).
+
+**Each hand (in order):**
+1. `s`: boss effect, `{DEBUFFED}` jokers (Crimson Heart), money (The Ox/The Tooth), Obelisk play counts if owned.
+2. `hands` + `advise`: take the best est that is not your strict most-played type when Obelisk is owned.
+3. Order: Hanging Chad's first scoring card = your best live face/enhanced card (`move hand`); +mult left of xMult.
+4. Pace: best hand + 85% of later hands < need -> discard toward a bigger hand (never with Banner/Green Joker owned).
+5. Never break a made Pair/Two Pair for a draw when the solver margin is < 0.10, above all at ante 1-2 [8].
+
+**Ante 1-2: economy and first scorers**
+- 0 scorers: buy any affordable scorer (even suit-gated, eternal, or a $1 rental) before any pack, reroll or planet [14].
+- Scorers 1-2 must ADD MULT; chips-only (Sly, Clever, Banner, Odd Todd) on base mult 2-3 never scales [12].
+- Concrete scorer > Buffoon pack > chips-only/utility/eternal-conditional joker (5NHAAD92, 4W67ZM38, XURWZ2L2).
+- Skip the ante-1 Small only for a tag that gives a joker NOW (Buffoon/Top-up); Rare/Polychrome/Ethereal tags lost [5].
+- One $1 rental scorer is fine at 0 scorers; never one that leaves < $5 when a clean $4 joker is buyable [32 rent deaths].
+- Never hold 2 rentals before ante 6; sell a flat rental in the first shop where 2 other scorers exist [32].
+- Eternal rental: never before ante 7 (9IIGB2FF passed Raised Fist{E,R}, -$66) [6], EXCEPT an xMult with SCORE CHECK
+  < 0.5 AND SIM >= +0.15 (RHQLHNTL passed the Trio at +0.23 and lost by 79).
+- At most 2 eternals until you own a reliable xMult; eternal utility/conditional jokers block xMult slots [8].
+- No planets/Celestial packs while you own 0-1 scorers (B6JW7ICP); from 2 scorers the $3 main-hand planet is a buy [20].
+- Reroll never below $5 after it, nor below the $6-8 a revealed joker costs; next shop showed the xMult $1 short [5].
+- Jokerless hand play: bank a made Two Pair after one missed draw and keep a discard; no 3-card flush chases [8].
+- Credit Card: -$20 is a hard wall, $-12 = only buys that clear the next blind; never packs/vouchers on credit [4].
+- Main hand is pair-family (Pair/Two Pair/Trips); Flush/Straight-only engines died by ante 3 (0 of 6) [5].
+
+**Ante 3-4: xMult hunt, perishables, Buffoon packs**
+- No reliable xMult = hard cap: flat builds top ~2.4k (a3), ~5-8k (a4), ~10-15k (a5) [35]. 1st xMult by end of ante 2.
+- 2nd lasting xMult by the first ante-5 shop; one x2 clears ante 4 but tops ~22k vs 25-50k at ante 5 [9 of the 35].
+- 0-1 xMult at ante 2-5: Buffoon pack before rerolls/Celestial (~$24 vs ~$91 per xMult sighting) [5].
+- Rerolls at ante 3-4 mostly whiff (A5D7B521 $53, B2KYV37D $55, RNVA7G3B 19 rerolls) [8]: only per shop step 4.
+- Score check < 0.5 with 0-1 xMult: a planet level cannot close the gap; hunt the xMult (LNXDRQDE).
+- Perishable carrying a stat: buy its permanent replacement BEFORE its last round; two sharing a timer die together [27].
+- Perishable xMult with 1-2 rounds left and best hand >= boss need: skip Small/Big so its last round is the boss [6].
+  If the hand is below the boss need instead, play the blinds and spend the shops on its replacement (VF82VQ4A).
+- Do not skip Smalls at ante 3-4 with 0 xMult or a hand-gated engine: each skip loses ~1 of 3 shop views [8].
+- Rent-broke (2+ rentals, < one round of rent in cash): skip the $0 Small, its shop buys nothing [4].
+- TIGHT/last shop before a boss projected < 1.0-1.2x: spend every dollar on main-hand score now; deaths holding $8-12 [8].
+- Card-phase multipliers (Photograph, Glass, Steel/Chariot, red seals) only multiply base mult before +mult jokers:
+  +10-25% on a flat build, never "the xMult" [7].
+- Fill 6 slots by ante 4 with flat +mult in the non-xMult slots (2a); once mult >> chips (~55 mult on 40 chips) buy
+  +chips instead [4].
+- Acrobat as the xMult: the final hand is the main hand, buy its planet every shop; alone it caps ~50-80k [6].
+- Mr. Bones saves exactly one blind: skip the Big so only the boss is fought, then sell it next shop [5].
+- Hold one rescue tarot (Strength/Death/Justice, $3) from ante 3 for no-discard/one-hand bosses [3 + 7 Water/Needle].
+
+**Ante 5+: skip-to-boss, Throwback, Obelisk**
+- Never skip at ante 5+ (5 of 6 skippers died) unless one of the next three lines applies.
+- Throwback owned and your 3-hand round (75th pct) >= 1.3x this ante's boss: skip Small AND Big every ante (+x0.25 each,
+  tags pay now). 9IIGB2FF won with 9 skips (x3.75); N5BDCVFH tried at 0.9x vs The House and died [4 + 7 post-mortems].
+- Without Throwback: skip both when Small and Big each need > 2.5x your typical hand and Mr. Bones/a perishable carry the
+  boss, or you are rent-broke (6XN584I7, CMVCIW9Q, 2J1M1T5I, 41KHYKNY) [6].
+- Big Blind tag = Boss Tag and the boss is The Wall/Violet Vessel: skip the Big to reroll the boss [4].
+- Obelisk: a play resets it only if that type's count (after +1) is STRICTLY above every other; ties keep it growing.
+  Keep one type alone at the max and rotate the rest; never a 1-card High Card throwaway when High Card is the max.
+  Never let 3 makeable types tie at the max with hand size <= 6 (CLA5SVN7 at The Ox) [3: 9IIGB2FF, YZMAQVI2, CLA5SVN7].
+- Ante 6+ needs a GROWING xMult on top of 2 xMults (Hologram, Constellation, Lucky Cat, Campfire, Throwback, Obelisk);
+  ante 8 needs a 4th multiplier because Crimson Heart disables one per hand [6: ZY6GJXIG, A5LJXXMW, E57ZB14D...].
+- From ante 5, two rentals freeze the wallet at $0-12: buy the run's last joker with ante-4 money (MKHAVQ6W).
+
+**Boss counters (only bosses that killed runs; read the boss in the first shop of each ante)**
+- The Water (0 discards) †7: before it own an any-hand +mult scorer or Mr. Bones; flush/suit-only engines count half [7].
+- The Needle (1 hand) †1: discards first, rescue tarot last; Card Sharp/Duo-repeat engines get nothing [9].
+- The Psychic (exactly 5 cards) †4: Half Joker is dead; at ante 1 buy a 5-card scorer; hold <= 3 for the last hand [7].
+- The House/The Fish (face-down) †7/†5: spend discards BEFORE the first play (discard draws come face up); use
+  face-downs as fillers next to a made pair; `sort rank` places them by rank [18 House/Fish post-mortems].
+- The Goad (spades) / The Club (clubs) †6/†7: debuffed cards still make the type but score 0; discard that suit first,
+  never count it for held-card jokers; at ante 1 prefer jokers that do not need that suit [7].
+- The Ox †3: read which hand it names; avoid that type when money > 0, play it when money is negative (sets $0) [3].
+- The Pillar †5: in its Small/Big play only the cards you can spare (played cards stay debuffed all ante); finish with
+  the lowest clearing card, never key cards (V5CU8MEN); debuffed cards still form hand types [7].
+- Crimson Heart †3: check `{DEBUFFED}` before every play; if the disabled joker is unused by the best hand, play it
+  now; else a cheap hand that does NOT reset Obelisk; discards never re-roll it (9IIGB2FF, ZY6GJXIG, A5LJXXMW).
+- Amber Acorn †2: play a cheap 1-card High Card first, infer the order from its score, `order` +mult left of xMult
+  before big hands (B6KZC39M lost 64k vs 178k; E57ZB14D shuffle happens once at blind start).
+- The Eye †6 / The Manacle †6: repeat-type engines (Card Sharp, Two Pair Blueprint) are dead; reserve $5-10 for
+  Luchador/Mr. Bones/Director's Cut, or buy hand size/a second always-on xMult first (MKHAVQ6W, YJGGELMB) [9 + 2].
+- The Arm †6: L1 hands are immune, so dig with them; do not buy a planet for the hand you will play there [8].
+- The Hook †5: bank made hands now, never hold a draw through a play; held-card jokers lose 2 random holders [6].
+- The Serpent †4: each discard draws 3, so discard 1 card at a time to grow the hand to 10-12 before playing [3].
+- The Tooth †6: -$1 per card: play the 1-2 card hand that clears; Bootstraps drops before scoring [7].
+- The Wall †6: with 0 xMult at ante 3-4 it is lost in the shops: spend those 2 shops on joker views, Mr. Bones or
+  Luchador; Boss Tag on the Big = reroll it [8].
+- The Flint †3 / The Plant †6: base-mult (Chad/Photograph/levels) and face engines need Luchador/Chicot or a flat
+  +mult joker bought in that ante's Small/Big shops; do not skip those shops (PA2UGD4M, I9RJP8E5, 9MRSNKY7) [10].
+- The Mouth †6: lock a repeatable type (Pair/Two Pair); keep a discard; locked type unmakeable with 2 hands left = play
+  a 0-score junk hand to cycle (9IIGB2FF found the 5th club); sell Burglar before it (E46A72GI) [18].
+
+**Joker gotchas**
+- Madness: destroys a random non-eternal joker every Small/Big select; never buy it with 4+ needed jokers, sell it by
+  ante 3 once flat scorers appear (UH5NGY7A, 1S259TVC; SIM ignores the destruction in 3 runs).
+- Joker Stencil: x(empty slots + Stencils); every joker added costs x1; sell flats when the Stencil gain beats their
+  add; a perishable Stencil as the only multiplier = EMERGENCY from the next shop [5 + 6 post-mortems].
+- Hanging Chad: retriggers the FIRST scoring card twice; lead with a live face (Photograph x8) or a Glass/foil/odd Ace
+  via `move hand`; the CLI est may ignore the order (TEE3QFI4 828 -> 1380) [5].
+- Burglar: 0 discards, +3 hands; Mystic Summit becomes always on; sell before The Mouth; SCORE CHECK/SIM ignore its
+  extra hands, so do not sell it on their advice (BG8RRBW2) [3 + 4 post-mortems].
+- Banner / Green Joker: never discard (Banner -30 chips, Green -1 mult forever per discard); no Mystic Summit with
+  them; Green Joker makes Small skips costly (VED7UEVL lost by 26) [4].
+- Gros Michel: 1/6 to die every round end; treat it as gone next round and buy the permanent scorer now [4].
+- Wraith: sets money to $0; only take it at <= $4 or in debt (YSBWEA3U lost a $16 wallet at ante 3) [2 + 2].
+- Hologram: x1 without card-adding sources; feed with Standard packs ($4, +0.25/card), else not a growth xMult [3].
+- Abstract counts perished and Crimson-disabled jokers: do not sell a perished joker while Abstract is owned [3].
+- Riff-raff: keep a slot free at every blind select; sell it once slots fill with keepers [14 post-mortems].
+- Campfire: feed it with $1 rentals bought and sold in the same shop (+x0.25, no rent charged) (XRWKX6AS, 3IDYS1SA).
+
+**Advisor trust**
+- Solver P(clear) is overconfident (0.9-1.0 on lines that lost) [32 runs, 13 died at ante 1-2]; at ante 1-2 and when
+  jokerless, rank lines by est and the made hand, not by solver p.
+- SIM p_next 0.00 (or ~1.00) for every option = uninformative; decide by SCORE CHECK ratio and step 4 order [7].
+- Follow SIM over heuristic text (LEAVE/AVOID/sell) when SIM gain >= +0.15 and the item has none of the blind spots
+  below; text contradicted SIM and SIM was right in 12 runs (e.g. 1S259TVC LEAVE vs Duo +0.41).
+- SIM blind spots (override it) [18]: rent past 3 blinds and eternal rentals (8), Madness destruction, Obelisk resets
+  (it suggested selling x3.2 Obelisk, CLA5SVN7), perish ticks, Constellation/Hologram growth, Riff-raff, packs, Burglar.
+- Ignore `NEEDED NOW` / BUY on an eternal rental unless you own 0 scorers [17].
+- Obelisk `AVOID`/sell advice is wrong on flat builds where hand type is irrelevant (9IIGB2FF foil Obelisk won the run).
+
 ## 3. Scoring facts (verified in-game)
 
 - Score = chips x mult. Only the cards forming the poker hand score; extra played cards do not.

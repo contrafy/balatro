@@ -567,6 +567,7 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
             r["notes"].append(f"Riff-raff creates {sim.created / n:.1f} Common joker(s) over these blinds")
         r["money_path"] = _money_path(state, sim.state, blinds, sim.stats, r["money_after"])
         r["shop_money"] = min(r["money_path"]) if r["money_path"] else r["money_after"]
+        r["dead_shops"] = sum(1 for m in r["money_path"] if m < 0)
         r["rent_horizon"] = r["rent_per_round"] * len(blinds)
         if r["shop_money"] < 0:
             r["notes"].append(f"rent drives money to ${r['shop_money']} before a later shop: that shop is dead")
@@ -679,6 +680,8 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
     rng = random.Random(f"{seed}:virtual:{r['label']}")
     keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money")
+    cost = int(o.get("cost") or 0)
+    dead = 0.0
     acc = dict.fromkeys(keys, 0.0)
     acc_bl = [0.0] * len(base["p_blinds"])
     picks = Counter()
@@ -695,7 +698,10 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
                     names.append(n)
             cards = [by_label.get(f"_pack Celestial: {n}") for n in names]
         cands = [c for c in cards if c is not None and c.get("p_next") is not None] + [base]
-        best = max(cands, key=lambda c: (_p_adj(c), c["score_ratio"], c.get("money_after") or 0))
+        best = max(cands, key=lambda c: (_p_adj(c) - DEAD_SHOP_P * sum(1 for m in c.get("money_path") or []
+                                                                      if 0 <= m < cost), c["score_ratio"],
+                                         c.get("money_after") or 0))
+        dead += sum(1 for m in best.get("money_path") or [] if m - cost < 0)
         picks[best["label"]] += 1
         for k in keys:
             acc[k] += best.get(k) or 0.0
@@ -705,7 +711,8 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         r[k] = acc[k] / PACK_VIRTUAL
     r["p_blinds"] = [p / PACK_VIRTUAL for p in acc_bl]
     r["money_after_rent"] = r["money_after"] - r["rent_per_round"] * n_blinds
-    r["shop_money"] -= int(o.get("cost") or 0)  # sub-options were simulated with the pack's cost unpaid
+    r["shop_money"] -= cost  # sub-options were simulated with the pack's cost unpaid
+    r["dead_shops"] = dead / PACK_VIRTUAL
     subs = [by_label[k] for k in by_label if k.startswith(f"_pack {plan['kind']}:")]
     r["n"] = min([s["n"] for s in subs if s.get("n")] + [base["n"]])
     top = ", ".join(f"{('skip' if lab == base['label'] else lab.split(': ', 1)[1])} {c / PACK_VIRTUAL:.0%}"
@@ -787,5 +794,5 @@ def _p_adj(r):
     per $ of rent for the rest of the run; with a horizon money path that goes negative, the dead shops cost
     another DEAD_SHOP_P each."""
     rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0)
-    dead = sum(1 for m in r.get("money_path") or [] if m < 0)
+    dead = r["dead_shops"] if "dead_shops" in r else sum(1 for m in r.get("money_path") or [] if m < 0)
     return r["p_next"] - DOLLAR_P * rent - DEAD_SHOP_P * dead

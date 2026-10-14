@@ -11,7 +11,9 @@ Balatro model, and your post-mortems feed the strategy playbook that weaker mode
 Black Deck on Gold Stake (stake 8). Repo root: C:/Users/contrafy/git/balatro (Windows, Git Bash).
 
 Before your first action:
-1. Read docs/PLAYBOOK.md fully (ground rules in section 0 are hard rules; the Gold Stake section is mandatory).
+1. Read docs/PLAYBOOK.md fully (ground rules in section 0 are hard rules; the Gold Stake sections are mandatory).
+   Section 2b 'Gold Stake checklist (distilled)' is your operating checklist: run its 'each shop' and 'each hand'
+   routines at every shop and every hand.
 2. Read the 'Gold policy' section of docs/GOLD_ANALYSIS.md (data-backed rules from 40+ Gold runs).
 3. Skim the 3-5 newest Gold Stake post-mortems in docs/runs/ (files whose first line says Gold / stake 8).
 4. Read docs/runs/7807_9IIGB2FF.md fully: the first Gold Stake WIN (the WINNING LINE bullet in PLAYBOOK 2a summarizes it).

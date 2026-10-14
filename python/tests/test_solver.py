@@ -2,6 +2,7 @@
 
 import itertools
 import math
+import random
 import time
 
 import pytest
@@ -147,6 +148,20 @@ def test_misprint_is_sampled_per_hand():
     st["jokers"][0]["ability"] = {"extra": {"min": 0, "max": 23}}
     top = plan(st)[0]
     assert 0.55 < top["p_model"] < 0.8
+
+
+def test_bloodstone_is_a_card_phase_x1_5_per_heart():
+    # 7804 Z9WILFCR: x1.5 multiplied the whole score, inflating a dig from ~3% to 0.29; it applies to the mult in each
+    # Heart's card phase, before the jokers' +mult
+    st = state(["KH", "KS", "9C", "7D", "5S", "4C", "3C", "2D"], need=300, hands=3, discards=2,
+               jokers=["Joker", "Bloodstone"])
+    st["jokers"][0]["ability"] = {"mult": 4}
+    rs = solver.RoundSolver(st, estimate)
+    kk = rs.slots[:2]
+    plain = estimate("Pair", [c.d for c in kk], [], st, played_n=2)[0]  # (10+20) x (2+4) = 180, Bloodstone left out
+    got = {rs.score(kk, [], 3, 2, rs.ctx0, random.Random(s))[0] for s in range(40)}
+    assert got == {plain, 30 * (2 * 1.5 + 4)}  # 210, not 270
+    assert rs.score(kk, [], 3, 2, rs.ctx0)[0] == pytest.approx((180 + 210) / 2)
 
 
 def test_hanging_chad_retriggers_the_best_card_the_player_can_move_first():

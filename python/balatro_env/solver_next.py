@@ -486,7 +486,19 @@ class RoundSolver:
             first = lucky[0]
             scd2 = [dict(c.d, perma_mult=float(c.d.get("perma_mult") or 0) + 20) if c is first else c.d for c in sc]
             lucky_inc = self._est(t, scd2, hd, st, rep, n) - s6
-        n_blood = sum(1 for c in sc if c.suit == "H" and not c.debuff) * self.n_blood
+        # Bloodstone: x1.5 in the card phase of each scoring Heart (1 in 2), not on the final score. estimate leaves it
+        # out, so score k triggered Hearts by giving them a card-phase x1.5 (a polychrome edition) and keep the
+        # ratios to the untriggered score
+        blood = ()
+        if self.n_blood and s6 > 0:
+            hearts = [i for i, c in enumerate(sc) if not c.debuff and ("H" in c.suits or "HD" in c.suits)
+                      and c.d.get("edition") != "polychrome"]
+            ratios = [1.0]
+            for k in range(1, len(hearts) + 1):
+                trig = set(hearts[:k])
+                scd_k = [dict(c.d, edition="polychrome") if i in trig else c.d for i, c in enumerate(sc)]
+                ratios.append(self._est(t, scd_k, hd, st, rep, n) / s6)
+            blood = tuple(ratios)
         space = 0.0
         if self.n_space:
             hl = dict(st.get("hand_levels") or {})
@@ -497,7 +509,7 @@ class RoundSolver:
             v["level"] = int(v.get("level") or 1) + 1
             hl[t] = v
             space = self._est(t, scd, hd, dict(st, hand_levels=hl), rep, n) - s6
-        return base, slope, self.n_misprint, lucky_inc, len(lucky), n_blood, space, self.n_space
+        return base, slope, self.n_misprint, lucky_inc, len(lucky), blood, space, self.n_space
 
     def score(self, played, held, h, d, ctx, rng=None):
         """(score, hand type) of playing `played` while `held` stays in hand. Without rng: the planning value with
@@ -527,14 +539,19 @@ class RoundSolver:
             self._score_memo[key] = comp
         if not self.random_fx:
             return comp, t
-        base, slope, n_mis, lucky_inc, n_lucky, n_blood, space, n_space = comp
+        base, slope, n_mis, lucky_inc, n_lucky, blood, space, n_space = comp
+        q = 1.0 - 0.5 ** self.n_blood  # a Heart triggers at least one Bloodstone
         if rng is None:
-            return (base + slope * 11.5 * n_mis + 0.2 * n_lucky * lucky_inc + 0.25 * n_space * space) * 1.25 ** n_blood, t
+            rb = 1.0
+            if len(blood) > 1:
+                hn = len(blood) - 1
+                rb = sum(math.comb(hn, k) * q ** k * (1 - q) ** (hn - k) * r for k, r in enumerate(blood))
+            return (base + slope * 11.5 * n_mis + 0.2 * n_lucky * lucky_inc + 0.25 * n_space * space) * rb, t
         m = sum(rng.randint(0, 23) for _ in range(n_mis))
         hits = sum(rng.random() < 0.2 for _ in range(n_lucky))
-        k = sum(rng.random() < 0.5 for _ in range(n_blood))
+        k = sum(rng.random() < q for _ in range(len(blood) - 1)) if len(blood) > 1 else 0
         up = sum(rng.random() < 0.25 for _ in range(n_space))
-        return (base + slope * m + hits * lucky_inc + up * space) * 1.5 ** k, t
+        return (base + slope * m + hits * lucky_inc + up * space) * (blood[k] if blood else 1.0), t
 
     def _gen_plays(self, cards):
         """Candidate plays: every rank group and its 2..5 subsets, two pairs, full houses, the best flush per suit
