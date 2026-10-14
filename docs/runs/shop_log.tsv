@@ -7144,3 +7144,28 @@
 7806	a2	$5	jokers=2/6	xmult_owned=0	ECON:Rocket{ETERNAL} $0 | VOUCHER:Clearance Sale $10 | UTIL:Delayed Gratification $4 | PACK:Jumbo Arcana Pack $6 | PACK:Arcana Pack $4
 7807	a5	$55	jokers=6/6	xmult_owned=0	PACK:Arcana Pack $4 | VOUCHER:Telescope $10 | PLANET:Venus $3
 7817	a3	$10	jokers=4/6	xmult_owned=0	PLANET:Uranus $3 | PACK:Jumbo Arcana Pack $6 | PACK:Mega Arcana Pack $8 | TAROT:The Hanged Man $3 | VOUCHER:Crystal Ball $10
+7816	a2	$7	jokers=1/6	xmult_owned=0	XMULT:The Duo $8 | VOUCHER:Telescope $10 | UTIL:Faceless Joker $4 | PACK:Jumbo Celestial Pack $6 | PACK:Arcana Pack $4
+7806	a2	$5	jokers=3/6	xmult_owned=0	VOUCHER:Clearance Sale $10 | UTIL:Delayed Gratification $4 | PACK:Jumbo Arcana Pack $6 | PACK:Arcana Pack $4
+7810	a2	$7	jokers=2/6	xmult_owned=0	UTIL:Superposition $4 | VOUCHER:Reroll Surplus $10 | PACK:Arcana Pack $4 | PACK:Standard Pack $4 | TAROT:The Hermit $3
+7814	a1	$3	jokers=2/6	xmult_owned=0	VOUCHER:Tarot Merchant $10 | TAROT:The Fool $3 | PACK:Jumbo Standard Pack $6 | PACK:Jumbo Standard Pack $6 | UTIL:Mail-In Rebate{ETERNAL} $4
+7804	a4	$26	jokers=6/6	xmult_owned=0	PACK:Arcana Pack $4 | PACK:Arcana Pack $4 | PLUS(other hand):Wily Joker{PERISHABLE(5 rounds left)} $4 | VOUCHER:Paint Brush $10 | PLUS(adds ~0 now: grows only with its condition):Scholar{PERISHABLE(5 rounds left),RENTAL(-$3/round)} $1
+7806	a3	$16	jokers=3/6	xmult_owned=0	XMULT(growth: must be fed):Campfire $9 | PACK:Buffoon Pack $4 | PACK:Arcana Pack $4 | PLANET:Jupiter $3 | VOUCHER:Telescope $10
+7802	a6	$13	jokers=6/6	xmult_owned=1	VOUCHER:Grabber $10 | PACK:Jumbo Standard Pack $6 | PACK:Buffoon Pack $4 | UTIL:DNA{ETERNAL,RENTAL(-$3/round)} $1
+7812	a2	$7	jokers=2/6	xmult_owned=0	XMULT(conditional, suit: rarely fires outside a Flush build):Ancient Joker{ETERNAL} $8 | PLUS(adds ~0 now: grows only with its condition):Square Joker $4 | VOUCHER:Reroll Surplus $10 | PACK:Standard Pack $4 | PACK:Jumbo Standard Pack $6
+7813	a1	$5	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Clearance Sale $10 | UTIL:Showman{PERISHABLE(5 rounds left)} $5 | PACK:Celestial Pack $4 | TAROT:The Wheel of Fortune $3
+7808	a1	$5	jokers=0/6	xmult_owned=0	PLUS(weak/conditional):Green Joker{RENTAL(-$3/round)} $1 | XMULT(conditional, unreliable):Blackboard{ETERNAL} $6 | PACK:Buffoon Pack $4 | VOUCHER:Tarot Merchant $10 | PACK:Arcana Pack $4
+7804	a4	$15	jokers=6/6	xmult_owned=0	UTIL:Mail-In Rebate{PERISHABLE(5 rounds left)} $6 | PACK:Arcana Pack $4 | PACK:Arcana Pack $4 | PLUS(adds ~0 now: grows only with its condition):Scholar $4 | VOUCHER:Paint Brush $10
+7806	a3	$16	jokers=3/6	xmult_owned=0	XMULT(growth: must be fed):Campfire $9 | PACK:Buffoon Pack $4 | PACK:Arcana Pack $4 | PLANET:Jupiter $3 | VOUCHER:Telescope $10
+7814	a2	$7	jokers=2/6	xmult_owned=0	VOUCHER:Reroll Surplus $10 | UTIL:Mail-In Rebate{PERISHABLE(5 rounds left)} $4 | PACK:Jumbo Arcana Pack $6 | PACK:Arcana Pack $4 | UTIL:To Do List{RENTAL(-$3/round)} $1
+7811	a4	$16	jokers=5/6	xmult_owned=0	TAROT:The Hermit $3 | PACK:Jumbo Spectral Pack $6 | PACK:Arcana Pack $4 | PLANET:Mars $3 | VOUCHER:Hieroglyph $10
+7818	a3	$8	jokers=6/6	xmult_owned=0	PLUS(main hand):Mad Joker $4 | PACK:Arcana Pack $4 | PLANET:Venus $3 | VOUCHER:Director's Cut $10 | PACK:Jumbo Standard Pack $6
+7810	a2	$13	jokers=2/6	xmult_owned=0	UTIL:Matador{RENTAL(-$3/round)} $0 | TAROT:The Hermit $3 | VOUCHER:Reroll Surplus $10 | PACK:Arcana Pack $4 | PACK:Jumbo Standard Pack $6
+7804	a4	$13	jokers=6/6	xmult_owned=0	PACK:Arcana Pack $4 | PACK:Arcana Pack $4 | PLUS(adds ~0 now: grows only with its condition):Scholar $4 | VOUCHER:Paint Brush $10
+7806	a3	$12	jokers=4/6	xmult_owned=0	XMULT(growth: must be fed):Campfire $9 | PACK:Arcana Pack $4 | PLANET:Jupiter $3 | VOUCHER:Telescope $10
+7807	a6	$101	jokers=6/6	xmult_owned=0	UTIL:Reserved Parking{ETERNAL} $0 | VOUCHER:Grabber $10 | UTIL:Oops! All 6s $4 | PACK:Standard Pack $4 | PACK:Jumbo Standard Pack $6
+7816	a2	$0	jokers=1/6	xmult_owned=1	XMULT(conditional, unreliable):Blackboard{PERISHABLE(5 rounds left)} $6 | VOUCHER:Telescope $10 | PACK:Arcana Pack $4 | PACK:Arcana Pack $4 | TAROT:The Lovers $3
+7810	a2	$15	jokers=3/6	xmult_owned=0	PLUS(weak/conditional):Green Joker $4 | VOUCHER:Reroll Surplus $10 | PLANET:Jupiter $3 | PACK:Arcana Pack $4 | PACK:Jumbo Standard Pack $6
+7812	a2	$10	jokers=2/6	xmult_owned=0	UTIL:Juggler $4 | VOUCHER:Reroll Surplus $10 | PLANET:Uranus $3 | PACK:Jumbo Arcana Pack $6 | PACK:Arcana Pack $4
+7813	a1	$6	jokers=1/6	xmult_owned=0	VOUCHER:Clearance Sale $10 | PLUS(other hand):Clever Joker{ETERNAL,RENTAL(-$3/round)} $1 | PACK:Arcana Pack $4 | PACK:Arcana Pack $4 | TAROT:The World $3
+7815	a1	$4	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | VOUCHER:Clearance Sale $10 | PLANET:Neptune $3 | PLANET:Mercury $3 | PACK:Standard Pack $4
+7817	a4	$17	jokers=3/6	xmult_owned=0	PACK:Arcana Pack $4 | TAROT:The Wheel of Fortune $3 | TAROT:The Moon $3 | VOUCHER:Grabber $10 | PACK:Standard Pack $4

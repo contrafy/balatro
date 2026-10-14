@@ -9891,3 +9891,44 @@
 7806	a2	-	Full House	JS JH JD 3S 3D	Smiley Face,Scholar,Sly Joker	est=2394	actual=2394	OK
 7815	a4	-	Pair	9D 8H 7H 7D 5D	Jolly Joker,Splash,Smiley Face,Wily Joker,Yorick,Perkeo	est=460	actual=460	OK
 7816	a1	The Manacle	Two Pair	JH JD TS TD	Sly Joker	est=220	actual=220	OK
+7811	a4	-	Two Pair	6C 6D 2C 2D	Walkie Talkie,Clever Joker,Raised Fist,Shoot the Moon,Showman(holo),Even Steven(holo)	est=5568	actual=5568	OK
+7802	a6	-	Pair	5S 5H	Odd Todd(holo),Half Joker,Supernova,Hanging Chad,Swashbuckler(polychrome),The Duo	est=36984	actual=36984	OK
+7810	a1	The Goad	Two Pair	QH QD 6H 6C	Smiley Face,Spare Trousers	est=728	actual=728	OK
+7802	a6	-	Pair	2H 2C	Odd Todd(holo),Half Joker,Supernova,Hanging Chad,Swashbuckler(polychrome),The Duo	est=9792	actual=9792	OK
+7804	a3	The Tooth	Pair	4S 4D	Half Joker,Joker,Sly Joker,Jolly Joker,Delayed Gratification,The Tribe	est=3528	actual=3528	OK
+7805	a4	The Arm	Flush	AD QD(gold) 9D 7D 4D	Photograph,Lusty Joker(holo),Astronomer,Midas Mask(foil),Throwback	est=5428	actual=5428	OK
+7814	a1	-	Two Pair	JC JD 9H 9D	Gluttonous Joker(foil),Flash Card(foil)	est=790	actual=790	OK
+7804	a3	The Tooth	Pair	8S 8D	Half Joker,Joker,Sly Joker,Jolly Joker,Delayed Gratification,The Tribe	est=3816	actual=3816	OK
+7813	a1	-	Two Pair	KS KD 9C 9D		est=116	actual=116	OK
+7812	a1	The Pillar	Flush	TS(DEBUFF) 7S 5C 4C 2S	Smeared Joker,Walkie Talkie	est=504	actual=504	OK
+7806	a2	The Head	Straight Flush	AD KD QD JD TD	Smiley Face,Sly Joker,Rocket(foil)	est=4623	actual=4623	OK
+7816	a2	-	Two Pair	TS TC 8C 8D	The Duo	est=224	actual=224	OK
+7812	a1	The Pillar	High Card	TH	Smeared Joker,Walkie Talkie	est=125	actual=125	OK
+7811	a4	-	Full House	AC AD 7S 7H 7D	Walkie Talkie,Clever Joker,Raised Fist,Shoot the Moon,Showman(holo),Even Steven(holo)	est=5216	actual=5216	OK
+7808	a1	-	Flush	AC 9C 6C 5C 4C		est=280	actual=280	OK
+7813	a1	-	Straight	AD KH QS JC TH		est=324	actual=324	OK
+7810	a2	-	Flush	QH 8H 6H 5H 3H	Smiley Face,Spare Trousers	est=737	actual=737	OK
+7808	a1	-	Pair	JC JD		est=60	actual=60	OK
+7809	a4	The Club	High Card	KS	Mystic Summit,Clever Joker,Ramen	est=403	actual=403	OK
+7818	a2	The Club	Pair	9S 9D	Mystic Summit,Scholar,Arrowhead,Swashbuckler,Obelisk(foil),Odd Todd	est=2735	actual=2735	OK
+7814	a1	The Window	Straight	JC TS 9S 8C 7D(DEBUFF)	Gluttonous Joker(foil),Flash Card(foil)	est=1670	actual=1670	OK
+7811	a4	-	Full House	TS TH TD 4S 4H	Walkie Talkie,Clever Joker,Raised Fist,Shoot the Moon,Showman(holo),Even Steven(holo)	est=14560	actual=14560	OK
+7807	a5	The Psychic	Two Pair	AH AD QS QC	Blue Joker(foil),Brainstorm(holo),Even Steven,Blueprint,Throwback,Golden Joker	est=26136	actual=26136	OK
+7809	a4	The Club	Full House	AH AD QS QS QS	Mystic Summit,Clever Joker,Ramen	est=6950	actual=6950	OK
+7810	a2	-	Two Pair	KH KC 7C 7D	Smiley Face,Spare Trousers	est=864	actual=864	OK
+7803	a5	-	Pair	2S 2D	Smiley Face(foil),Mystic Summit,Loyalty Card(holo),The Tribe,Burglar,Card Sharp	est=2212	actual=2212	OK
+7816	a2	-	Full House	QS QC QD TH TD	The Duo	est=720	actual=720	OK
+7809	a4	The Club	High Card	AC(DEBUFF)	Mystic Summit,Clever Joker,Ramen	est=134	actual=134	OK
+7807	a5	The Psychic	Straight	6S 5C 4H 3H 2D(gold)	Blue Joker(foil),Brainstorm(holo),Even Steven,Blueprint,Throwback,Golden Joker	est=50336	actual=50336	OK
+7815	a1	-	High Card	AH		est=16	actual=16	OK
+7816	a2	-	Two Pair	7S 7D 6H 6D	The Duo	est=184	actual=184	OK
+7809	a4	The Club	Two Pair	9H 9D 3H 3C(DEBUFF)	Mystic Summit,Clever Joker,Ramen	est=3455	actual=3455	OK
+7813	a1	-	Two Pair	JC JD 8H 8C	Misprint	est=448	actual=280	MISS
+7803	a5	-	Pair	6H 6D	Smiley Face(foil),Mystic Summit,Loyalty Card(holo),The Tribe,Burglar,Card Sharp	est=7308	actual=7308	OK
+7815	a1	-	High Card	JH		est=15	actual=15	OK
+7801	a1	-	Two Pair	KS KC 9S 9C		est=116	actual=116	OK
+7812	a2	-	Flush	QC JC TS 9C 4S	Smeared Joker,Walkie Talkie	est=1176	actual=1176	OK
+7814	a2	-	Straight	KD QC JH TS 9H	Gluttonous Joker(foil),Flash Card(foil)	est=1253	actual=1253	OK
+7813	a1	-	Three of a Kind	2S 2C 2D	Misprint	est=324	actual=288	OK
+7815	a1	-	Flush	AC JC 9C 8C 6C		est=316	actual=316	OK
+7803	a5	-	Pair	4S 4H	Smiley Face(foil),Mystic Summit,Loyalty Card(holo),The Tribe,Burglar,Card Sharp	est=6972	actual=6972	OK

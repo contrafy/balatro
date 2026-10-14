@@ -300,3 +300,13 @@ def test_invisible_joker_duplicates_an_owned_joker_after_two_rounds():
     assert keys[0][3] == () and 1 not in keys[0][1]  # round 1: Invisible still held
     assert keys[1][3] == (-1,) and 1 in keys[1][1]  # round 2: sold, a copy of the Joker added
     assert [j["name"] for j in sim.solvers[keys[1]].state["jokers"]] == ["Joker", "Joker"]
+
+
+def test_the_needle_with_burglar_gives_one_plus_three_hands():
+    # 7813 7FVPDIEW: The Needle sets 1 hand, then Burglar adds +3 at blind select (4 hands, 0 discards)
+    st = shop_state(jokers=[joker("Burglar")], boss="The Needle")
+    rs = shop_sim._round_state(st, st, {"name": "The Needle", "boss": True, "chips": 600}, 1, set())
+    assert rs["hands_remaining"] == 4 and rs["discards_remaining"] == 0
+    plain = shop_sim._round_state(shop_state(boss="The Needle"), shop_state(boss="The Needle"),
+                                  {"name": "The Needle", "boss": True, "chips": 600}, 1, set())
+    assert plain["hands_remaining"] == 1

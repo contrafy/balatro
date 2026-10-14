@@ -1,2 +1,5 @@
 # Run JGH4NQBH (port 7817, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (Rare/Voucher/The Club 600, $4): Small: disc x2 -> Flush D 276 + Pair AA. Shop $5: Buffoon -> Photograph{P} (over Clever). Big: 2P JJ77 216, disc 3 -> FH 99988 332. Shop $6: Buffoon -> Shoot the Moon{P} (over Gluttonous, Club boss). Club: FH 77799 252 + Straight A-T 560.
+Ante 2 (Charm/Ethereal/The Head 2000, $8): EMERGENCY 0.28 -> foil Invisible{RENTAL} $1. Skipped Small (Charm: Hermit $7->$14, Chariot steel KS). Big 1500: Pair 77 + QQ held 2072 one-shot. Shop $19: Buffoon -> Scholar{E} (SIM over Sly{P}). Head: 2 digs, junk cycle, Flush AS JS 9S 5S 3S 2288.
+Ante 3 (Coupon/Meteor/The Wheel 6400, $20): EMERGENCY 0.29: reroll, Odd Todd{P} $4, Emperor -> Death + Magician. Small: 2P 4433 2190 + Pair JJ w/ QQ held 2560. Shop: sold perished Photograph, sold Invisible -> duplicated Shoot the Moon (2x StM, +26/held Q), Uranus. Skipped Big (both StM had 1 round left; Meteor -> Mercury, Venus). Wheel: face-down card sat between AS and AD in the rank-sorted deal = Ace; Death 5D->AD, Magician lucky on 2 Aces, Quads A one-shot (>6400).

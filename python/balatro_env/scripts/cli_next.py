@@ -2713,6 +2713,19 @@ def shop_advise_sim(d, budget_s=6.0):
                 continue
             o["_cmd"] = f"buy {item.get('index')}" if item is not None and item.get("index") is not None else None
         res = ss.value_options(d, opts, budget_s=budget_s, estimate_fn=estimate, seed=0, min_samples=24)  # fixed seed; packs need the larger budget
+        # a second rental is barred before ante 6 unless it sells the first: offer that bundle as its own SIM option
+        # (7801 4JA3JTD1: the bar flipped the advice to Uranus instead of "sell Popcorn, buy Half Joker")
+        own_r = [j for j in lst(d.get("jokers")) if _stk(j)["rental"] and not _stk(j)["eternal"]]
+        if own_r and int(d.get("ante") or 1) < 6:
+            weak_r = min(own_r, key=lambda j: owned_value(d, j, main_hand(d)))
+            combos = []
+            for o in opts:
+                aj_o = o.get("add_joker") or {}
+                if _stk(aj_o)["rental"] and o.get("_cmd") and not o.get("sell"):
+                    combos.append(dict(o, label=f"{o.get('label')} (sell {weak_r.get('name')})", sell=[weak_r.get("index")]))
+            if combos:
+                rc = ss.value_options(d, combos, budget_s=1.5, estimate_fn=estimate, seed=0, min_samples=24)
+                res = res + [x for x in rc if x.get("label") != "baseline (no change)"]
         m_sf = re.match(r"ADVICE: SELL FIRST -> b sell (\d+)  then  (.*)$", lines[adv_i])
         sold_j = next((j for j in lst(d.get("jokers")) if m_sf and j.get("index") == int(m_sf.group(1))), None)
         if sold_j is not None and _stk(sold_j)["rental"] and not _dead_perishable(sold_j):
@@ -3064,7 +3077,8 @@ def _shop_rules(d):
         # 7802 KLV4P2RZ lost The Water by 18: projected ~9280/hand vs 5.7-6.5k real); The Needle 1 hand but all discards
         # (the best hand after digging: the 90th pct of a deal; 7806 J3REMTSE scored 7952 vs a 0.44x projection)
         per = deck_best_est(d, pct=0.9 if bn_t == "The Needle" else 0.5) or best_hand
-        proj = int(per * (1 if bn_t == "The Needle" else _hands_pr(d)))
+        # The Needle sets 1 hand; Burglar's +3 is added at blind select after it (7813 7FVPDIEW: 4 hands)
+        proj = int(per * ((1 + _hands_pr(d) - int(d.get("hands_per_round") or 3)) if bn_t == "The Needle" else _hands_pr(d)))
     elif bn_t == "The Manacle" and deck_best and best_hand:
         # -1 hand size: fewer cards to make the hand from, and fewer held Queens/Kings/Steel (7802 F64SACWK: Shoot the Moon
         # projected 1700-2400 vs 390-426 real)
