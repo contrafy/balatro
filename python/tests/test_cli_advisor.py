@@ -504,7 +504,7 @@ def test_score_check_counts_summit_and_acrobat():
     # 7809/7803: EMERGENCY fired every shop because SCORE CHECK left out Mystic Summit / Acrobat
     base = shop(jokers=[joker("Joker", 1)], ante=3)
     full = shop(jokers=[joker("Joker", 1), joker("Mystic Summit", 2), joker("Acrobat", 3)], ante=3)
-    num = lambda out: int(out.split("SCORE CHECK: best")[1].split("~")[1].split()[0])
+    num = lambda out: int(__import__("re").search(r"SCORE CHECK: [^~]*~(\d+)", out).group(1))
     assert num(_out(cli.shop_advise, full)) > 3 * num(_out(cli.shop_advise, base))
 
 
@@ -782,8 +782,9 @@ def test_reorder_with_hanging_chad_and_photograph():
 
 
 def test_sim_never_leave_with_big_gain(monkeypatch):
-    # 7809 The Duo +0.41 / 7807 Seeing Double +0.12 were answered with LEAVE; a second rental is allowed when both are xMults
-    d = shop(jokers=[joker("The Trio", 1, rental=True)], shop_jokers=[{"index": 1, "name": "The Duo", "set": "Joker", "cost": 1, "rental": True, "perishable": True, "perish_tally": 5}], money=14, ante=3)
+    # 7809 The Duo +0.41 / 7807 Seeing Double +0.12 were answered with LEAVE; a second rental is allowed from ante 5 when
+    # both are xMults (before ante 5 only bundled with selling the first)
+    d = shop(jokers=[joker("The Trio", 1, rental=True)], shop_jokers=[{"index": 1, "name": "The Duo", "set": "Joker", "cost": 1, "rental": True, "perishable": True, "perish_tally": 5}], money=14, ante=5)
     d["hand_levels"] = {"Pair": {"level": 1, "chips": 10, "mult": 2}}
 
     class FakeSim:

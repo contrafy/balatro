@@ -1,2 +1,5 @@
 # Run H9WSYGXJ (port 7801, claude-fable-5-1) - Black Deck Gold Stake - IN PROGRESS
 
+Ante 1 (Polychrome/Investment/The Hook 600, $4): Small: 2P AATT 124 + FH 99988 332. Shop $5: Buffoon $4 -> Gros Michel (over Sixth Sense{P}). Big: Pair TT 510 one-shot. Shop $7: foil Smiley Face{ETERNAL} $6 (+50 chips foil, +5 mult/face). Hook: Pair 66 1224 one-shot.
+Ante 2 (Orbital(Pair)/D6/The Wheel 2000, $8): Jumbo Buffoon $6 -> Raised Fist{ETERNAL} (over Vampire, Banner{R}, Drunkard{P,R}). Skipped Small for Orbital Tag (Pair L1 -> L4, $2 wallet). Big: Pair 77 4760 one-shot. Shop $8: nothing (Supernova{R}, Neptune). Wheel (4 of 8 face down): Pair 66 2340 one-shot; Gros Michel died at round end.
+Ante 3 (Rare/Rare/The Flint 6400, $16): SCORE CHECK 0.44, no joker in shop: rerolled $5 -> Joker{ETERNAL} $2 (3rd eternal). Skipped Small for Rare Tag (override advisor). Big 4800: Pair KK 4625 + Pair 44 3051. Rare shop: The Family{E} $0 (x4 on Quads, passed), Riff-raff $6. Flint: Riff-raff made Mystic Summit + Photograph; disc x2 (Summit on), FH 222KK 4800 + Pair 99 3135 = 7935/6400.

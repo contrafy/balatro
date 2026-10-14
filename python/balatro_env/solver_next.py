@@ -167,6 +167,7 @@ class RoundSolver:
         self.psychic = self.boss == "The Psychic"
         self.hook = self.boss == "The Hook"
         self.serpent = self.boss == "The Serpent"
+        self.fish = self.boss == "The Fish"
         self.mark = self.boss == "The Mark"
         self.tooth = self.boss == "The Tooth"
         # Mouth/Eye are applied here (the lock and the used types change during a rollout), not inside estimate
@@ -1039,6 +1040,7 @@ class RoundSolver:
         growth = 0.0
         n_played = 0
         pos = 0
+        down = set()  # ids of face-down cards in hand (The Fish)
         kind, sel = first[0], [hand[i] for i in first[1]]
         cards = list(hand)
         while True:
@@ -1071,12 +1073,19 @@ class RoundSolver:
                 if "Green Joker" in self.growth_j:
                     growth -= 1
             n = 3 if self.serpent else max(0, self.hand_size - len(rest))
+            if self.fish and kind == PLAY:  # The Fish: cards drawn after a played hand come face down
+                down.update(id(c) for c in order[pos:pos + n])
             rest.extend(order[pos:pos + n])
             pos += n
             cards = rest
             if not cards:
                 return self.bones_at is not None and total >= self.bones_at, total, h, self.d0 - d, growth, n_played
-            kind, sel = self.policy(cards, order[pos:], h, d, need, (lock, used, rtypes, ob))
+            up = [c for c in cards if id(c) not in down] if down else cards
+            if up:
+                # the player decides on the face-up cards only (face-down ones keep their place in hand)
+                kind, sel = self.policy(up, order[pos:], h, d, need, (lock, used, rtypes, ob))
+            else:
+                kind, sel = PLAY, cards[:self.lim]  # all face down: played blind
 
     # ---- sampling ---------------------------------------------------------------------------------------------
     def _sample(self, s):
@@ -1276,7 +1285,7 @@ class RoundSolver:
             res[-1]["first_card"], res[-1]["order"] = self._first_for(c)
         # slices where p is less trustworthy: few samples, final-hand jokers (Acrobat/Dusk slice is mis-calibrated on
         # recorded data), face-down cards (their identity is sampled)
-        shaky = self.final_dep or bool(self.fd_pos)
+        shaky = self.final_dep or bool(self.fd_pos) or self.fish
         for r in res:
             r["low_confidence"] = r["low_n"] or shaky
             if r["certain"]:

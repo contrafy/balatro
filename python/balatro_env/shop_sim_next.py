@@ -42,10 +42,27 @@ TIE_P = 0.02  # p differences below this are sampling noise: ties rank by mean s
 DOLLAR_P = 0.01
 DEAD_SHOP_P = 0.05
 SURVIVE_GAIN = 0.05  # options raising p_next by this much over buying nothing never rank below it
+RENT_KEEP = 6  # blinds a (sellable) rental is assumed kept: its rent counts at least this long
+INCOME_MAX = 1.5  # income jokers can raise the post-horizon rent factor up to this
 # Terminal value: after the horizon the end build is played once against the next boss; value = p_adj x (A + B x
 # p_term). Equal weights (heuristic): surviving now matters as much as the build's next-ante strength.
 TERM_A = 0.5
 TERM_B = 0.5
+# Spectral cards that destroy 1 random card in hand and add random enhanced cards (card.lua; Stone excluded)
+SPECTRAL_ADDS = {"Grim": (["Ace"], 2), "Familiar": (["Jack", "Queen", "King"], 3),
+                 "Incantation": (["2", "3", "4", "5", "6", "7", "8", "9", "10"], 4)}
+_ADD_ENH = ("m_bonus", "m_mult", "m_wild", "m_glass", "m_steel", "m_gold", "m_lucky")
+
+
+def _spectral_adds(state, name):
+    """Option fields for Grim / Familiar / Incantation: one random hand card destroyed, random enhanced cards added
+    (a fixed draw per state and card name, so every call values the same outcome)."""
+    ranks, k = SPECTRAL_ADDS[name]
+    rng = random.Random(f"{name}:{len(_lst((state.get('deck') or {}).get('cards')))}")
+    hand = [c.get("id") for c in _lst(state.get("hand")) if c.get("id") is not None]
+    adds = [{"rank": rng.choice(ranks), "suit": rng.choice(("Spades", "Hearts", "Clubs", "Diamonds")),
+             "enhancement": rng.choice(_ADD_ENH)} for _ in range(k)]
+    return {"add_cards": adds, "remove_cards": [rng.choice(hand)] if hand else []}
 
 
 def _lst(v):
@@ -144,6 +161,8 @@ def options_from_state(state, packs=False):
             opts.append({"label": tag, "levels": ["*"] if name == "Black Hole" else [PLANET_HAND[name]], "cost": cost})
         elif c.get("set") == "Spectral" and name == "Black Hole":
             opts.append({"label": tag, "levels": ["*"], "cost": cost})
+        elif c.get("set") == "Spectral" and name in SPECTRAL_ADDS:
+            opts.append(dict(_spectral_adds(state, name), label=tag, cost=cost))
         elif _is_playing_card(c):
             opts.append({"label": tag, "add_cards": [c], "cost": cost})
     if ph == "SHOP" and any(j.get("name") == "Campfire" and not j.get("debuff") for j in _lst(state.get("jokers"))):
@@ -617,6 +636,8 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
             stuck = [j for j in _lst(st.get("jokers")) if j.get("rental")
                      and (j.get("eternal") or (j.get("ability") or {}).get("eternal"))]
             r["rent_run"] = RENT * len(stuck) * _rounds_left(state)
+            # sellable rentals are kept a while (RENT_KEEP blinds at least); eternal ones are in rent_run
+            r["rent_horizon"] = RENT * (rentals - len(stuck)) * max(len(blinds), RENT_KEEP)
             new = opt.get("add_joker")
             if new is not None and any(j.get("name") == new.get("name") for j in stuck):
                 r["notes"].append(f"ETERNAL RENTAL: {new.get('name')} costs ${RENT} every round for the rest of the run "
@@ -671,7 +692,9 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
         r["money_path"] = _money_path(state, sim.state, blinds, sim.stats, r["money_after"])
         r["shop_money"] = min(r["money_path"]) if r["money_path"] else r["money_after"]
         r["dead_shops"] = sum(1 for m in r["money_path"] if m < 0)
-        r["rent_horizon"] = r["rent_per_round"] * len(blinds)
+        r["income"] = sum(_income(sim.state, blinds))
+        if r["income"]:
+            r["notes"].append(f"income jokers: +${r['income']:.0f} over these blinds")
         if r["shop_money"] < 0:
             r["notes"].append(f"rent drives money to ${r['shop_money']} before a later shop: that shop is dead")
         elif r["rent_per_round"] >= 2 * RENT:
@@ -683,18 +706,51 @@ def _run(sv, est, state, options, blinds, budget_s, seed, min_samples=24, max_sa
 
 def _money_path(base, st, blinds, stats, money):
     """Expected money entering the shop after each simulated blind (Gold cash-out order): rent of every rental is
-    charged at round end, then the blind reward, $1 per unused hand (simulated mean) and interest ($1 per $5 held,
-    capped; none below $0 or with no_interest)."""
+    charged at round end, then the blind reward, $1 per unused hand (simulated mean), income jokers (_income) and
+    interest ($1 per $5 held plus To the Moon's extra, capped; none below $0 or with no_interest)."""
     rentals = sum(1 for j in _lst(st.get("jokers")) if j.get("rental"))
     cap = int(base.get("interest_cap") or 25)
-    amt = int(base.get("interest_amount") or 1)
+    amt = int(base.get("interest_amount") or 1) + sum(
+        int(_num((j.get("ability") or {}).get("extra"), 1)) for j in _lst(st.get("jokers"))
+        if j.get("name") == "To the Moon" and _active(j))
     out = []
     m = float(money)
-    for b, s in zip(blinds, stats):
+    for b, s, inc in zip(blinds, stats, _income(st, blinds)):
         m -= RENT * rentals
         interest = 0 if base.get("no_interest") or m < 5 else amt * (min(m, cap) // 5)
-        m += int(b.get("dollars") or 0) + s[3] / max(1, s[0]) + interest
+        m += int(b.get("dollars") or 0) + s[3] / max(1, s[0]) + interest + inc
         out.append(int(round(m)))
+    return out
+
+
+def _num(v, default):
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def _income(st, blinds):
+    """End-of-round $ from income jokers per simulated blind: Golden Joker (+extra), Rocket (extra.dollars, +increase
+    after each boss), Cloud 9 (+extra per 9 in the deck)."""
+    out = [0.0] * len(blinds)
+    nines = sum(1 for c in _lst((st.get("deck") or {}).get("cards")) if str(c.get("rank")) == "9")
+    for j in _lst(st.get("jokers")):
+        if not _active(j):
+            continue
+        ab = j.get("ability") or {}
+        ex = ab.get("extra")
+        if j.get("name") == "Golden Joker":
+            out = [o + _num(ex, 4) for o in out]
+        elif j.get("name") == "Cloud 9":
+            out = [o + _num(ex, 1) * nines for o in out]
+        elif j.get("name") == "Rocket":
+            ex = ex if isinstance(ex, dict) else {}
+            pay, inc = _num(ex.get("dollars"), 1), _num(ex.get("increase"), 2)
+            for i, b in enumerate(blinds):
+                if b.get("kind") == "Boss":
+                    pay += inc
+                out[i] += pay
     return out
 
 
@@ -783,7 +839,7 @@ def _pack_result(o, plan, by_label, base, money, n_blinds, seed):
         return dict(r, feasible=False, error=f"not affordable (money {r['money_after']})", p_next=None)
     rng = random.Random(f"{seed}:virtual:{r['label']}")
     keys = ("p_next", "p_next_model", "score_ratio", "dollars", "rent_per_round", "rent_horizon", "rent_run", "shop_money",
-            "p_term", "score_ratio_term")
+            "p_term", "score_ratio_term", "income")
     cost = int(o.get("cost") or 0)
     dead = 0.0
     acc = dict.fromkeys(keys, 0.0)
@@ -983,13 +1039,14 @@ def _value(r):
 
 
 def _rent_factor(r):
-    """1 - DOLLAR_P per $ of rent over the horizon (all rentals) and, for eternal rentals, to the end of the run -
-    DEAD_SHOP_P per later shop entered with negative money; at least 0.1."""
-    rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0)
+    """1 - DOLLAR_P per $ of rent (sellable rentals over max(horizon, RENT_KEEP) blinds, eternal rentals to the end of
+    the run) + DOLLAR_P per $ of income-joker money over the horizon - DEAD_SHOP_P per later shop entered with
+    negative money; within [0.1, INCOME_MAX]."""
+    rent = (r.get("rent_horizon") or 0) + (r.get("rent_run") or 0) - (r.get("income") or 0)
     dead = r["dead_shops"] if "dead_shops" in r else sum(1 for m in r.get("money_path") or [] if m < 0)
-    return max(0.1, 1.0 - DOLLAR_P * rent - DEAD_SHOP_P * dead)
+    return min(INCOME_MAX, max(0.1, 1.0 - DOLLAR_P * rent - DEAD_SHOP_P * dead))
 
 
 def _p_adj(r):
-    """p_next times the rent factor (display / no-terminal ranking)."""
-    return r["p_next"] * _rent_factor(r)
+    """p_next times the rent factor, at most p_next (display / no-terminal ranking)."""
+    return r["p_next"] * min(1.0, _rent_factor(r))

@@ -144,6 +144,7 @@ class RoundSolver:
         self.splash = "Splash" in jn
         self.smeared = "Smeared Joker" in jn
         self.pareidolia = "Pareidolia" in jn
+        self.photograph = "Photograph" in jn
         self.card_sharp = "Card Sharp" in jn
         self.growth_j = jn & GROWTH_JOKERS
         active = [j.get("name") for j in _lst(state.get("jokers")) if not j.get("debuff")]
@@ -430,25 +431,41 @@ class RoundSolver:
         return "glass" in str(c.get("enhancement") or "").lower() or c.get("edition") == "polychrome"
 
     def _orders(self, scd):
-        """Scoring orders the player can set with `move hand`: each card in turn first (Hanging Chad retriggers it,
-        Photograph doubles the first face), the rest additive cards first and x-mult cards last."""
+        """Scoring orders the player can set with `move hand` (estimate scores cards left to right): each card in turn
+        first, the rest additive cards first and x-mult cards last (Hanging Chad retriggers the first card); with
+        Photograph also every face card as the FIRST face after all non-face additive cards (its x2 then doubles the
+        +mult they added: Mult cards, Lusty/Greedy, Onyx...), the other faces after it, x-mult non-faces last."""
         if not self.order_dep or len(scd) < 2:
             return [scd]
         slots = sorted(c.get("index") or 0 for c in scd)
-        out = []
-        for f in range(len(scd)):
-            rest = sorted((c for i, c in enumerate(scd) if i != f), key=self._xmult_card)
-            out.append([dict(c, index=ix) for c, ix in zip([scd[f]] + rest, slots)])
-        return out
+        fams = [[scd[f]] + sorted((c for i, c in enumerate(scd) if i != f), key=self._xmult_card)
+                for f in range(len(scd))]
+        if self.photograph:
+            faces = [c for c in scd if self._face_d(c)]
+            nonf = [c for c in scd if not self._face_d(c)]
+            add = [c for c in nonf if not self._xmult_card(c)]
+            xm = [c for c in nonf if self._xmult_card(c)]
+            if faces and add:
+                fams += [add + [f] + [g for g in faces if g is not f] + xm for f in faces]
+        return [[dict(c, index=ix) for c, ix in zip(o, slots)] for o in fams]
+
+    def _face_d(self, d):
+        """Face card test on a card dict (Pareidolia: every ranked card; Stone cards have no rank)."""
+        if "stone" in str(d.get("enhancement") or "").lower():
+            return False
+        r = RANKV.get(str(d.get("rank")), 0)
+        return r in (11, 12, 13) or (self.pareidolia and r > 0)
 
     def _est(self, t, scd, hd, st, rep, n):
         """estimate of the play in its best scoring order (estimate scores cards in index order)."""
         return max(self._est_raw(t, o, hd, st, rep, n) for o in self._orders(scd))
 
-    def best_first(self, play, held=()):
-        """Hand index of the card to move leftmost so the play scores its best (None when order does not matter)."""
+    def best_order(self, play, held=()):
+        """(card to move leftmost, full order) for the play's best scoring order, as hand indices; (None, None) when
+        order does not matter. The first is set only when moving that one card leftmost gives the best order
+        (Hanging Chad / Photograph with a face first); the full left-to-right order is always given."""
         if not self.order_dep:
-            return None
+            return None, None
         t, sc, _m = self.classify(play)
         scd = [c.d for c in sc]
         st = self._state(self.h0, self.d0, self.ctx0[3])
@@ -456,9 +473,17 @@ class RoundSolver:
         orders = self._orders(scd)
         vals = [self._est_raw(t, o, hd, st, None, len(play)) for o in orders]
         if max(vals) - min(vals) < 1:
-            return None
-        best = orders[vals.index(max(vals))][0]
-        return next((c.d.get("index") for c in sc if c.d.get("id") == best.get("id")), None)
+            return None, None
+        k = vals.index(max(vals))
+        by_id = {c.d.get("id"): c.d.get("index") for c in sc}
+        order = [by_id.get(c.get("id")) for c in orders[k]]
+        cur = sorted(c.d.get("index") or 0 for c in sc)
+        moved = [order[0]] + [i for i in cur if i != order[0]]
+        return (order[0] if moved == order else None), order
+
+    def best_first(self, play, held=()):
+        """Hand index of the card to move leftmost so the play scores its best (None when that is not enough)."""
+        return self.best_order(play, held)[0]
 
     def _certain(self, cand):
         """True when this PLAY plus the best plays of the cards already in hand (no draws used) clear the blind for
@@ -491,14 +516,15 @@ class RoundSolver:
         return False
 
     def _first_for(self, cand):
-        """best_first for a PLAY candidate of known cards (hand index), else None."""
+        """best_order for a PLAY candidate of known cards: (hand index to move leftmost or None, full scoring order of
+        hand indices or None)."""
         if cand["kind"] != PLAY or not self.order_dep:
-            return None
+            return None, None
         play = [self.slots[p] for p in cand["pos"]]
         if any(c is None for c in play):
-            return None
+            return None, None
         held = [c for c in self.slots if c is not None and c not in play]
-        return self.best_first(play, held)
+        return self.best_order(play, held)
 
     def _components(self, t, sc, played, held, h, d, rep, ob=None):
         """Score of a play split into its random parts (estimate itself is deterministic):
@@ -1246,7 +1272,8 @@ class RoundSolver:
                         "exp_score": tot / n, "hands_left": hl / n, "dollars": hl / n, "growth": g / n,
                         "cards_played": npl / n, "value": (hl + GROWTH_W * g - pw * npl) / n,
                         "discards_used": du / n, "n": n, "low_n": n < min(MIN_N, samples), "note": c["note"],
-                        "hand": c.get("hand"), "first_card": self._first_for(c), "certain": self._certain(c)})
+                        "hand": c.get("hand"), "certain": self._certain(c)})
+            res[-1]["first_card"], res[-1]["order"] = self._first_for(c)
         # slices where p is less trustworthy: few samples, final-hand jokers (Acrobat/Dusk slice is mis-calibrated on
         # recorded data), face-down cards (their identity is sampled)
         shaky = self.final_dep or bool(self.fd_pos)
@@ -1257,6 +1284,9 @@ class RoundSolver:
             if r["first_card"] is not None:
                 lab = next(x.label() for x in self.slots if x is not None and x.d.get("index") == r["first_card"])
                 r["note"] += f" [move {lab} leftmost: scores first]"
+            elif r["order"]:
+                labs = {x.d.get("index"): x.label() for x in self.slots if x is not None}
+                r["note"] += f" [scoring order left to right: {' '.join(labs.get(i, '?') for i in r['order'])}]"
         top_n = max((r["n"] for r in res), default=0)
         full_n = min(top_n, 120)
         top_p = max((r["p_model"] for r in res if r["n"] >= full_n), default=0.0)
@@ -1268,6 +1298,61 @@ class RoundSolver:
 
         res.sort(key=rank, reverse=True)
         return res
+
+
+def round_score_quantiles(state, estimate_fn, n=40, seed=7, hands=None, discards=None, hand_size=None,
+                          time_budget_s=2.0):
+    """What the current build scores in a fresh round, outside any blind: n rounds dealt from the full deck (every
+    card back in the deck, no boss, no card debuffs) with the current jokers and hand levels, played by the round
+    policy aiming at the highest total (discards used to dig). hands / discards / hand_size override the state's
+    per-round values (boss constraints: The Water 0 discards, The Needle 1 + 3 x Burglar hands, The Manacle -1 hand
+    size); by default hands_per_round / discards_per_round, Burglar applied (+3 hands, no discards).
+    Returns {"per_hand": [p25, p50, p75] of each round's mean scored hand, "round": [p25, p50, p75] of the round
+    total, "n": rounds played} (n < requested when time_budget_s runs out)."""
+    t0 = time.perf_counter()
+    cards, seen = [], set()
+    for c in _lst((state.get("deck") or {}).get("cards")) + _lst(state.get("hand")):
+        key = c.get("id")
+        if key is not None and key in seen:
+            continue
+        seen.add(key)
+        cards.append(dict(c, remaining=True, debuff=False, facing="front"))
+    burglars = sum(1 for j in _lst(state.get("jokers")) if j.get("name") == "Burglar" and not j.get("debuff"))
+    hp = int(hands if hands is not None else
+             int(state.get("hands_per_round") or state.get("hands_remaining") or 4) + 3 * burglars)
+    dp = int(discards if discards is not None else
+             0 if burglars else int(state.get("discards_per_round") or state.get("discards_remaining") or 0))
+    hs = int(hand_size if hand_size is not None else int(state.get("hand_size") or 8))
+    # a fresh round: nothing played yet (a SHOP state keeps the last round's played_this_round: Card Sharp)
+    hl = {k: dict(v, played_this_round=0) for k, v in (state.get("hand_levels") or {}).items()}
+    st = dict(state, phase="SELECTING_HAND", hand=[], hands_remaining=max(1, hp), discards_remaining=max(0, dp),
+              hand_size=max(1, hs), deck=dict(state.get("deck") or {}, cards=cards, draw_pile=len(cards)),
+              hand_levels=hl,
+              blind={"name": "Small Blind", "boss": False, "chips_needed": 1e12, "chips_scored": 0, "disabled": False})
+    rs = RoundSolver(st, estimate_fn, seed=seed)
+    totals, per = [], []
+    for s in range(n):
+        if s and time.perf_counter() - t0 > time_budget_s:
+            break
+        rng = random.Random(f"{seed}:quant:{s}")
+        perm = rs.pool[:]
+        rng.shuffle(perm)
+        hand, order = perm[:rs.hand_size], perm[rs.hand_size:]
+        if not hand:
+            break
+        kind, sel = rs.policy(hand, order, rs.h0, rs.d0, rs.need0, rs.ctx0)
+        ids = {id(c) for c in sel}
+        first = (kind, tuple(i for i, c in enumerate(hand) if id(c) in ids))
+        _ok, tot, h_left = rs.rollout(first, hand, order, rng)[:3]
+        totals.append(tot)
+        per.append(tot / max(1, rs.h0 - h_left))
+
+    def q(xs):
+        if not xs:
+            return [0.0, 0.0, 0.0]
+        xs = sorted(xs)
+        return [float(xs[min(len(xs) - 1, int(f * len(xs)))]) for f in (0.25, 0.5, 0.75)]
+    return {"per_hand": q(per), "round": q(totals), "n": len(totals)}
 
 
 def calibrate(p, jokerless=False):

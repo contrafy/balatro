@@ -252,7 +252,8 @@ rules. `[N]` = runs whose lesson states the rule; `†N` = deaths at that boss; 
   below the boss need, play the blinds and spend the shops on its replacement (VF82VQ4A).
 - Never skip holding money you could turn into score, nor at ante 3-4 with 0 xMult/a hand-gated engine: tag money comes
   after the skipped shop (6SGZCHWF $13, F64SACWK $28) [17]. Broke (< $5) or rent-broke: skip only the $0 Small,
-  never the Big, whose $5 funds the next shop (3VX28DKP, 41KHYKNY) [5].
+  never the Big, whose $5 funds the next shop (3VX28DKP, 41KHYKNY) [5]. Exceptions (the advisor names them): the
+  perishable-carrier skip above (the carrier would die before the boss) and the Throwback plan below.
 - Card-phase multipliers (Photograph, Glass, Steel, red seal, Bloodstone) only multiply base mult: +10-25%, not xMult [10].
 - Fill 6 slots by ante 4 (flat +mult in non-xMult slots); once mult >> chips (~55 on 40) buy +chips (HREAJTJ2) [6].
 - Never trade hand size for a flat joker on a Pair/Trips engine (BK2G3JSQ Stuntman/Luchador, JB7Q6L46 Ectoplasm) [2].

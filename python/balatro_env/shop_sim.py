@@ -398,7 +398,8 @@ def _round_state(st, base, blind, k, removed, growth=(), added=(), ob=None, boss
         hs -= 1
     rentals = sum(1 for j in jokers if j.get("rental"))
     cards = [dict(c, remaining=True) for c in _lst((st.get("deck") or {}).get("cards"))]
-    hl = st.get("hand_levels") or {}
+    # a fresh round: nothing played yet (the shop state keeps the last round's played_this_round: Card Sharp x3)
+    hl = {h: dict(v, played_this_round=0) for h, v in (st.get("hand_levels") or {}).items()}
     if ob is not None and hl:
         counts = dict(ob[1])
         hl = {h: dict(v, played=counts.get(h, int(v.get("played") or 0))) for h, v in hl.items()}
