@@ -9362,3 +9362,11 @@
 7803	a3	-	Straight	KS QH JH TD 9S	Scary Face,Smiley Face,Half Joker,Hologram(holo)	est=4901	actual=4901	OK
 7802	a3	The Manacle	Pair	KS KH	Shoot the Moon,Banner,Business Card	est=1305	actual=1305	OK
 7805	a2	-	Pair	4S 4C	Half Joker,Smiley Face	est=759	actual=759	OK
+7802	a3	The Manacle	High Card	6D(foil)	Shoot the Moon,Banner,Business Card	est=1647	actual=1647	OK
+7805	a2	-	Pair	2C 2D	Half Joker,Smiley Face	est=667	actual=667	OK
+7809	a4	-	Full House	KS KH QS QC QD	Mystic Summit,Smiley Face,Joker Stencil	est=21160	actual=21160	OK
+7804	a2	The Window	Four of a Kind	4S 4H 4C 4D(DEBUFF)	Blue Joker,Devious Joker,Photograph,Ancient Joker	est=1617	actual=1617	OK
+7810	a1	The Pillar	High Card	KH	The Order	est=15	actual=15	OK
+7805	a2	-	Pair	4C 4D	Half Joker,Smiley Face	est=759	actual=759	OK
+7808	a1	-	Two Pair	TC TD 4H 4D	Matador	est=96	actual=96	OK
+7804	a2	The Window	Pair	2C 2D(DEBUFF)	Blue Joker,Devious Joker,Photograph,Ancient Joker	est=303	actual=303	OK

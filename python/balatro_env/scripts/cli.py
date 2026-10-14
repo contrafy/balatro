@@ -387,7 +387,11 @@ def show(d):
             pay += "; no round end, so your perishable carrier does not tick and stays alive for the boss"
         if stake_n >= 2 and bs.get("on_deck") == "Big" and thr_ok:
             big_t = (ch.get("Big") or {}).get("tag") or "Big Blind tag"
-            print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss {'with the 1.3x+ margin' if thr else 'with your carrier alive'}, so skip the Big too: {pay.replace(str(small.get('tag')), str(big_t)) if small.get('tag') else big_t}; "
+            big_tk = (ch.get("Big") or {}).get("tag_key")
+            # the Big's OWN tag (7804 AJGH6ECT: the text described the Small's Buffoon tag while the Big's was Rare)
+            base_pay = NOW_TAGS.get(tk) or LATER_TAGS.get(tk) or f"the {small.get('tag')} tag"
+            pay_b = ((NOW_TAGS.get(big_tk) if big_tk != tk else None) or LATER_TAGS.get(big_tk) or f"the {big_t}") + pay[len(base_pay):]
+            print(f"ADVICE: b skip   ({'Throwback' if thr else 'Perishable-carrier'} skip plan: your rounds beat this ante's boss {'with the 1.3x+ margin' if thr else 'with your carrier alive'}, so skip the Big too: {pay_b} ({big_t}); "
                   f"Boss Tag rerolls a Wall/Violet boss, Garbage/Skip/Economy pay money for the post-boss shop. The boss is never skipped.)")
         elif stake_n >= 2 and bs.get("on_deck") == "Small" and (ante_n <= 4 or thr_ok) and skip_ok:
             gold = f" Skipping also avoids one round-end ({sum(1 for j in lst(d.get('jokers')) if _stk(j)['rental'])} rental charge(s), one perishable tick)." if stake_n >= 8 and any(_stk(j)["rental"] or _stk(j)["perishable"] for j in lst(d.get("jokers"))) else ""
@@ -2714,7 +2718,7 @@ def shop_advise_sim(d, budget_s=6.0):
     m = re.search(r"b (buy|buyuse|pack) (\d+)", adv)
     adv_cmd = f"{'pack' if m.group(1) == 'pack' else 'buy'} {m.group(2)}" if m else None
     sim_cmds = {r["option"].get("_cmd") for r in feas if r["option"].get("_cmd")}
-    keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING")) or \
+    keep_rule = any(w in adv for w in ("COUNTER", "SELL FIRST", "USE first", "SELL first", "rerolls the boss", "MAIN SCALING", "CAMPFIRE FEED")) or \
         (adv_cmd not in sim_cmds and adv.split("(")[0].strip() not in ("ADVICE: LEAVE -> b endshop", "ADVICE: REROLL -> b reroll") and gain < 0.05)
     mine0 = next((r for r in feas if r["option"].get("_cmd") == adv_cmd), None)
     g_rule = (key(mine0) - key(base)) if mine0 and base else 0.0
@@ -3403,6 +3407,18 @@ def _shop_rules(d):
         options = [(sc + (25 if cls.startswith("PLUS") else 0), cls, cmd, label, cost, True if cls.startswith("PLUS") else strong, ns)
                    for sc, cls, cmd, label, cost, strong, ns in options]
         print("  (ante 6+ with $40+: money is worth nothing unspent; flat +chips/+mult jokers weighted up, sell utility jokers to fit them)")
+    camp = next((j for j in jokers if j.get("name") == "Campfire" and not j.get("debuff")), None)
+    if camp is not None:
+        # Campfire: +x0.25 per card SOLD (resets after the boss): a joker bought and sold in the same shop at <= $1 net feeds
+        # it (a rental sold before the round end never pays rent; 7804 AJGH6ECT)
+        for c in lst(sh.get("jokers")):
+            if c.get("set") != "Joker" or _stk(c)["eternal"]:
+                continue
+            cost_c = int(c.get("cost") or 0)
+            net = cost_c - max(1, cost_c // 2)
+            if net <= 1 and cost_c <= money and (free > 0 or _joker_edition(c) == "negative"):
+                options.append((72, "FEED", f"buy {c['index']}", f"{c.get('name')}{stickers(c)} ${cost_c} [CAMPFIRE FEED: buy, then sell it at once (`b sell` the new last joker): "
+                                f"+x0.25 Campfire for ${net} net; Campfire resets after the boss]", cost_c, True, True))
     # the printed ranking is the final one: the ADVICE below walks this exact list top-down (skips are printed)
     options.sort(key=lambda t: -t[0])
     for o in options:

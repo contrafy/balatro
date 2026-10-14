@@ -2687,7 +2687,9 @@ def shop_advise_sim(d, budget_s=6.0):
         if st["eternal"] and st["rental"] and ante_s < 7:
             # exception (7806 lost the ante-4 Small by 79 after a $1 eternal-rental The Trio at SIM +0.23 was blocked):
             # an xMult while SCORE CHECK < 0.5 and the SIM gain is >= 0.15
-            x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS
+            x_cls = classify_joker(aj.get("name"), 0, main_hand(d))[0].startswith("XMULT") or aj.get("name") in TYPE_X_JOKERS or \
+                (aj.get("name") in ("Blueprint", "Brainstorm") and any(classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))))
+            # a copier of an owned xMult is an xMult (7810 UIL7HPIQ: Blueprint doubling the only xMult Ramen was barred)
             if not (x_cls and sc_ratio_s < 0.5 and key(r) - key0 >= 0.15):
                 return False
         # a second PERMANENT rental before ante 6 drains the run; a perishable one is bounded, and a buy the rules already
@@ -2941,10 +2943,11 @@ def _shop_rules(d):
     proj = int(round_est(d, mh) * ((deck_best / best_hand) if deck_best and best_hand else 1))
     bn_t = (ch_now.get("Boss") or {}).get("name") if nk == "Boss" else None
     if bn_t in ("The Water", "The Needle"):
-        # the boss's own constraint: The Water 0 discards (a deal's median best, not the 75th pct), The Needle 1 hand
-        # (7802 KLV4P2RZ lost The Water by 18: projected ~9280/hand vs 5.7-6.5k real)
-        med = deck_best_est(d, pct=0.5) or best_hand
-        proj = int(med * (1 if bn_t == "The Needle" else _hands_pr(d)))
+        # the boss's own constraint: The Water 0 discards, normal hands (a deal's median best per hand, not the 75th pct;
+        # 7802 KLV4P2RZ lost The Water by 18: projected ~9280/hand vs 5.7-6.5k real); The Needle 1 hand but all discards
+        # (the best hand after digging: the 90th pct of a deal; 7806 J3REMTSE scored 7952 vs a 0.44x projection)
+        per = deck_best_est(d, pct=0.9 if bn_t == "The Needle" else 0.5) or best_hand
+        proj = int(per * (1 if bn_t == "The Needle" else _hands_pr(d)))
     # the last shop before a boss: below 1.25x the floor is off too (dying with money is the worst outcome)
     tight = bool(need_next) and proj < (1.25 if nk == "Boss" else 1.2) * need_next
     if tight:
