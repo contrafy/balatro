@@ -3325,7 +3325,7 @@ def pack_advise(d):
         money = int(d.get("money") or 0)
         SPEC = {"The Soul": (100 if n_j < slots else 5, None, "a Legendary joker"),
                 "Black Hole": (90, None, "+1 level to every hand"),
-                "Wraith": ((75 if n_j < slots and money <= 10 else (40 if n_j < slots else 5)) if not any(j.get("name") == "Joker Stencil" for j in jokers) else 15, None,
+                "Wraith": ((max(5, 75 - 3 * max(money, 0)) if n_j < slots else 5) if not any(j.get("name") == "Joker Stencil" for j in jokers) else 15, None,
                            "a random Rare joker, money set to $0" + ("; it fills a slot your Joker Stencil counts" if any(j.get("name") == "Joker Stencil" for j in jokers) else "")),
                 "Aura": (70, tgt, "Foil/Holo/Polychrome on the target card"),
                 "Cryptid": (65 if glass else 45, glass or tgt, "2 copies of the target card"),

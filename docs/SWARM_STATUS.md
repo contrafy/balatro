@@ -51,30 +51,31 @@ _Updated 07:50._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 08:35:42 by `balatro-data status` (edits inside this block are overwritten). Player runs: 222 (214 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 08:55:38 by `balatro-data status` (edits inside this block are overwritten). Player runs: 230 (221 finished, 9 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (8)
+### Live runs (9)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | YSBWEA3U | 8 | PACK_OPENING | 5 | 10 | 5 | Big Blind (37500) | SELECT_PACK_CARD {"index":3} | Bonus 3C: +30 chips, odd (+31 Odd Todd) and Fib (+8); a Queen (glass x2 pre-joker) adds nothing to … | 9s |
-| 7802 | port-7802 | claude-opus-5-5 | T6BV54GN | 8 | ROUND_EVAL | 5 | 9 | 12 | The Arm (50000) | CASH_OUT | cash out Arm | 52s |
-| 7803 | port-7803 | claude-opus-5-5 | CLA5SVN7 | 8 | ROUND_EVAL | 7 | 18 | 9 | Small Blind (110000) | CASH_OUT | cash out small | 6s |
-| 7804 | port-7804 | claude-opus-5-5 | Z9WILFCR | 8 | SHOP | 1 | 2 | 3 | Big Blind (450) | SHOP_END | keep for interest-free next shop; Venus is off-type | 2s |
-| 7805 | port-7805 | claude-opus-5-5 | UH5NGY7A | 8 | SELECTING_HAND | 3 | 7 | 3 | Small Blind 3096/3200 | PLAY_HAND {"card_indices":[4]} | need 104; High Card 9S (Wrathful +3) est 168 clears with 1 card, for the spare hand | 0s |
-| 7807 | port-7807 | claude-opus-5-5 | BG8RRBW2 | 8 | PACK_OPENING | 2 | 5 | 3 | Big Blind (1500) | SELECT_PACK_CARD {"index":2} | Mystic Summit +15 mult at 0 discards, unstickered permanent (SIM 0.90 vs Lusty 0.68) | 3s |
-| 7809 | port-7809 | claude-opus-5-5 | 31V7KZ1X | 8 | SELECTING_HAND | 4 | 10 | 9 | Big Blind 2779/13500 | PLAY_HAND {"card_indices":[1,2,7,8]} | Two Pair AA33 (Hack retriggers 3s) est 13607 vs 10721 remaining | 3s |
-| 7810 | port-7810 | claude-sonnet-5-5 | YSPYCXK1 | 8 | SELECTING_HAND | 5 | 10 | 16 | The Flint 1755/50000 | REORDER {"area":"hand","order":[3,1,2,4,5,6,7,8]} | put bonus TC first so Hanging Chad triples its +30 chips and Walkie bonus | 6s |
+| 7801 | port-7801 | claude-fable-5-1 | D9KFK2PH | 8 | BLIND_SELECT | 3 | 6 | 25 | Small Blind (3200) | SKIP_BLIND | Skip Small 3200 (/bin/bash pay) for Ethereal tag: free Spectral pack now; best hand ~4600 > boss/2 … | 28s |
+| 7802 | port-7802 | claude-opus-5-5 | AMI42NSL | 8 | ROUND_EVAL | 3 | 6 | 2 | Small Blind (3200) | CASH_OUT | cash out small | 10s |
+| 7803 | port-7803 | claude-opus-5-5 | KLHEEA8D | 8 | SELECTING_HAND | 3 | 7 | 7 | Big Blind 2900/4800 | PLAY_HAND {"card_indices":[4,5,8,7,6]} | Pair 99 est 2160 vs 1900 left; 1 hand + 1 discard backup | 7s |
+| 7804 | port-7804 | claude-opus-5-5 | Z9WILFCR | 8 | SHOP | 4 | 8 | 9 | Small Blind (9000) | SHOP_BUY_BOOSTER {"slot":1} | EMERGENCY/TIGHT floor off: Arcana hunting Wheel of Fortune (poly joker), Empress mult cards (x3 by … | 9s |
+| 7805 | port-7805 | claude-opus-5-5 | UH5NGY7A | 8 | SELECTING_HAND | 5 | 14 | 2 | Big Blind 0/37500 | DISCARD {"card_indices":[4,5,7,8]} | Two Pair 12320 pace 33264 < 37500; solver best p 0.33: keep KS TS JS 9H for spade flush / K-Q-J-T-9… | 0s |
+| 7806 | port-7806 | claude-opus-5-5 | U377P3KF | 8 | ROUND_EVAL | 2 | 4 | 19 | Big Blind (1500) | CASH_OUT | Big won, cash out | 9s |
+| 7807 | port-7807 | claude-opus-5-5 | BG8RRBW2 | 8 | SELECTING_HAND | 5 | 12 | 7 | The Goad 25946/50000 | PLAY_HAND {"card_indices":[1,2,3,4,8]} | 2P TT77 est 8464 + 2C filler, keep 33 for next 2P draw; leaves 15590 over 2 (p 0.70) | 38s |
+| 7809 | port-7809 | claude-opus-5-5 | Z9ZYA81P | 8 | BLIND_SELECT | 2 | 4 | 1 | The Wall (4000) | SELECT_BLIND | The Wall 4000, boss cannot be skipped; Riff-raff fills 2 slots | 26s |
+| 7810 | port-7810 | claude-sonnet-5-5 | YSRFMUJQ | 8 | SHOP | 4 | 5 | 27 | Small Blind (9000) | REORDER {"area":"jokers","order":[6,1,2,3,4,5]} | Mad +10 mult must sit left of Photograph x2 and Vampire xMult | 19s |
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 23 | 0 | 23 | 0 | 0 | 3.91 | 7 |
+| claude-fable-5-1 | 8 | Black | 24 | 0 | 24 | 0 | 0 | 3.96 | 7 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 140 | 1 | 139 | 0 | 0 | 3.91 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 45 | 0 | 44 | 0 | 1 | 3.33 | 8 |
+| claude-opus-5-5 | 8 | Black | 145 | 1 | 144 | 0 | 0 | 3.92 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 46 | 0 | 45 | 0 | 1 | 3.39 | 8 |
 
 ### Deepest runs
 
@@ -85,36 +86,36 @@ _Generated 2026-10-14 08:35:42 by `balatro-data status` (edits inside this block
 | 3 | E57ZB14D | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 249600/400000 | [7805_E57ZB14D.md](runs/7805_E57ZB14D.md) |
 | 4 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
 | 5 | A5LJXXMW | claude-opus-5-5 | 8 | Black | loss | 8 | Crimson Heart 275896/400000 | [7804_A5LJXXMW.md](runs/7804_A5LJXXMW.md) |
-| 6 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
-| 7 | X5MG1LC2 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 158968/165000 | [7802_X5MG1LC2.md](runs/7802_X5MG1LC2.md) |
-| 8 | I9RJP8E5 | claude-opus-5-5 | 8 | Black | loss | 7 | The Flint 157176/220000 | [7806_I9RJP8E5.md](runs/7806_I9RJP8E5.md) |
-| 9 | Z6ZJWRC4 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 146453/165000 | [7809_Z6ZJWRC4.md](runs/7809_Z6ZJWRC4.md) |
-| 10 | MKHAVQ6W | claude-fable-5-1 | 8 | Black | loss | 7 | The Eye 37553/220000 | [7802_MKHAVQ6W.md](runs/7802_MKHAVQ6W.md) |
+| 6 | CLA5SVN7 | claude-opus-5-5 | 8 | Black | loss | 7 | The Ox 79619/220000 | [7803_CLA5SVN7.md](runs/7803_CLA5SVN7.md) |
+| 7 | YJGGELMB | claude-opus-5-5 | 8 | Black | loss | 7 | The Manacle 25312/220000 | [7806_YJGGELMB.md](runs/7806_YJGGELMB.md) |
+| 8 | X5MG1LC2 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 158968/165000 | [7802_X5MG1LC2.md](runs/7802_X5MG1LC2.md) |
+| 9 | I9RJP8E5 | claude-opus-5-5 | 8 | Black | loss | 7 | The Flint 157176/220000 | [7806_I9RJP8E5.md](runs/7806_I9RJP8E5.md) |
+| 10 | Z6ZJWRC4 | claude-opus-5-5 | 8 | Black | loss | 7 | Big Blind 146453/165000 | [7809_Z6ZJWRC4.md](runs/7809_Z6ZJWRC4.md) |
 
 ### Data validity
 
-- Player runs: 222 files in manifest; schema_ok 222, schema invalid 0; replay_ok 209, replay failed 0, awaiting replay 3, open/unended 10; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 115 / failed 0; gui (live) ok 108 / failed 0; cross-checked by both 14, disagreeing 0.
-- All files (incl. fuzz + replays): 404; schema_ok 402; replay_ok 215 (headless 115, gui 114); replay failed 0; awaiting replay 176; quarantined 2.
+- Player runs: 230 files in manifest; schema_ok 230, schema invalid 0; replay_ok 216, replay failed 0, awaiting replay 3, open/unended 11; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 122 / failed 0; gui (live) ok 109 / failed 0; cross-checked by both 15, disagreeing 0.
+- All files (incl. fuzz + replays): 413; schema_ok 411; replay_ok 222 (headless 122, gui 115); replay failed 0; awaiting replay 177; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 1836 |
+| port-7805 | 2 | 2 | 1896 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 1464 |
-| port-7803 | 1 | 1 | 1894 |
-| port-7804 | 1 | 1 | 1540 |
-| port-7807 | 1 | 1 | 1996 |
+| port-7802 | 1 | 1 | 1522 |
+| port-7803 | 1 | 1 | 1950 |
+| port-7804 | 1 | 1 | 1589 |
+| port-7807 | 1 | 1 | 2064 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 1101 |
-| port-7806 | 0 | 0 | 1918 |
+| port-7801 | 0 | 0 | 1149 |
+| port-7806 | 0 | 0 | 1980 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 1788 |
-| port-7810 | 0 | 0 | 2130 |
+| port-7809 | 0 | 0 | 1851 |
+| port-7810 | 0 | 0 | 2197 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

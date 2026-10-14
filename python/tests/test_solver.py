@@ -149,6 +149,21 @@ def test_misprint_is_sampled_per_hand():
     assert 0.55 < top["p_model"] < 0.8
 
 
+def test_hanging_chad_retriggers_the_best_card_the_player_can_move_first():
+    # 7810 YSPYCXK1: Chad retriggers the first scoring card; `move hand` lets the player put the Glass King first
+    st = state(["KS", "KD", "9C", "7D", "5S", "4H", "3C", "2D"], need=500, hands=3, discards=2,
+               jokers=["Hanging Chad"])
+    st["hand"][1]["enhancement"] = "m_glass"
+    rs = solver.RoundSolver(st, estimate)
+    kk = rs.slots[:2]
+    in_hand_order = estimate("Pair", [c.d for c in kk], [], st, played_n=2)[0]
+    best, _t = rs.score(kk, [], 3, 2, rs.ctx0)
+    assert best > in_hand_order  # glass x2 three times instead of once
+    assert rs.best_first(kk) == 2
+    top = next(r for r in plan(st, samples=40) if r["action"] == "PLAY" and sorted(r["cards"]) == [1, 2])
+    assert top["first_card"] == 2 and "move KD leftmost" in top["note"]
+
+
 def test_acrobat_x3_only_on_final_hand_and_forced_dig_is_reported_raw():
     # 7804 I9HDGAQA: 2 hands, 0 discards, 4 clubs kept by a dig; the 5th club is a plain hypergeometric draw
     st = state(["AC", "7C", "6C", "2C", "TS", "8D", "6H", "5H"], need=2000, hands=2, discards=0,

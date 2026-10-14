@@ -187,3 +187,16 @@ def test_every_rental_pays_rent_each_round_and_dead_shops_are_flagged():
     assert two["money_path"][0] < 0 and any("shop is dead" in n for n in two["notes"])
     assert two["money_path"][-1] <= base["money_path"][-1] - 6  # $1 cost + $9 rent, partly offset by more unused hands
     assert two["delta_adj"] <= two["delta"] - 0.09 + 1e-9
+
+
+def test_obelisk_growth_carries_across_simulated_rounds():
+    # 7803 CLA5SVN7: the SIM restarted Obelisk at the shop's x_mult every blind and suggested selling a growing one
+    st = shop_state(jokers=[joker("Obelisk", ability={"x_mult": 1.0, "extra": 0.2})], ante=1, small="Defeated")
+    st["hand_levels"]["Pair"]["played"] = 6
+    sim = shop_sim._OptionSim(shop_sim._solver(), estimate, st, shop_sim.upcoming_blinds(st, 3, BLIND_BASE), 0)
+    sim.base = st
+    for s in range(4):
+        sim.sample(s)
+    later = [key[4] for key in sim.solvers if key[0] > 0]
+    assert later and all(ob is not None for ob in later)
+    assert any(ob[0] > 1.0 for ob in later)  # non-max types played in a round raise the next round's Obelisk
