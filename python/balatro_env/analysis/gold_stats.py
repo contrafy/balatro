@@ -1,8 +1,9 @@
 """Gold Stake (stake 8) run statistics from recorded trajectories.
 
-Rerun: `cd python && python -m balatro_env.analysis.gold_stats [--data-dir ../data] [--out FILE]`.
-Prints Markdown tables (deaths, ante-start profile, economy, shop supply, decisions, score curve) used by
-docs/GOLD_ANALYSIS.md. Read-only over `<data>/trajectories/**`.
+Rerun: `cd python && python -m balatro_env.analysis.gold_stats [--data-dir ../data] [--out FILE] [--since-client SHA]`.
+Prints Markdown tables (deaths, ante-start profile, economy, advisor versions, shop supply, decisions, score curve)
+used by docs/GOLD_ANALYSIS.md. `--since-client SHA` adds a before/after split at the first step made with cli.py@SHA.
+Read-only over `<data>/trajectories/**`.
 
 Run filter: header stake 8, `start_meta.agent` not `test-*`/`replay`, no `replay_of`, seed not `FUZZ*`.
 Runs without an `end` line are still being played (or crashed): they feed the supply/economy/score tables but
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import re
+from datetime import datetime
 import statistics
 import sys
 from collections import Counter, defaultdict
@@ -159,6 +161,9 @@ class Run:
     model: str
     outcome: str
     finished: bool
+    clients: Counter = field(default_factory=Counter)  # meta.client (cli.py@<sha>) -> steps
+    started_ms: int = 0
+    client_first_ms: dict = field(default_factory=dict)  # client -> first step ts_ms in this run
     rounds: list = field(default_factory=list)
     ante_start: dict = field(default_factory=dict)
     money: list = field(default_factory=list)  # (ante, category, amount)
@@ -200,7 +205,12 @@ def analyse(traj) -> Run:
     models = Counter((s.get("meta") or {}).get("model") for s in steps if (s.get("meta") or {}).get("model"))
     run = Run(key=traj.key, seed=traj.start_params.get("seed"), port=(traj.header or {}).get("port"),
               model=(models.most_common(1)[0][0] if models else "?"), outcome=traj.outcome,
-              finished=traj.end is not None)
+              finished=traj.end is not None,
+              clients=Counter((s.get("meta") or {}).get("client") or "?" for s in steps),
+              started_ms=int((traj.header or {}).get("started_at_ms") or 0))
+    for s in steps:
+        c = (s.get("meta") or {}).get("client") or "?"
+        run.client_first_ms.setdefault(c, int(s.get("ts_ms") or 0))
     final_obs = (traj.end or {}).get("final_obs")
     cur: Round | None = None
     view = None
@@ -723,6 +733,67 @@ def sec_sightings(runs: list[Run]) -> str:
                 f"{pct(saw, len(deep))}.")
 
 
+VERSION_COLS = ["runs", "finished", "models", "mean final ante", "reached ante 3", "reached ante 4", "reached ante 5",
+                "wins", "median $ at ante 3 start", "median $ at ante 4 start", "rentals bought/run", "rent $/run",
+                "reroll $/run", "Buffoon $/run", "interest $/run"]
+
+
+def version_metrics(g: list[Run]) -> list[Any]:
+    """Outcome and spending columns (VERSION_COLS) for a group of runs; outcome/spend over finished runs only."""
+    fin = [r for r in g if r.finished]
+    tot = [defaultdict(float, {c: sum(a for _, cc, a in r.money if cc == c) for c in
+                               ("rent", "reroll", "pack_kind:Buffoon", "interest")}) for r in fin]
+    return [len(g), len(fin), ", ".join(f"{m.replace('claude-', '')} {n}" for m, n in Counter(r.model for r in g).most_common()),
+            mean([r.max_ante for r in fin])] + \
+        [pct(sum(1 for r in fin if r.max_ante >= a), len(fin)) for a in (3, 4, 5)] + \
+        [sum(1 for r in fin if r.outcome == "win"),
+         med([r.ante_start[3]["money"] for r in fin if 3 in r.ante_start]),
+         med([r.ante_start[4]["money"] for r in fin if 4 in r.ante_start]),
+         mean([sum(1 for j in r.jokers.values() if "rental" in j["sticker"] and j["src"] in ("shop", "pack")) for r in fin]),
+         mean([-t["rent"] for t in tot]), mean([-t["reroll"] for t in tot]),
+         mean([-t["pack_kind:Buffoon"] for t in tot]), mean([t["interest"] for t in tot])]
+
+
+def sec_by_client(runs: list[Run]) -> str:
+    """Outcomes and spending behaviour per advisor version (`meta.client` = cli.py@<sha>, the run's majority client;
+    the client usually changes mid-run as cli.py is updated). Versions are ordered by their first run's start time."""
+    groups = defaultdict(list)
+    for r in runs:
+        groups[r.clients.most_common(1)[0][0] if r.clients else "?"].append(r)
+    rows = []
+    for client, g in sorted(groups.items(), key=lambda x: min(r.started_ms for r in x[1])):
+        first = min(r.started_ms for r in g)
+        when = datetime.fromtimestamp(first / 1000).strftime("%m-%d %H:%M") if first else "?"
+        rows.append([client.replace("cli.py@", ""), when, sum(1 for r in g if len(r.clients) > 1)] + version_metrics(g))
+    return md(["majority client (cli.py@)", "first run", "mixed-client runs"] + VERSION_COLS, rows) + \
+        "\n\nOutcome/spend columns over finished runs; seeds and models differ between versions, so compare with care."
+
+
+def sec_since(runs: list[Run], sha: str) -> str:
+    """Before/after split at the first step made with cli.py@<sha...>: a client counts as 'new' if it first appears at
+    or after that moment; a run is 'after' when at least half its steps used new clients."""
+    hits = [ms for r in runs for c, ms in r.client_first_ms.items() if c.replace("cli.py@", "").startswith(sha)]
+    if not hits:
+        return f"No step was made with cli.py@{sha} yet."
+    cutoff = min(hits)
+    first_seen = defaultdict(lambda: float("inf"))
+    for r in runs:
+        for c, ms in r.client_first_ms.items():
+            first_seen[c] = min(first_seen[c], ms)
+    groups = defaultdict(list)
+    for r in runs:
+        new = sum(n for c, n in r.clients.items() if first_seen[c] >= cutoff)
+        share = new / max(1, sum(r.clients.values()))
+        groups["after (all steps)" if share == 1 else "after (>=50% of steps)" if share >= 0.5 else
+               "before (some steps after)" if share > 0 else "before (no steps after)"].append(r)
+    order = ["before (no steps after)", "before (some steps after)", "after (>=50% of steps)", "after (all steps)"]
+    rows = [[k] + version_metrics(groups[k]) for k in order if groups[k]]
+    when = datetime.fromtimestamp(cutoff / 1000).strftime("%m-%d %H:%M")
+    return (f"Cutoff: first step with cli.py@{sha} at {when}.\n\n" + md(["group"] + VERSION_COLS, rows) +
+            "\n\nCaveat: young 'after' runs that already finished are mostly early deaths (survivorship); compare once "
+            "the after-group has 10+ finished runs, and read the spend columns (behaviour) before the outcome columns.")
+
+
 def sec_run_economy(runs: list[Run]) -> str:
     rows = []
     for r in sorted([r for r in runs if r.finished and r.max_ante >= 3], key=lambda r: -r.max_ante):
@@ -875,7 +946,7 @@ def sec_score(runs: list[Run]) -> str:
             f"\n\nObserved median growth of a run's best hand per ante: {g}.\n\nBest hand per ante, runs reaching ante 5+:\n\n" + t3)
 
 
-def report(runs: list[Run]) -> str:
+def report(runs: list[Run], since: str | None = None) -> str:
     fin = [r for r in runs if r.finished]
     head = (f"# Gold Stake statistics (generated by balatro_env.analysis.gold_stats)\n\n"
             f"Player Gold runs: {len(runs)} ({len(fin)} finished, {len(runs) - len(fin)} live/unfinished), "
@@ -884,10 +955,14 @@ def report(runs: list[Run]) -> str:
             ("1c. Depth by first reliable/growth xMult", sec_first_xmult),
             ("2. Economy per ante", sec_economy), ("2b. Interest", sec_interest), ("2c. Stickered jokers and rent", sec_stickers),
             ("2d. Money per run (runs reaching ante 3)", sec_run_economy),
+            ("2e. By advisor version", sec_by_client),
             ("3. Shop and pack supply", sec_supply), ("3b. Every reliable/growth xMult seen", sec_sightings),
             ("4a. Small Blind: skip vs play", sec_small_skip),
             ("4b. Rerolls vs planets at ante 3-5", sec_reroll_vs_planet), ("4c. Packs vs singles", sec_packs_vs_singles),
             ("5. Score requirement vs achieved", sec_score)]
+    if since:
+        secs.insert(secs.index(("2e. By advisor version", sec_by_client)) + 1,
+                    (f"2f. Before/after cli.py@{since}", lambda rs: sec_since(rs, since)))
     return head + "\n".join(f"\n## {name}\n\n{fn(runs)}\n" for name, fn in secs)
 
 
@@ -896,9 +971,10 @@ def main(argv: list[str] | None = None) -> int:
     default_root = Path(__file__).resolve().parents[3] / "data"
     ap.add_argument("--data-dir", default=str(default_root))
     ap.add_argument("--out", help="also write the report to this file")
+    ap.add_argument("--since-client", metavar="SHA", help="add a before/after split at the first step made with cli.py@SHA")
     args = ap.parse_args(argv)
     runs = load_runs(Path(args.data_dir))
-    text = report(runs)
+    text = report(runs, args.since_client)
     if args.out:
         Path(args.out).write_text(text, encoding="utf-8")
     sys.stdout.reconfigure(encoding="utf-8")

@@ -40,8 +40,8 @@ def shop(jokers=(), shop_jokers=(), money=10, ante=2, boosters=()):
                                                              "Boss": {"name": "The Hook", "chips": 2000, "state": "Upcoming"}}}}
 
 
-def blind_select(tag, jokers=()):
-    return {"phase": "BLIND_SELECT", "stake": 8, "ante": 1, "money": 4, "joker_slots": 6, "jokers": list(jokers),
+def blind_select(tag, jokers=(), ante=1):
+    return {"phase": "BLIND_SELECT", "stake": 8, "ante": ante, "money": 4, "joker_slots": 6, "jokers": list(jokers),
             "blind_select": {"on_deck": "Small", "choices": {"Small": {"name": "Small Blind", "chips": 300, "state": "Select", "tag": tag, "tag_key": tag},
                                                              "Big": {"name": "Big Blind", "chips": 450, "state": "Upcoming"},
                                                              "Boss": {"name": "The Hook", "chips": 600, "state": "Upcoming"}}}}
@@ -101,14 +101,15 @@ def test_sell_precheck_blocks_eternal(monkeypatch):
         cli.pre_checks("sell", "SELL_JOKER", {"index": 1}, [1], d)
 
 
-@pytest.mark.parametrize("tag,jokers,expect", [
-    ("tag_rare", [], "b blind"),            # pays in the next shop, after the Big Blind
-    ("tag_polychrome", [], "b blind"),
-    ("tag_buffoon", [], "b skip"),          # Mega Buffoon pack opens right away
-    ("tag_rare", [joker("Joker", 1), joker("Jolly Joker", 2)], "b skip"),
+@pytest.mark.parametrize("tag,jokers,ante,expect", [
+    ("tag_rare", [], 1, "b blind"),            # pays in the next shop, after the Big Blind
+    ("tag_polychrome", [], 1, "b blind"),
+    ("tag_buffoon", [], 1, "b skip"),          # Mega Buffoon pack opens right away
+    ("tag_rare", [joker("Joker", 1), joker("Jolly Joker", 2)], 1, "b blind"),  # ante 1: joker-now tags only
+    ("tag_rare", [joker("Joker", 1), joker("Jolly Joker", 2)], 2, "b skip"),
 ])
-def test_small_blind_skip_advice(tag, jokers, expect):
-    assert expect in _advice(_out(cli.show, blind_select(tag, jokers)))
+def test_small_blind_skip_advice(tag, jokers, ante, expect):
+    assert expect in _advice(_out(cli.show, blind_select(tag, jokers, ante)))
 
 
 def _card(rank, suit, i):
@@ -292,3 +293,98 @@ def test_spectral_pack_advice_with_target():
          "hand_levels": {}, "pack": {"kind": "Spectral", "choices_remaining": 1,
                                      "cards": [{"name": "Sigil", "set": "Spectral"}, {"name": "Aura", "set": "Spectral"}]}}
     assert _advice(_out(cli.pack_advise, d)).startswith("ADVICE: PICK -> b pick 2 1")
+
+
+def test_no_reroll_without_20_dollars_left():
+    d = shop(jokers=[joker("Joker", 1), joker("Jolly Joker", 2)], money=15, ante=3)
+    assert "REROLL" not in _advice(_out(cli.shop_advise, d))
+
+
+def test_arcana_pack_respects_8_dollar_floor():
+    d = shop(jokers=[joker("Joker", 1), joker("Jolly Joker", 2)], money=10, ante=3,
+             boosters=[{"index": 1, "name": "Arcana Pack", "set": "Booster", "cost": 4}])
+    assert "pack 1" not in _advice(_out(cli.shop_advise, d))
+
+
+def test_flat_rental_sold_when_two_others_carry():
+    owned = [joker("Joker", 1), joker("Jolly Joker", 2), joker("Zany Joker", 3, rental=True)]
+    d = shop(jokers=owned, money=10, ante=3)
+    assert _advice(_out(cli.shop_advise, d)).startswith("ADVICE: SELL -> b sell 3")
+
+
+def test_gros_michel_bought_as_only_mult_source():
+    d = shop(jokers=[joker("Sly Joker", 1)], shop_jokers=[{"index": 1, "name": "Gros Michel", "set": "Joker", "cost": 5, "ability": {"extra": {"mult": 15}}}], money=8, ante=2)
+    out = _out(cli.shop_advise, d)
+    assert "AVOID" not in out.split("Gros Michel")[1][:80] and "b buy 1" in _advice(out)
+
+
+def test_sly_fires_on_flush_with_a_pair():
+    flush = [_card("Jack", "Diamonds", 1), _card("10", "Diamonds", 2), _card("10", "Diamonds", 3), _card("5", "Diamonds", 4), _card("4", "Diamonds", 5)]
+    hl = {"Flush": {"chips": 35, "mult": 4, "level": 1}}
+    sly = joker("Sly Joker", 1, ability={"t_chips": 50, "type": "Pair"})
+    base, _ = cli.estimate("Flush", flush, [], {"jokers": [], "hand_levels": hl})
+    est, _ = cli.estimate("Flush", flush, [], {"jokers": [sly], "hand_levels": hl})
+    assert est == base + 50 * 4
+
+
+def test_steel_queen_x15_before_its_own_shoot_the_moon():
+    pair = [_card("2", "Spades", 1), _card("2", "Hearts", 2)]
+    held = [dict(_card("Queen", "Spades", 3), enhancement="m_steel")]
+    hl = {"Pair": {"chips": 10, "mult": 2, "level": 1}}
+    est, _ = cli.estimate("Pair", pair, held, {"jokers": [joker("Shoot the Moon", 1)], "hand_levels": hl})
+    assert est == int((10 + 4) * (2 * 1.5 + 13))
+
+
+# --- regressions on recorded Gold observations (fixtures/advisor/*.json; source trajectory + step in each file) ---------
+import json
+import pathlib
+
+FIX = pathlib.Path(__file__).parent / "fixtures" / "advisor"
+
+
+def _fixture(name):
+    rec = json.loads((FIX / f"{name}.json").read_text(encoding="utf-8"))
+    cli.LEGAL = rec.get("legal") or {}
+    return rec["obs"]
+
+
+def test_rec_ante1_zero_jokers_buys_gluttonous_over_buffoon():
+    # 7805_XURWZ2L2: advice ranked the Buffoon pack 78 over Gluttonous 26 with 0 jokers; the run lost the ante-1 Big
+    adv = _advice(_out(cli.shop_advise, _fixture("gold_ante1_shop_gluttonous_vs_buffoon")))
+    assert "Gluttonous Joker" in adv and "b buy" in adv
+
+
+def test_rec_pack_with_no_jokers_never_skips_scorers():
+    # 7801_XDLNJ8SC: Buffoon pack with 0 jokers owned and two stickered scorers
+    adv = _advice(_out(cli.pack_advise, _fixture("gold_pack_half_joker_no_jokers")))
+    assert adv.startswith("ADVICE: PICK")
+
+
+def test_rec_celestial_picks_pair_family_planet():
+    # 7801_1QAUCRHI: Jumbo Celestial without the main planet: Uranus (Two Pair), never Saturn/Neptune
+    adv = _advice(_out(cli.pack_advise, _fixture("gold_celestial_uranus_pair_main")))
+    assert "Uranus" in adv
+
+
+def test_rec_mega_buffoon_half_joker_not_buried():
+    # 7801_TIEL478W: perishable+rental Half Joker was ranked -75 in a pack (already paid for, 2 free slots)
+    out = _out(cli.pack_advise, _fixture("gold_mega_buffoon_half_joker_4_jokers"))
+    half = next(line for line in out.splitlines() if "Half Joker" in line and "pick" in line)
+    assert int(half.split()[0]) >= 15 and _advice(out).startswith("ADVICE: PICK")
+
+
+def test_never_leave_with_affordable_scorer_when_under_scaled():
+    # 7810: EMERGENCY flagged, Half Joker (perishable, rental) ranked 28 and the ADVICE was LEAVE
+    half = {"index": 1, "name": "Half Joker", "set": "Joker", "cost": 1, "perishable": True, "perish_tally": 5, "rental": True}
+    d = shop(jokers=[joker("Egg", 1)], shop_jokers=[half], money=6, ante=3)
+    assert "LEAVE" not in _advice(_out(cli.shop_advise, d))
+
+
+def test_pace_rule_discards_when_hands_cannot_clear():
+    # 7810: jokerless 300 with 3 hands, Two Pair est ~84: banking it lost 216/300; discard toward a bigger hand first
+    hand = [_card("King", "Spades", 1), _card("King", "Hearts", 2), _card("4", "Clubs", 3), _card("4", "Diamonds", 4),
+            _card("9", "Spades", 5), _card("7", "Hearts", 6), _card("3", "Clubs", 7), _card("2", "Diamonds", 8)]
+    d = {"phase": "SELECTING_HAND", "stake": 8, "ante": 1, "money": 4, "hands_remaining": 3, "discards_remaining": 2,
+         "hand": hand, "jokers": [], "hand_levels": {"Two Pair": {"chips": 20, "mult": 2, "level": 1}, "Pair": {"chips": 10, "mult": 2, "level": 1}},
+         "blind": {"name": "Small Blind", "boss": False, "chips_needed": 300, "chips_scored": 0}}
+    assert _advice(_out(cli.advise, d)).startswith("ADVICE: DISCARD")

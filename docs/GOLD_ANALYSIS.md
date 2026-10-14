@@ -3,6 +3,9 @@
 Snapshot 2026-10-14: 46 player runs on Black Deck / Gold Stake (39 finished, 0 wins; 21 Sonnet, 18 Opus, 7 Fable).
 Source: every step of `data/trajectories/**` (stake 8, no `test-*`/replay agents, no `FUZZ*` seeds). Regenerate all
 tables with `cd python && python -m balatro_env.analysis.gold_stats [--out FILE]`; numbers move as runs finish.
+Section 2e splits outcomes and spending by advisor version (`meta.client` = cli.py@sha). `--since-client SHA` adds a
+before/after table at the first step made with that version; the policy below went live in cli.py@d9217589
+(2026-10-14 00:56), so evaluate it with `--since-client d9217589` once 10+ runs that started after it have finished.
 Sample sizes are small, so treat differences under ~15 points on n < 15 as noise. Rounds and rent belong to the
 ante of their blind; shop spending belongs to the ante the shop serves (the shop after an ante-A boss is in ante A+1).
 "r/g xMult" means a reliable or growing xMult joker (Cavendish, Card Sharp, Photograph, Triboulet, Baron, Ramen,

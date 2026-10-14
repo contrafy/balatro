@@ -1,0 +1,6 @@
+# Run KTTHZFZI (port 7803, claude-opus-5-5) - Black Deck Gold Stake - IN PROGRESS
+
+Ante 1 (300 Coupon / 450 Holo / The Pillar 600, $4): Small: discarded to club Flush 308. Shop $6: advisor said buy Erosion{ETERNAL,RENTAL} (+0 mult at 52 cards!) - overrode, Buffoon pack -> Clever{PERISH}. Big: Two Pair KK88 272 + KKTT 280. Shop $7: Joker{PERISH} $2 + Supernova{RENTAL} $1. Pillar: Two Pair 66 33 1062 in one hand.
+Ante 2 (Rare / Garbage / The Head 2000, $8): Hermit $3 held. Skipped Small for Rare Tag. Big: Two Pair 1220 + Trips Q 480. Shop: free Rare = holo The Tribe{PERISH}. Head: overrode advise's heart-flush chase (hearts debuffed), Two Pair KK99 2709.
+Ante 3 (Charm / Handy / The Mouth 6400, $11): Hermit $11->$22, Mystic Summit $5. Small: 2 discards to arm Summit, Two Pair 4662. Shop $20: reroll -> Stuntman{PERISH} $7 (+250 chips: huge on an all-+mult line) + Gros Michel $5, sold Supernova rental. Big: Pair 9 8618. Mouth: Pair 6 7344. Gros Michel destroyed after Mouth.
+Ante 4 (Rare / Boss / The Hook 18000, $20): Raised Fist{PERISH} $5, reroll, Supernova $5. Skipped Small for Rare Tag (saves perish ticks). Big: 2 discards -> Two Pair TT33 13616+ (cleared). Shop: free Rare = Blueprint (copies Stuntman: +500 chips total), reroll -> Half Joker{ETERNAL} $5. Hook: 2 discards, Pair K 30740 one hand.

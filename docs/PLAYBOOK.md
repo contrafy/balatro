@@ -98,12 +98,13 @@ Gold includes every lower stake's modifier. Together with Black Deck (+1 joker s
 Stickers show in `s`/`shopadvise` as `{ETERNAL}`, `{PERISHABLE(n rounds left)}`, `{RENTAL(-$3/round)}`. Rent is charged
 and perishables tick at every round end, so a skipped blind skips both. `shopadvise`, pack `advise` and `s` encode:
 
-- SMALL BLIND SKIP: only for a tag that pays NOW (Buffoon = Mega Buffoon pack, Top-up = 2 jokers; needs a free slot) or,
-  for any other useful tag, with 2+ scoring jokers. Rare/Uncommon/Polychrome/Negative/Coupon tags pay in the NEXT shop,
-  after the Big Blind: two jokerless ante-1 Big Blinds were lost 328/450 and 448/450 that way. Ante 5+: never skip.
-- RENTAL: priced at -$3 x rounds left (a perishable rental only until it perishes). Take one only for a strong scorer;
-  never hold two before ante 5 (two drained 7808 to $0 by ante 2): `shopadvise` refuses the second and sells the
-  weaker one. A rental that is not a core scorer is sold. From ante 7 rent barely matters.
+- SMALL BLIND SKIP: ante 1 only for a tag that gives jokers NOW (Buffoon = Mega Buffoon pack, Top-up = 2 jokers; needs a
+  free slot). Ante 2-4: other useful tags need 2+ scoring jokers, and at ante 3-4 your typical hand must reach half this
+  ante's boss (skippers died 40-46% vs 25-33%). Rare/Uncommon/Polychrome/Negative/Coupon tags pay in the NEXT shop,
+  after the Big Blind. Ante 5+: never skip.
+- RENTAL: priced at -$3 x rounds left (a perishable rental only until it perishes). Take one only for a reliable/growth
+  xMult, or as a scorer you need to survive ante 1-2 (`NEEDED NOW`). Never two before ante 5. A flat rental is sold
+  once 2 other non-rental scorers carry your hands (41 Gold rentals cost $393, mostly flat jokers held until death).
 - PERISHABLE: a bridge for 5 rounds (~1.7 antes). Plan with "scorers still alive next ante" (`shopadvise` prints it):
   a joker with perish_tally <= blinds left this ante does not count, so buy its permanent replacement NOW. A perished
   joker (`PERISHED`) scores nothing: sell it. Growth jokers (Hologram, Constellation...) are never worth it perishable.
@@ -116,14 +117,23 @@ and perishables tick at every round end, so a skipped blind skips both. `shopadv
   -> Two Pair). With Card Sharp it is the most played pair-family hand (Pair on ties): the type you can repeat each round.
   Obelisk resets to x1 whenever you play your most played hand; `est` models that.
 - DEBUFFED jokers (`{DEBUFFED}` in `s`) do nothing and `est` leaves them out.
-- NO SCORER ALIVE NEXT ANTE: scoring jokers come first (rerolls included), everything else is capped below them.
-- BUFFOON PACKS are discounted (most Gold pack jokers carry a sticker). Inside a pack run `advise`: it ranks the jokers
-  with stickers, takes a decaying bridge (Popcorn, Ice Cream, Gros Michel) when you own no scorer, and says SKIP when
-  everything is sticker junk.
-- PLAN FOR THE NEXT ANTE: `shopadvise` prints its Small/Big/Boss. Ante 2 -> 3 is the steepest step (1000 -> 3200): leave
-  ante 2 with an xMult or a leveled main hand, not with cash. By ante 4 you need a second LASTING xMult or the main hand
-  at L6+, and $10 kept for the next one. With no xMult offered at ante 3-4, money goes to main-hand planets before
-  rerolls (deep runs that rerolled instead stalled at ante 4-5).
+- NO SCORER ALIVE NEXT ANTE (or <2 scorers at ante 1-3, or EMERGENCY): an affordable scorer is bought before any
+  pack, reroll or leaving; a sticker's cost is small next to losing the run. Packs are already paid for: take a
+  stickered scorer into a free slot.
+- PACE (`advise`): if your best hand x hands left < what the blind still needs, discard toward a bigger hand first
+  instead of banking a hand that cannot clear (7810 lost 216/300 that way).
+- MONEY FLOOR (GOLD_ANALYSIS.md): from ante 2 keep $8 after anything except an xMult, the main-hand planet or a Buffoon
+  pack (while owning <2 reliable/growth xMults); 8 of 20 missed xMults were unaffordable, deep runs bought them with
+  $11-22. Reroll only with $20+ left after it, at most 2 per shop, never over an affordable Buffoon pack. Arcana and
+  Spectral packs are worth little without a Vampire/Glass plan.
+- BUFFOON PACKS: ante 2-5 with <2 reliable/growth xMults they rank 80 (an xMult sighting in 18% of packs). Inside a pack
+  run `advise`: it ranks jokers with stickers, takes a decaying bridge (Popcorn, Ice Cream, Gros Michel) when you own no
+  scorer, and says SKIP when everything is sticker junk.
+- SCORE CHECK and GOLD CHECK (`shopadvise`): your typical main hand vs boss/2 of this ante and boss/3 of the next
+  (below boss/3: every run died; EMERGENCY = buy the cheapest multiplier first). Targets: 1 reliable/growth xMult
+  (incl. Acrobat, Ramen, Stencil) by the end of ante 2, 2 by ante 5, 3 incl. a growing one by ante 7.
+- BUILD: pair-family mains (17 of 28 reached ante 4); Flush/Straight mains reached it 0 of 6, so their jokers and
+  planets are non-core. Plan for the next ante: ante 2 -> 3 is the steepest step (1000 -> 3200).
 - `RIFF-RAFF` owned (and a free slot): never skip a blind, it makes 2 Common jokers when the blind is selected.
 - JOKER ORDER only matters between a +mult joker (or holo edition) and a joker-main xMult; +chips jokers, card-trigger
   xMults (Photograph, Triboulet...) and xMults among themselves can sit anywhere. `shopadvise` prints an `ORDER FIRST`

@@ -12,9 +12,10 @@ import gzip
 import hashlib
 import json
 import os
+import re
 import zlib
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 from balatro_env.headless.source import BRIDGE_DIR, LUA_DIR, extract_source
 
@@ -35,6 +36,30 @@ SETTINGS_LUA = (
 )
 
 HEADLESS_PORT = 0
+
+
+def fastpath_names() -> tuple[str, ...]:
+    """Names of the fast-path optimizations (headless/lua/fastpath.lua `P.NAMES`, in order)."""
+    text = (LUA_DIR / "fastpath.lua").read_text(encoding="utf-8")
+    m = re.search(r"^P\.NAMES = \{([^}]*)\}", text, re.M)
+    if not m:
+        raise EngineError("fastpath.lua: P.NAMES not found")
+    return tuple(re.findall(r'"(\w+)"', m.group(1)))
+
+
+def resolve_fastpath(spec: bool | str | Iterable[str]) -> tuple[str, ...]:
+    """True/'all' = every optimization, False/'none'/'' = vanilla, else names (comma-separated string or
+    iterable). The replay gate must pass for the default (all)."""
+    names = fastpath_names()
+    if spec is True or spec == "all":
+        return names
+    if spec is False or spec in ("none", ""):
+        return ()
+    chosen = [s.strip() for s in spec.split(",")] if isinstance(spec, str) else list(spec)
+    unknown = [n for n in chosen if n not in names]
+    if unknown:
+        raise ValueError(f"unknown fastpath optimization(s) {unknown}; known: {', '.join(names)}")
+    return tuple(n for n in names if n in chosen)
 
 
 class EngineError(RuntimeError):
@@ -77,7 +102,8 @@ class Engine:
 
     def __init__(self, exe: str | None = None, data_dir: str | os.PathLike | None = None,
                  port: int = HEADLESS_PORT, dt: float = DEFAULT_DT, git_sha: str | None = None,
-                 quiet: bool = True, boot_frames: int = 2000, lua: str = DEFAULT_LUA, fastpath: bool = True):
+                 quiet: bool = True, boot_frames: int = 2000, lua: str = DEFAULT_LUA,
+                 fastpath: bool | str | Iterable[str] = True):
         import importlib
 
         if lua not in LUA_FLAVORS:
@@ -89,6 +115,7 @@ class Engine:
         self.lua = runtime.LuaRuntime(encoding=None, unpack_returned_tuples=True)
         g = self.lua.globals()
         self.H = g.dofile(_b(LUA_DIR / "runtime.lua"))
+        self.fastpath = resolve_fastpath(fastpath)
         env = {b"BALATRO_RL_PORT": str(port).encode(), b"BALATRO_RL_BRIDGE_DIR": _b(BRIDGE_DIR)}
         if self.data_dir is not None:
             env[b"BALATRO_RL_DATA_DIR"] = _b(self.data_dir.resolve())
@@ -103,7 +130,7 @@ class Engine:
             b"bridge_dir": _b(BRIDGE_DIR),
             b"dt": float(dt),
             b"quiet": bool(quiet),
-            b"fastpath": bool(fastpath),
+            b"fastpath": self.lua.table_from([n.encode() for n in self.fastpath]),
             b"env": self.lua.table_from(env),
             b"save_files": self.lua.table_from({b"settings.jkr": SETTINGS_LUA.encode()}),
         })
