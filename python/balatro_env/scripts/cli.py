@@ -956,7 +956,66 @@ def _candidates(d):
 TYPE_WORD = {v: k for k, v in HAND_WORDS.items()}
 
 
+_SOLVER = None
+
+
+def _round_solver():
+    """python/balatro_env/solver.py loaded by path (the package __init__ imports torch)."""
+    global _SOLVER
+    if _SOLVER is None:
+        import importlib.util
+        p = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "solver.py")
+        spec = importlib.util.spec_from_file_location("round_solver", p)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _SOLVER = mod
+    return _SOLVER
+
+
 def advise(d):
+    """Rule-based advice, checked against DrawSolver's Monte-Carlo p_clear: the rule pick stands unless the solver's
+    best first action clears the blind measurably more often (> 0.03). Special-case branches (non PLAY/DISCARD advice,
+    Crimson Heart, Verdant Leaf, face-down cards) are kept as they are."""
+    import contextlib
+    import io
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        _advise_rules(d)
+    lines = buf.getvalue().splitlines()
+    adv_i = next((i for i, ln in enumerate(lines) if ln.startswith("ADVICE:")), None)
+    adv = lines[adv_i] if adv_i is not None else ""
+    m = re.match(r"ADVICE: (PLAY|DISCARD) -> b (play|disc)((?: [A-Z]+)?)((?: \d+)+)", adv)
+    bname = (d.get("blind") or {}).get("name") or ""
+    special = (not m or bname in ("Crimson Heart", "Verdant Leaf") or any(c.get("rank") is None for c in lst(d.get("hand"))))
+    plan, mine = [], None
+    if d.get("phase") == "SELECTING_HAND" and not special:
+        try:
+            rs = _round_solver()
+            plan = rs.best_round_plan(d, estimate)
+            if plan:
+                mine = rs.evaluate_action(d, m.group(1), [int(x) for x in m.group(4).split()], estimate)
+        except Exception as e:  # the rule advice stands on its own
+            lines.insert(adv_i, f"  (solver unavailable: {type(e).__name__}: {e})")
+            plan = []
+    if plan:
+        sol = [f"  SOLVER {r['action']} {' '.join(map(str, r['cards']))}  p_clear {r['p_clear']:.2f}  exp {int(r['exp_score'])}  ({r['note']})" for r in plan[:3]]
+        if mine:
+            sol.append(f"  SOLVER on the rule pick ({m.group(2)}{m.group(4)}): p_clear {mine['p_clear']:.2f}  exp {int(mine['exp_score'])}")
+        top = plan[0]
+        if mine and top["p_clear"] > mine["p_clear"] + 0.03:
+            idxs = " ".join(map(str, top["cards"]))
+            if top["action"] == "PLAY":
+                word = TYPE_WORD.get(top.get("hand")) if top.get("hand") else None
+                cmd = f"b play {word + ' ' if word else ''}{idxs}"
+            else:
+                cmd = f"b disc {idxs}"
+            sol.append(f"  (rule advice was: {adv[8:]})")
+            adv = f"ADVICE: {top['action']} -> {cmd}   (solver: clears {top['p_clear']:.0%} vs {mine['p_clear']:.0%} for the rule pick; {top['note']})"
+        lines = lines[:adv_i] + sol + [adv] + lines[adv_i + 1:]
+    print("\n".join(lines))
+
+
+def _advise_rules(d):
     if d.get("phase") != "SELECTING_HAND":
         print("advise only works while selecting a hand"); return
     b = d.get("blind") or {}

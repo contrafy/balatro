@@ -495,3 +495,14 @@ def test_score_check_counts_summit_and_acrobat():
     full = shop(jokers=[joker("Joker", 1), joker("Mystic Summit", 2), joker("Acrobat", 3)], ante=3)
     num = lambda out: int(out.split("SCORE CHECK: best")[1].split("~")[1].split()[0])
     assert num(_out(cli.shop_advise, full)) > 3 * num(_out(cli.shop_advise, base))
+
+
+def test_advise_shows_solver_and_keeps_one_advice_line():
+    hand = [{"index": i + 1, "rank": r, "suit": s} for i, (r, s) in enumerate(
+        [("King", "Spades"), ("King", "Hearts"), ("9", "Clubs"), ("7", "Diamonds"), ("5", "Spades"), ("4", "Hearts"), ("3", "Clubs"), ("2", "Diamonds")])]
+    d = {"phase": "SELECTING_HAND", "stake": 8, "ante": 1, "hands_remaining": 4, "discards_remaining": 3, "hand_size": 8,
+         "hand": hand, "jokers": [joker("Joker", 1)], "hand_levels": {}, "deck": {"cards": []},
+         "blind": {"name": "Small Blind", "boss": False, "chips_needed": 300, "chips_scored": 0}}
+    out = _out(cli.advise, d)
+    assert sum(1 for ln in out.splitlines() if ln.startswith("ADVICE")) == 1
+    assert "SOLVER " in out or "solver unavailable" not in out

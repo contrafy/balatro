@@ -6120,3 +6120,78 @@
 7807	a1	The Pillar	Pair	QH QC	Scary Face(holo),Misprint	est=1620	actual=2880	MISS
 7804	a4	-	Pair	9D 7S 7D	Half Joker,Splash,Golden Joker,Ride the Bus,Odd Todd,Banner	est=5427	actual=5427	OK
 7803	a3	-	Straight	TS 9C 8C 7S 6C	Even Steven,Abstract Joker,Credit Card,The Tribe,Mail-In Rebate,Dusk	est=5060	actual=5060	OK
+7809	a2	The Mouth	Pair	TH TD	Photograph,Sly Joker,Campfire,Lusty Joker	est=600	actual=600	OK
+7806	a6	-	High Card	TH	Mystic Summit,Clever Joker,Swashbuckler,Mr. Bones,Blueprint,Card Sharp	est=3240	actual=3780	OK
+7809	a2	The Mouth	Pair	JS JD	Photograph,Sly Joker,Campfire,Lusty Joker	est=480	actual=480	OK
+7802	a3	The Window	Pair	AH AD(DEBUFF)	Mad Joker,Shoot the Moon,Credit Card,Supernova	est=1326	actual=1326	OK
+7807	a2	-	Pair	AS AD	Scary Face(holo),Misprint,Arrowhead,Joker,8 Ball	est=1804	actual=3034	MISS
+7801	a1	-	Two Pair	9C 9D 2S 2H	Clever Joker	est=244	actual=244	OK
+7802	a3	The Window	Two Pair	KS KH 8S 8H	Mad Joker,Shoot the Moon,Credit Card,Supernova	est=1624	actual=1624	OK
+7810	a1	-	Two Pair	AS AH 9C 9D		est=120	actual=120	OK
+7801	a1	-	Two Pair	AC AD TH TC	Clever Joker	est=284	actual=284	OK
+7806	a6	-	Two Pair	AH(glass) AC JS JH	Mystic Summit,Clever Joker,Swashbuckler,Mr. Bones,Blueprint,Card Sharp	est=80586	actual=89298	OK
+7810	a1	-	Flush	JS 9S 7S 4S 2S		est=268	actual=268	OK
+7807	a2	The Fish	Pair	KS KC	Scary Face(holo),Arrowhead,Joker,8 Ball	est=2240	actual=2240	OK
+7803	a3	The Mark	Pair	7C 7D	Even Steven,Abstract Joker,Credit Card,The Tribe,Mail-In Rebate,Dusk	est=480	actual=480	OK
+7805	a5	-	Pair	TS TH	Sly Joker,Mystic Summit,Half Joker,Even Steven,Dusk(holo),The Duo	est=16520	actual=16520	OK
+7810	a1	-	Two Pair	KC KD 8S 8D	Supernova	est=224	actual=224	OK
+7804	a4	-	Three of a Kind	TS TH TC	Half Joker,Splash,Golden Joker,Ride the Bus,Odd Todd,Banner	est=3300	actual=3300	OK
+7805	a5	-	Pair	4S 4H	Sly Joker,Mystic Summit,Half Joker,Even Steven,Dusk(holo),The Duo	est=15104	actual=15104	OK
+7803	a3	The Mark	Flush	AH 9H 8H 8H 6H	Even Steven,Abstract Joker,Credit Card,The Tribe,Mail-In Rebate,Dusk	est=6624	actual=6624	OK
+7810	a1	-	Two Pair	8H 8C 4H 4D	Supernova	est=220	actual=220	OK
+7810	a1	-	Pair	5C 5D	Supernova	est=60	actual=60	OK
+7809	a1	-	Straight	AH KD QC JD TD		est=324	actual=324	OK
+7807	a3	-	Full House	6S 6C 6D 3H 3C	Scary Face(holo),Arrowhead,Joker,8 Ball	est=2052	actual=2052	OK
+7806	a6	The Mouth	Two Pair	5C 5D 4S 4C	Mystic Summit,Clever Joker,Swashbuckler,Brainstorm,Blueprint,Card Sharp	est=3270	actual=4796	MISS
+7810	a1	The Window	Two Pair	9S 9H 8S 8H	Supernova	est=324	actual=324	OK
+7807	a3	-	Pair	QH QC	Scary Face(holo),Arrowhead,Joker,8 Ball	est=1440	actual=1440	OK
+7801	a1	The Manacle	High Card	KH	Clever Joker	est=15	actual=15	OK
+7804	a4	-	High Card	AS 7C 5D	Half Joker,Splash,Golden Joker,Ride the Bus,Odd Todd,Banner	est=3668	actual=3668	OK
+7810	a1	The Window	Two Pair	JC JD(DEBUFF) 7S 7C	Supernova	est=308	actual=308	OK
+7805	a5	-	Pair	KH KD	Sly Joker,Mystic Summit,Half Joker,Even Steven,Dusk(holo),The Duo	est=14280	actual=14280	OK
+7806	a6	The Mouth	Two Pair	JH JD 8H 8C	Mystic Summit,Clever Joker,Swashbuckler,Brainstorm,Blueprint,Card Sharp	est=95580	actual=110448	OK
+7809	a1	-	Straight	AS 5D 4C 3H 2C	Erosion	est=220	actual=220	OK
+7801	a1	The Manacle	High Card	AC	Clever Joker	est=16	actual=16	OK
+7806	a6	The Mouth	Two Pair	AS AD 7C 7D	Mystic Summit,Clever Joker,Swashbuckler,Brainstorm,Blueprint,Card Sharp	est=95580	actual=110448	OK
+7803	a4	-	High Card	TC	Even Steven,Abstract Joker,The Tribe,Mail-In Rebate,Dusk,Stuntman	est=6095	actual=6095	OK
+7801	a1	The Manacle	Full House	JS JD 5S 5C 5D	Clever Joker	est=620	actual=620	OK
+7805	a5	-	Straight	6H 5H 4C 3D 2C	Sly Joker,Mystic Summit,Half Joker,Even Steven,Dusk(holo),The Duo	est=2050	actual=2050	OK
+7803	a4	-	High Card	TD	Even Steven,Abstract Joker,The Tribe,Mail-In Rebate,Dusk,Stuntman	est=6095	actual=6095	OK
+7807	a3	-	Flush	KS TS 8S 6S 3S	Scary Face(holo),Arrowhead,Joker,8 Ball,Mr. Bones	est=7340	actual=7340	OK
+7803	a4	-	High Card	6H	Even Steven,Abstract Joker,The Tribe,Mail-In Rebate,Dusk,Stuntman	est=7209	actual=7209	OK
+7805	a5	-	Pair	TH TC	Sly Joker,Mystic Summit,Half Joker,Even Steven,Dusk(holo),The Duo	est=21440	actual=21440	OK
+7810	a2	-	Two Pair	9S 9C 7S 7H	Supernova	est=648	actual=648	OK
+7809	a1	-	Straight	KS QS JS TS 9D	Erosion	est=316	actual=316	OK
+7810	a2	-	Two Pair	JS JD TS TC	Supernova	est=800	actual=800	OK
+7807	a3	The Arm	Two Pair	QS QH 8S 8C	Scary Face(holo),Arrowhead,Joker,8 Ball,Mr. Bones	est=3456	actual=3456	OK
+7807	a3	The Arm	Three of a Kind	KS KC KD	Scary Face(holo),Arrowhead,Joker,8 Ball,Mr. Bones	est=3400	actual=3400	OK
+7802	a1	-	Two Pair	6S 6C 5S 5H		est=84	actual=84	OK
+7810	a2	-	Two Pair	AH AC 9S 9H	Supernova	est=880	actual=880	OK
+7804	a1	-	High Card	KC		est=15	actual=15	OK
+7802	a1	-	Full House	JS JC 8S 8H 8C		est=336	actual=336	OK
+7803	a4	The Pillar	High Card	TS	Even Steven,Abstract Joker,Gros Michel,The Tribe,Dusk,Stuntman	est=10070	actual=10070	OK
+7810	a2	-	Pair	3S 3C	Supernova	est=64	actual=64	OK
+7804	a1	-	Flush	KH QH 9H 8H 7H		est=316	actual=316	OK
+7803	a4	The Pillar	High Card	TH	Even Steven,Abstract Joker,Gros Michel,The Tribe,Dusk,Stuntman	est=10070	actual=10070	OK
+7809	a1	The Manacle	Pair	JS JH	Ceremonial Dagger	est=240	actual=240	OK
+7810	a2	-	Two Pair	JS JH TS TH	Supernova	est=960	actual=960	OK
+7806	a7	The Manacle	High Card	4S	Mystic Summit,Clever Joker,Swashbuckler,Brainstorm,Blueprint,Card Sharp	est=351	actual=414	OK
+7809	a1	The Manacle	Straight	AS KD QD JC TS	Ceremonial Dagger	est=810	actual=810	OK
+7806	a7	The Manacle	Two Pair	JS JH 6H 6D	Mystic Summit,Clever Joker,Swashbuckler,Brainstorm,Blueprint,Card Sharp	est=10440	actual=12064	OK
+7805	a5	The Wheel	Pair	6S 6C	Sly Joker,Mystic Summit,Half Joker,Even Steven,Dusk(holo),The Duo	est=15576	actual=15576	OK
+7806	a7	The Manacle	High Card	KC	Mystic Summit,Clever Joker,Swashbuckler,Brainstorm,Blueprint,Card Sharp	est=5265	actual=6210	OK
+7810	a2	The Arm	Two Pair	AS AH JH JD	Supernova	est=744	actual=744	OK
+7806	a7	The Manacle	High Card	AS	Mystic Summit,Clever Joker,Swashbuckler,Brainstorm,Blueprint,Card Sharp	est=5616	actual=6624	OK
+7805	a5	The Wheel	Pair	3S 3D	Sly Joker,Mystic Summit,Half Joker,Even Steven,Dusk(holo),The Duo	est=12852	actual=12852	OK
+7804	a1	-	Pair	TS TH	Popcorn,Constellation(foil)	est=1760	actual=1760	OK
+7810	a2	The Arm	Two Pair	QS QC 4C 4D	Supernova	est=624	actual=624	OK
+7807	a4	-	Full House	6S 6H 6D 5H 5D	Scary Face(holo),Arrowhead,Joker,Mr. Bones,Ramen	est=4163	actual=4163	OK
+7805	a5	The Wheel	Pair	TS TD	Sly Joker,Mystic Summit,Half Joker,Even Steven,Dusk(holo),The Duo	est=21440	actual=21440	OK
+7809	a2	-	Two Pair	QC QD 2H 2C	Ceremonial Dagger,Crafty Joker	est=440	actual=440	OK
+7804	a1	The Head	Pair	QS QH(DEBUFF)	Popcorn,Constellation(foil)	est=1260	actual=1260	OK
+7810	a2	The Arm	Straight	TD 9D 8S 7H 6H	Supernova	est=350	actual=350	OK
+7809	a2	-	Straight	JS TD 9H 8H 7S	Ceremonial Dagger,Crafty Joker	est=888	actual=888	OK
+7807	a4	-	Pair	4H 4D	Scary Face(holo),Arrowhead,Joker,Mr. Bones,Ramen	est=1077	actual=1077	OK
+7807	a4	-	Pair	JS JC	Scary Face(holo),Arrowhead,Joker,Mr. Bones,Ramen	est=5059	actual=5059	OK
+7809	a2	-	Straight	AD KC QS JC TH	Ceremonial Dagger	est=1296	actual=1296	OK
+7801	a2	-	Full House	KS KC KD QC QD	Clever Joker,Smiley Face	est=4930	actual=4930	OK

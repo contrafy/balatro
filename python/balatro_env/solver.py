@@ -651,19 +651,31 @@ class RoundSolver:
             junk = junk[:-1]
         return play
 
+    def _hold(self, cards, h, d, ctx):
+        """Hold line for final-hand jokers: (total = final-hand est + (h-1) single-card throwaways, best throwaway card,
+        final est, final play, its type); None without a junk card."""
+        fs, fp, ft = self.best_play(cards, 1, d, ctx)
+        fids = {id(c) for c in fp}
+        junk = [c for c in cards if id(c) not in fids]
+        if not junk:
+            return None
+        best_j, best_s = None, -1.0
+        for c in junk:
+            s, _t = self.score([c], [x for x in cards if x is not c], h, d, ctx)
+            if s > best_s:
+                best_j, best_s = c, s
+        return fs + best_s * (h - 1), best_j, fs, fp, ft
+
     def policy(self, cards, pile_cards, h, d, need, ctx):
         """Greedy later-hand policy; returns (kind, list of card objects)."""
         bs, bp, _bt = self.best_play(cards, h, d, ctx)
         if bs >= need or (h <= 1 and d <= 0) or not pile_cards:
             return PLAY, (self._pad(bp, cards, 5) if self.psychic else bp)
         if self.hd_dep and h >= 2 and not self.psychic:
-            # Acrobat/Dusk/...: a hand that clears when played as the final hand is held; burn hands with 1 junk card
-            fs, fp, _ft = self.best_play(cards, 1, d, ctx)
-            if fs >= need:
-                fids = {id(c) for c in fp}
-                junk = [c for c in cards if id(c) not in fids]
-                if junk:
-                    return PLAY, [min(junk, key=lambda c: c.val)]
+            # Acrobat/Dusk/...: hold a hand that clears as the final hand; burn the hands before it with 1 junk card
+            hold = self._hold(cards, h, d, ctx)
+            if hold and hold[0] >= need:
+                return PLAY, [hold[1]]
         pile = _Pile(pile_cards, self.suit_keys)
         best_k, best_u = None, -1.0
         for K in self._keep_sets(cards, bp):
@@ -799,13 +811,11 @@ class RoundSolver:
                         f"{' '.join(c.label() for c in fill[len(p):])} (draws {len(fill)} new cards)")
                     break
         if self.hd_dep and h >= 2 and vis and not self.psychic:
-            fs, fp, ft = self.best_play(vis, 1, d, ctx)
-            fids = {id(c) for c in fp}
-            junk = [c for c in vis if id(c) not in fids]
-            if junk:
-                j = min(junk, key=lambda c: c.val)
+            hold = self._hold(vis, h, d, ctx)
+            if hold:
+                tot, j, fs, fp, ft = hold
                 add(PLAY, [idx_of[id(j)]], f"throwaway {j.label()}: hold {ft} {' '.join(c.label() for c in fp)} "
-                                           f"for the final hand (est {int(fs)} then)")
+                                           f"for the final hand (est {int(fs)} then, ~{int(tot)} in total)")
         if d > 0:
             chosen = [K for K, _v in top_keeps[:16]] + self._keep_sets(known, bp or [])
             for K in chosen:
