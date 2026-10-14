@@ -1051,7 +1051,7 @@ def advise(d):
         print("The Serpent: every play or discard draws exactly 3 cards, so a 4-5 card discard shrinks your hand for the rest of the round. Discard at most 3 cards at a time and play made hands early.")
     sellable_v = [j for j in lst(d.get("jokers")) if not _stk(j)["eternal"]]
     if boss_name == "Verdant Leaf" and any(c.get("debuff") for c in hand) and sellable_v:
-        weakest_v = min(sellable_v, key=lambda j: -1 if _dead_perishable(j) else classify_joker(j.get("name"), 0, main_hand(d))[1])
+        weakest_v = min(sellable_v, key=lambda j: owned_value(d, j, main_hand(d)))
         print(f"ADVICE: SELL -> b sell {weakest_v.get('index')}   (Verdant Leaf debuffs every card until you sell ONE joker; {weakest_v.get('name')}{stickers(weakest_v)} is your least valuable sellable one (Eternal jokers cannot be sold). Do not discard before selling.)")
         return
     if boss_name == "The Tooth":
@@ -1101,6 +1101,9 @@ def advise(d):
                     out.append((-(CHIP_VAL.get(r, 0) + bonus), i, SUIT.get(c.get("suit"))))
                 else:
                     out.append((CHIP_VAL.get(r, 0), i, SUIT.get(c.get("suit"))))
+        if "Blackboard" in jnames_all:
+            # Blackboard x3 needs every HELD card to be a Spade or Club: play the red cards as fillers first
+            out = [(k - 1000 if su in ("H", "D") else k, i, su) for k, i, su in out]
         out.sort()
         chosen = []
         chosen_ranks = set()
@@ -1359,8 +1362,9 @@ def main_hand(d):
     if not best or total < 3 or best[0][0] < 2:
         gate = _joker_gated_hand(d)
         return gate or "undecided"
-    if int(d.get("ante") or 1) <= 2 and best[1] not in ("Pair", "Two Pair", "Three of a Kind", "Full House"):
-        return _joker_gated_hand(d) or "undecided"  # an early Straight/Flush streak is dealt luck, not a plan
+    if int(d.get("ante") or 1) <= 2 and best[1] not in ("Pair", "Two Pair", "Three of a Kind", "Full House") and best[0][0] < 4:
+        # a 2-3 hand Straight/Flush streak is dealt luck, not a plan; 4+ plays of one type are a plan (7809: six Flushes)
+        return _joker_gated_hand(d) or "undecided"
     lead = best[1]
     if any(j.get("name") == "Card Sharp" and not j.get("debuff") for j in lst(d.get("jokers"))):
         # Card Sharp (x3 when the type was already played this round) wants the hand you can make 2-3 times a round:
@@ -1384,7 +1388,7 @@ def main_hand(d):
 
 AVOID_JOKERS = {"Madness": "destroys one of your jokers every blind", "Ceremonial Dagger": "destroys the joker to its right",
                 "Ice Cream": "decays each hand", "Popcorn": "decays each round", "Turtle Bean": "decays",
-                "Gros Michel": "1/6 to self-destruct", "Swashbuckler": "useless as the only joker", "Joker Stencil": "x1 with full slots",
+                "Gros Michel": "1/6 to self-destruct", "Swashbuckler": "useless as the only joker",
                 "Obelisk": "penalizes playing your main hand", "Troubadour": "-1 hand per round: Black Deck has only 3",
                 "Merry Andy": "-1 hand size", "Mr. Bones": "saves a lost blind once but is destroyed: not scaling"}
 
@@ -1486,6 +1490,39 @@ def next_ante_targets(d):
     k = (float(small_now) / table[ante - 1]) if small_now else 1.0
     base = int(table[ante] * k)
     return ante + 1, base, int(base * 1.5), base * 2
+
+
+SYN_HANDS = {"Pair": "KS KH", "Two Pair": "KS KH 9S 9D", "Three of a Kind": "KS KH KD", "Full House": "KS KH KD 9S 9D",
+             "Four of a Kind": "KS KH KD KC", "Flush": "AH KH 9H 7H 4H", "Straight": "KS QH JD TC 9S", "High Card": "AS"}
+
+
+def _syn_cards(spec, start=1):
+    rk = {"A": "Ace", "K": "King", "Q": "Queen", "J": "Jack", "T": "10"}
+    st = {"S": "Spades", "H": "Hearts", "D": "Diamonds", "C": "Clubs"}
+    return [{"rank": rk.get(t[0], t[0]), "suit": st[t[1]], "index": start + i} for i, t in enumerate(spec.split())]
+
+
+def joker_share(d, j, mh):
+    """Fraction of a typical main-hand est that this owned joker provides (1 - est without it / est with it), on a
+    synthetic main hand (Pair when undecided) with 3 neutral held cards. Measures real contribution, not class."""
+    if j.get("debuff"):
+        return 0.0
+    hn = mh if mh in SYN_HANDS else "Pair"
+    scoring = _syn_cards(SYN_HANDS[hn])
+    held = _syn_cards("5C 6D 8S", start=len(scoring) + 1)
+    state = dict(d, blind={})
+    with_j, _n = estimate(hn, scoring, held, state, played_n=len(scoring))
+    without, _n = estimate(hn, scoring, held, dict(state, jokers=[x for x in lst(d.get("jokers")) if x is not j]), played_n=len(scoring))
+    return max(0.0, 1 - without / with_j) if with_j > 0 else 0.0
+
+
+def owned_value(d, j, mh):
+    """keep value of an owned joker: its class score, raised by its real share of the main-hand est; a perished one is -100"""
+    if _dead_perishable(j):
+        return -100
+    sc = classify_joker(j.get("name"), 0, mh)[1]
+    share = joker_share(d, j, mh)
+    return max(sc, min(140, 60 + int(100 * share))) if share >= 0.15 else sc
 
 
 def sticker_adjust(c, cls, base_sc, score, ante, rounds_left, own_rentals, bridge):
@@ -1623,8 +1660,12 @@ def shop_advise(d):
     ENGINE_KEEP = {"Splash", "Four Fingers", "Shortcut", "Smeared Joker", "Pareidolia", "Blueprint", "Brainstorm", "Sock and Buskin", "Hack", "Dusk", "Mime", "Seltzer", "Hanging Chad"}
     def keep_value(j):
         """how much selling this joker would hurt: class score, economy jokers cheap from ante 4, editions add value,
-        a perishable that dies before the run ends and a rental's -$3/round lower it"""
+        a perishable that dies before the run ends and a rental's -$3/round lower it; a joker that carries a big share
+        of the main hand's est is kept whatever its class (Gros Michel as the only mult source)"""
         cls_k, sc_k = classify_joker(j.get("name"), 0, mh)
+        share = joker_share(d, j, mh)
+        if share >= 0.15:
+            sc_k = max(sc_k, min(140, 60 + int(100 * share)))
         if cls_k == "ECON" and ante >= 4:
             sc_k = 20
         ed_k = _joker_edition(j)
@@ -1703,6 +1744,10 @@ def shop_advise(d):
             if cls.startswith("XMULT(conditional") and ante <= 2 and scoring_now < 2:
                 score = 25  # Loyalty Card/Acrobat/Flower Pot-style conditionals do not clear ante 1-2 blinds; a floor joker does
                 print(f"  {name}: a conditional xMult beats none at ante {ante}; runs that reroll for a clean xMult usually never see one (1 in ~45 shops).")
+            if name == "Joker Stencil":
+                # x1 per empty joker slot, counting itself: after buying it you hold len+1 of `slots`
+                x_st = slots - len(jokers) + (1 if _joker_edition(c) == "negative" else 0)
+                cls, score = (f"XMULT(Stencil: x{x_st} now, -1 for every joker you add later)", min(100, 40 + 12 * x_st)) if x_st >= 2 else ("AVOID(x1: no empty slots)", 5)
             if name == "Luchador" and (crippled or boss_ahead in ("The Wall", "The Needle", "The Flint", "The Arm", "The Eye", "The Mouth", "The Psychic")):
                 cls, score = "COUNTER", 92
                 print(f"  Luchador in shop: buy and SELL it while the boss {boss_ahead} is active to disable the boss (`sell N` during the blind).")
@@ -1765,7 +1810,9 @@ def shop_advise(d):
                 csc = 76  # main hand behind the ante curve: a level compounds on every future hand, an enhancement only on one card
             else:
                 csc = 58  # ~1 in 3 packs shows your planet; a fallback planet is a wasted level
-            note = "Telescope: your main planet is guaranteed" if telescope else f"take {PLANET_FOR.get(mh)}; if it is not offered, a fallback planet is worth little (skip the pack if you can buy your planet directly next shop)"
+            note = ("Telescope: your main planet is guaranteed" if telescope else
+                    "no main hand yet: take the planet of the hand you play most (`advise` inside the pack picks it)" if mh == "undecided" else
+                    f"take {PLANET_FOR.get(mh)}; if it is not offered, a fallback planet is worth little (skip the pack if you can buy your planet directly next shop)")
             options.append((csc + big + (15 if feeds else 0), "PACK", f"pack {c['index']}", f"{name} ${cost} [hand level gamble: {note}{'; feeds Constellation' if feeds else ''}]", cost, ante >= 2 and (telescope or mh == "undecided"), False))
         elif "Buffoon" in name:
             n_x = sum(1 for j in jokers if (classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") or _joker_edition(j) == "polychrome"))
@@ -1850,8 +1897,8 @@ def shop_advise(d):
     for score, cls, cmd, label, cost, strong, needs_slot in options:
         if cost > money and cmd.startswith("buy") and ((_fits_x(cls) and score >= 60 and ante >= 3) or (_is_scoring(cls) and scoring_now == 0 and jokers)):
             # an xMult (or, with no scorer at all, the first scoring joker) we cannot afford: sell the weakest non-xMult joker if that pays for it, otherwise keep the money
-            sellable = [(int(j.get("sell_cost") or 0), j) for j in sellable_j if not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") and not _is_scoring(classify_joker(j.get("name"), 0, mh)[0]) and j.get("name") not in ENGINE_KEEP]
-            sellable.sort(key=lambda t: (classify_joker(t[1].get("name"), 0, mh)[1], -t[0]))
+            sellable = [(int(j.get("sell_cost") or 0), j) for j in sellable_j if not classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") and not _is_scoring(classify_joker(j.get("name"), 0, mh)[0]) and j.get("name") not in ENGINE_KEEP and joker_share(d, j, mh) < 0.15]
+            sellable.sort(key=lambda t: (owned_value(d, t[1], mh), -t[0]))
             if sellable and money + sellable[0][0] >= cost:
                 print(f"ADVICE: SELL then BUY -> b sell {sellable[0][1].get('index')}  then  b {cmd}   ({label}; selling {sellable[0][1].get('name')} for ${sellable[0][0]} makes it affordable)")
                 return
@@ -1966,8 +2013,8 @@ def pack_advise(d):
             return
         if len(jokers) >= slots and _joker_edition(c) != "negative":
             sellable = [j for j in jokers if not _stk(j)["eternal"]]
-            weak = min(sellable, key=lambda j: -100 if _dead_perishable(j) else classify_joker(j.get("name"), 0, mh)[1], default=None)
-            wsc = None if weak is None else (-100 if _dead_perishable(weak) else classify_joker(weak.get("name"), 0, mh)[1])
+            weak = min(sellable, key=lambda j: owned_value(d, j, mh), default=None)
+            wsc = None if weak is None else owned_value(d, weak, mh)
             if weak is not None and sc >= 60 and sc > wsc + 20:
                 print(f"ADVICE: SELL then PICK -> b sell {weak.get('index')}  then  b pick {i}   (joker slots are full; {c.get('name')} ({sc}) beats {weak.get('name')}{stickers(weak)}; selling works while the pack is open)")
             else:
@@ -1977,7 +2024,9 @@ def pack_advise(d):
         return
     planets = [(i, c) for i, c in enumerate(cards, 1) if c.get("set") == "Planet"]
     if planets:
-        want = [PLANET_FOR.get(mh), PLANET_FOR.get(second_hand(d) or "")]
+        hl_p = d.get("hand_levels") or {}
+        most = max(hl_p, key=lambda k: int((hl_p[k] or {}).get("played") or 0), default=None) if hl_p else None
+        want = [PLANET_FOR.get(mh), PLANET_FOR.get(most or ""), PLANET_FOR.get(second_hand(d) or "")]
         for w in want:
             hit = next(((i, c) for i, c in planets if w and c.get("name") == w), None)
             if hit:
@@ -1985,6 +2034,43 @@ def pack_advise(d):
                 return
         i, c = planets[0]
         print(f"ADVICE: PICK -> b pick {i}   (your main-hand planet is not here; a free level elsewhere still beats skipping)")
+        return
+    spectrals = [(i, c) for i, c in enumerate(cards, 1) if c.get("set") == "Spectral"]
+    if spectrals:
+        hand = [c for c in lst(d.get("hand")) if c.get("rank") is not None and not c.get("debuff")]
+        n_j = len(jokers)
+        by_rank = Counter(_r(c) for c in hand)
+        # target: the best card of your most common rank (it scores in your main pair-family hand), Glass/Steel for Cryptid
+        tgt = max(hand, key=lambda c: (by_rank[_r(c)], CHIP_VAL.get(_r(c), 0)), default=None)
+        glass = next((c for c in hand if any(e in _enh(c) for e in ("Glass", "Steel"))), None)
+        strong_j = [j for j in jokers if classify_joker(j.get("name"), 0, mh)[0].startswith("XMULT") or joker_share(d, j, mh) >= 0.4]
+        money = int(d.get("money") or 0)
+        SPEC = {"The Soul": (100 if n_j < slots else 5, None, "a Legendary joker"),
+                "Black Hole": (90, None, "+1 level to every hand"),
+                "Wraith": (75 if n_j < slots and money <= 10 else (40 if n_j < slots else 5), None, "a random Rare joker, money set to $0"),
+                "Aura": (70, tgt, "Foil/Holo/Polychrome on the target card"),
+                "Cryptid": (65 if glass else 45, glass or tgt, "2 copies of the target card"),
+                "Deja Vu": (55, tgt, "Red Seal (retrigger) on the target card"),
+                "Talisman": (45, tgt, "Gold Seal ($3 when played) on the target card"),
+                "Hex": (55 if len(strong_j) == 1 and n_j <= 2 else 5, None, "Polychrome on a random joker, destroys the others"),
+                "Immolate": (45 if money < 5 else 25, None, "destroys 5 random hand cards, +$20"),
+                "Ectoplasm": (40, None, "Negative on a random joker (+1 slot), -1 hand size"),
+                "Grim": (25, None, "destroys a random card, adds 2 Aces"), "Familiar": (25, None, "destroys a random card, adds 3 faces"),
+                "Incantation": (25, None, "destroys a random card, adds 4 numbered cards"),
+                "Medium": (20, tgt, "Purple Seal on the target card"), "Trance": (20, tgt, "Blue Seal on the target card"),
+                "Ankh": (10, None, "copies a random joker, destroys the others"), "Sigil": (10, None, "all hand cards one random suit"),
+                "Ouija": (10, None, "all hand cards one random rank, -1 hand size")}
+        ranked = sorted(((SPEC.get(c.get("name"), (15, None, "unknown"))[0], i, c) for i, c in spectrals), key=lambda t: -t[0])
+        print(f"Pack advisor: Spectral, choose {pk.get('choices_remaining')}, jokers {n_j}/{slots}")
+        for sc, i, c in ranked:
+            print(f"  {sc:>3} pick {i:<3} {c.get('name')}: {SPEC.get(c.get('name'), (0, None, '?'))[2]}")
+        sc, i, c = ranked[0]
+        if sc < 30:
+            print(f"ADVICE: SKIP -> b skippack   (nothing here helps; best is {c.get('name')} at {sc})")
+            return
+        t = SPEC.get(c.get("name"), (0, None, ""))[1]
+        print(f"ADVICE: PICK -> b pick {i}{' ' + str(t.get('index')) if t else ''}   ({c.get('name')}: {SPEC.get(c.get('name'), (0, None, ''))[2]}"
+              + (f"; target {card_str(t)} (your most common rank)" if t else "") + ")")
         return
     print("No pack advice for this pack type: pick per PLAYBOOK section 5 (enhance main-hand ranks), or `skippack` if nothing fits.")
 

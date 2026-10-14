@@ -5353,3 +5353,118 @@
 7802	a3	-	Flush	AD TD 9D 8D 4D	Shoot the Moon,Crafty Joker,Clever Joker	est=3268	actual=3268	OK
 7805	a3	-	Three of a Kind	AH AC AD	Abstract Joker,Mad Joker,Onyx Agate,Sly Joker,Loyalty Card	est=2825	actual=2825	OK
 7806	a1	-	Two Pair	6S 6D 4S 4D	Ice Cream	est=270	actual=270	OK
+7802	a3	-	Two Pair	7S 7D 6S 6H	Shoot the Moon,Crafty Joker,Clever Joker	est=1890	actual=1890	OK
+7803	a1	-	Two Pair	QH QD 7C 7D		est=108	actual=108	OK
+7810	a1	-	Pair	TS TH	Square Joker,Crazy Joker	est=68	actual=68	OK
+7809	a1	The Club	Flush	KH QH 7H 5H 2H	Hiker	est=296	actual=296	OK
+7810	a1	-	Straight	AH KD QS JH TC	Square Joker,Crazy Joker	est=1360	actual=1360	OK
+7803	a1	-	Straight	KC QS JC TD 9H		est=316	actual=316	OK
+7807	a1	-	Flush	AS QS JS TS 6S	Sly Joker	est=328	actual=328	OK
+7806	a1	The Window	Pair	9S 9C	Ice Cream	est=236	actual=236	OK
+7806	a1	The Window	Two Pair	KH KC JS JD(DEBUFF)	Ice Cream	est=270	actual=270	OK
+7807	a1	-	Pair	5H 5D	Sly Joker	est=140	actual=140	OK
+7803	a1	-	Two Pair	3C 3D 2H 2C	Mad Joker	est=360	actual=360	OK
+7806	a1	The Window	Three of a Kind	QS QH QD(DEBUFF)	Ice Cream	est=390	actual=390	OK
+7803	a1	-	Two Pair	KH KD JS JC	Mad Joker	est=720	actual=720	OK
+7809	a1	The Club	Flush	QD 9D 5D 3D 2D	Hiker	est=256	actual=256	OK
+7809	a1	The Club	Two Pair	AS AD TH TC(DEBUFF)	Hiker	est=114	actual=114	OK
+7803	a1	The Club	Two Pair	AH AC(DEBUFF) TH TD	Mad Joker	est=612	actual=612	OK
+7810	a1	The Window	Straight	AH 5H 4D(DEBUFF) 3S 2H	Square Joker,Crazy Joker	est=880	actual=880	OK
+7801	a3	-	Pair	QC QD JD TC 8H	Splash,Mystic Summit,Joker	est=1606	actual=1606	OK
+7805	a3	The Manacle	Four of a Kind	9S 9H 9C 9D	Mad Joker,Onyx Agate,Sly Joker,Loyalty Card,Shoot the Moon	est=3942	actual=3942	OK
+7802	a3	The Club	Full House	TS TH TC(DEBUFF) 4H 4D	Shoot the Moon,Crafty Joker,Clever Joker,Smiley Face(negative)	est=3774	actual=2812	MISS
+7806	a2	-	Flush	AD TD 6D 4D 3D	Ice Cream	est=576	actual=576	OK
+7801	a3	-	Full House	8C 8D 4S 4H 4D	Splash,Mystic Summit,Joker	est=1564	actual=1564	OK
+7807	a1	The Pillar	Flush	KS QS(DEBUFF) 7S 3S 2S	Sly Joker	est=228	actual=228	OK
+7801	a3	-	Full House	AS AC 3S 3H 3C	Splash,Mystic Summit,Joker	est=1633	actual=1633	OK
+7806	a2	-	Straight	KH QD JH TC 9D	Ice Cream	est=596	actual=596	OK
+7809	a2	-	Full House	9S 9C 9D 8C 8D	Hiker	est=352	actual=352	OK
+7805	a3	The Manacle	Pair	QC QC	Mad Joker,Onyx Agate,Sly Joker,Loyalty Card,Shoot the Moon	est=2320	actual=2320	OK
+7810	a2	-	Flush	AH(wild) JC 8C 7C 5C	Square Joker,Crazy Joker,Misprint	est=800	actual=2080	MISS
+7805	a3	The Manacle	Two Pair	TC TD 2S 2C	Mad Joker,Onyx Agate,Sly Joker,Loyalty Card,Shoot the Moon	est=4560	actual=4560	OK
+7809	a2	-	Two Pair	KS KD 5C 5D	Hiker	est=120	actual=120	OK
+7809	a2	-	Pair	AH AC	Hiker	est=74	actual=74	OK
+7806	a2	-	Three of a Kind	5S 5H 5C	Popcorn	est=1625	actual=1625	OK
+7810	a2	The Arm	Straight	7C 6S 5C 4D 3D	Square Joker,Crazy Joker,Misprint	est=1298	actual=1239	OK
+7803	a2	The Water	Pair	QH QC	Mad Joker,Joker Stencil	est=300	actual=300	OK
+7807	a1	The Pillar	Full House	QH(DEBUFF) QC QD JS(DEBUFF) JH	Sly Joker	est=480	actual=480	OK
+7802	a3	The Club	Two Pair	JH JD 7S 7D	Shoot the Moon,Crafty Joker,Clever Joker,Smiley Face(negative)	est=5025	actual=4154	MISS
+7803	a2	The Water	Flush	AC KC QS(wild) 9C 2C	Mad Joker,Joker Stencil	est=1540	actual=1540	OK
+7806	a2	The Club	Three of a Kind	2S 2C(DEBUFF) 2D	Popcorn,Photograph	est=1134	actual=1134	OK
+7810	a2	The Arm	Straight	AD KS QH JD TC	Square Joker,Crazy Joker,Misprint	est=1870	actual=2125	OK
+7803	a2	The Water	High Card	AS	Mad Joker,Joker Stencil	est=80	actual=80	OK
+7806	a2	The Club	Straight	7D 6H 5H 4H 3C(DEBUFF)	Popcorn,Photograph	est=1040	actual=1040	OK
+7805	a4	-	Four of a Kind	5S 5H 5C 5D	Shoot the Moon,Onyx Agate,Sly Joker,Loyalty Card	est=14040	actual=14040	OK
+7810	a3	-	Straight	AH KC QC JS TC	Square Joker,Crazy Joker,Misprint	est=1870	actual=1530	MISS
+7801	a3	The Manacle	Pair	AS AD KS QS 2S(stone)	Splash,Mystic Summit,Joker	est=3036	actual=3036	OK
+7806	a3	-	Straight	KC QD JC TS 9D	Popcorn,Photograph	est=2834	actual=2834	OK
+7810	a3	-	Straight	TS(wild) 9H(gold) 8C(mult) 7H 6D	Square Joker,Crazy Joker,Misprint	est=1924	actual=3034	MISS
+7807	a2	-	Two Pair	7S(mult) 7C(mult) 5S 5D	Sly Joker	est=940	actual=940	OK
+7801	a3	The Manacle	Pair	KH KC JS TC 8D	Splash,Mystic Summit,Joker	est=2024	actual=2024	OK
+7810	a3	-	Two Pair	AS AC(gold) 5S 5C	Square Joker,Crazy Joker,Misprint	est=480	actual=780	MISS
+7807	a2	-	Two Pair	AS AH KS KD(mult)	Sly Joker	est=672	actual=672	OK
+7806	a3	-	Two Pair	7C 7D 3S 3D	Popcorn,Photograph	est=560	actual=560	OK
+7803	a1	-	Full House	8S 8H 8C 5S 5D		est=296	actual=296	OK
+7801	a3	The Manacle	High Card	AC QH JC 9C 8C	Splash,Mystic Summit,Joker	est=1060	actual=1060	OK
+7803	a1	-	High Card	KC		est=15	actual=15	OK
+7810	a3	The Pillar	Straight	9S(lucky) 8D 7C 6S 5H	Square Joker,Crazy Joker,Misprint	est=1606	actual=1679	OK
+7806	a3	-	Straight	QS JH TH 9C 8D	Popcorn,Photograph	est=2782	actual=2782	OK
+7809	a1	-	High Card	KD		est=15	actual=15	OK
+7805	a4	The Plant	Two Pair	QC(DEBUFF) QD(DEBUFF) 6S 6D	Shoot the Moon,Onyx Agate,Sly Joker,Loyalty Card	est=732	actual=732	OK
+7809	a1	-	High Card	KH		est=15	actual=15	OK
+7805	a4	The Plant	Straight	JS(DEBUFF) TC 9C 8D 7D	Shoot the Moon,Onyx Agate,Sly Joker,Loyalty Card	est=1728	actual=1728	OK
+7809	a1	-	Flush	AC 9C 8C 5C 3C		est=284	actual=284	OK
+7810	a3	The Pillar	Straight	9H(gold,DEBUFF) 8H 7H(DEBUFF) 6D(DEBUFF) 5D	Square Joker,Crazy Joker,Misprint	est=1122	actual=1887	MISS
+7805	a4	The Plant	Three of a Kind	TS TH TD	Shoot the Moon,Onyx Agate,Sly Joker,Loyalty Card	est=495	actual=495	OK
+7802	a4	-	High Card	KD	Shoot the Moon,Crafty Joker,Smiley Face(negative),Abstract Joker	est=475	actual=475	OK
+7810	a3	The Pillar	Straight	AD KH QD JC TS	Square Joker,Crazy Joker,Misprint	est=1958	actual=1602	MISS
+7802	a4	-	High Card	KS	Shoot the Moon,Crafty Joker,Smiley Face(negative),Abstract Joker	est=475	actual=475	OK
+7809	a1	-	Two Pair	QH QC TS TH	Spare Trousers	est=240	actual=240	OK
+7802	a4	-	Flush	TH 9H 7H 5H 4H	Shoot the Moon,Crafty Joker,Smiley Face(negative),Abstract Joker	est=3600	actual=3600	OK
+7803	a1	-	Flush	KC TC 8C 6C 3C	The Family	est=288	actual=288	OK
+7809	a1	-	Three of a Kind	6S 6C 6D	Spare Trousers	est=240	actual=240	OK
+7807	a2	The Wheel	Flush	AS JS 9S 7S(mult) 6S	Sly Joker,Popcorn	est=2184	actual=2184	OK
+7810	a1	-	Two Pair	8H 8D 4H 4C		est=88	actual=88	OK
+7803	a1	-	Two Pair	AS AD 8H 8D	The Family	est=116	actual=116	OK
+7806	a3	The Pillar	Straight	QC JD TC 9S 8S	Popcorn,Photograph,Pareidolia	est=3836	actual=3836	OK
+7803	a1	-	Straight	8S 7S 6S 5C 4C	The Family	est=240	actual=240	OK
+7810	a1	-	Full House	AH AC AD 5S 5H		est=332	actual=332	OK
+7809	a1	The Club	Straight	KH QC(DEBUFF) JS TH 9D	Spare Trousers	est=414	actual=414	OK
+7806	a3	The Pillar	High Card	AS	Popcorn,Photograph,Pareidolia	est=160	actual=160	OK
+7809	a1	The Club	Two Pair	7S 7H 6H 6D	Spare Trousers	est=276	actual=276	OK
+7806	a3	The Pillar	Two Pair	7S 7H 5H 5C	Popcorn,Photograph,Pareidolia	est=528	actual=528	OK
+7805	a1	-	Straight	AD KC QS JS TH		est=324	actual=324	OK
+7810	a1	-	Straight	8H 7S 6H 5C 4S	Sly Joker	est=240	actual=240	OK
+7803	a1	The Goad	Flush	KS(DEBUFF) 9S(DEBUFF) 8S(DEBUFF) 6S(DEBUFF) 3S(DEBUFF)	The Family,Droll Joker	est=490	actual=490	OK
+7810	a1	-	Two Pair	AH AD 4H 4D	Sly Joker	est=200	actual=200	OK
+7810	a1	-	Full House	TS TC TD 6C 6D	Sly Joker	est=528	actual=528	OK
+7807	a3	-	Straight	AS 5H 4S 3D 2H	Sly Joker,Popcorn,Hiker,Hanging Chad,8 Ball	est=1540	actual=1840	OK
+7807	a3	-	Two Pair	JS JD 8H 8C	Sly Joker,Popcorn,Hiker,Hanging Chad,8 Ball	est=2774	actual=3059	OK
+7803	a1	The Goad	High Card	QH	The Family,Droll Joker	est=15	actual=15	OK
+7810	a1	The Manacle	Pair	2C 2D	Sly Joker,Shoot the Moon	est=960	actual=960	OK
+7809	a2	-	Two Pair	9S 9H 2S 2D	Spare Trousers	est=336	actual=336	OK
+7803	a1	The Goad	Flush	AD JD TD 3D 2D	The Family,Droll Joker	est=994	actual=994	OK
+7805	a1	-	Two Pair	TH TD 6S 6D		est=104	actual=104	OK
+7805	a1	-	Pair	QS QC		est=60	actual=60	OK
+7801	a1	-	Three of a Kind	3S 3H 3D		est=117	actual=117	OK
+7805	a1	-	Two Pair	JC JD 7H 7C		est=108	actual=108	OK
+7806	a1	-	Flush	AS QS JS 6S 4S		est=304	actual=304	OK
+7809	a2	-	High Card	KS	Spare Trousers	est=105	actual=105	OK
+7810	a2	-	High Card	AS	Sly Joker,Shoot the Moon,Mad Joker,Ice Cream	est=3132	actual=3132	OK
+7809	a2	-	Two Pair	8S 8D 7S 7H	Spare Trousers	est=500	actual=500	OK
+7801	a1	-	Two Pair	TH TC 2C 2D		est=88	actual=88	OK
+7801	a1	-	Straight	9H 8C 7D 6C 5S		est=260	actual=260	OK
+7807	a3	The Wall	Straight	AS 5H 4H 3H 2D	Sly Joker,Popcorn,Hiker,Hanging Chad,8 Ball	est=2032	actual=2272	OK
+7810	a2	The Hook	Full House	9S 9H 9C 7H 7D	Sly Joker,Shoot the Moon,Mad Joker,Ice Cream	est=6102	actual=3164	MISS
+7806	a1	-	Straight	6C 5S 4D 3D 2C	Crazy Joker	est=800	actual=800	OK
+7803	a2	-	Three of a Kind	KS(mult) KH(mult) KC	The Family,Droll Joker	est=660	actual=660	OK
+7807	a3	The Wall	Two Pair	QS QC 8H 8C	Sly Joker,Popcorn,Hiker,Hanging Chad,8 Ball	est=2340	actual=2565	OK
+7803	a2	-	Flush	QS JS 9S 4S 2S	The Family,Droll Joker	est=980	actual=980	OK
+7806	a1	The Head	Pair	TS TH(DEBUFF)	Crazy Joker,Popcorn	est=440	actual=440	OK
+7802	a1	-	Two Pair	4S 4C 2S 2C		est=64	actual=64	OK
+7807	a3	The Wall	Two Pair	JH JD 7H 7D	Sly Joker,Popcorn,Hiker,Hanging Chad,8 Ball	est=2235	actual=2460	OK
+7810	a3	-	Two Pair	6S 6D 4H 4D	Sly Joker,Shoot the Moon,Mad Joker,Ice Cream,Joker	est=5220	actual=5220	OK
+7805	a1	-	Two Pair	8S 8C 2S 2H		est=80	actual=80	OK
+7806	a1	The Head	Flush	AC 9C 8C 5C 2C	Crazy Joker,Popcorn	est=1680	actual=1680	OK
+7801	a1	The Club	Two Pair	AS AH 6S 6H	Even Steven	est=540	actual=540	OK
+7802	a1	-	Two Pair	9S 9D 7S 7D		est=104	actual=104	OK

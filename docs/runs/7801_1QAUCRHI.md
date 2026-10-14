@@ -1,4 +1,41 @@
-# Run 1QAUCRHI (port 7801, claude-fable-5-1) - Black Deck Gold Stake - IN PROGRESS
+# Run 1QAUCRHI (port 7801, claude-fable-5-1) - Black Deck Gold Stake - LOSS at ante 3 blind The Manacle (6120/6400)
 
 Ante 1 (300/450/Pillar 600): Small: 2 discards -> Broadway straight 324 (one hand). Shop $6: Buffoon -> Splash (perishable, over Ride the Bus eternal+rental; advisor said skip), Banner rental $1 (+30 chips/discard kept). Big: Two Pair JJ44+8 232, Pair 7+T96 218 = 450/450 exact, no discards used. Boss Pillar: Pair J(1 debuffed)+T96 210, Pair 5 + JH + 2 debuffed fillers 180, Pair A(1 debuffed)+T98 216 = 606/600. Never discarded (Banner +60 each hand). $0 after rent.
 Ante 2 (1000/1500/Mouth 2000): shop $5 nothing (Crafty perishable only). Skipped Small (Handy +$6 -> $11) AND Big (Buffoon tag -> Mega Buffoon: Mystic Summit{ETERNAL,RENTAL} + Joker{ETERNAL} over Crazy/Superposition; advisor wanted Joker+Crazy). Sold Banner. Mouth 2000: 2 discards burned first (Mystic +15 -> x21), Pair A+JT8 1260, Pair K+QJ9 1239 = 2499 (FH 888AA was est 1978, 22 short). $9 after rent.
+Ante 3 (3200/4800/Manacle 6400): shop $16: Vampire $7 declined (nothing to feed), Buffoon $4 -> Flash Card{ETERNAL} / The Order{RENTAL} -> skipped, Celestial $4 -> Mercury (Pair L2). Skipped Small (Garbage +$4 -> $12, kept Splash alive for the boss). Big 4800: Pair Q+JT8 1606 (kept 444), FH 44488 1564, FH 333AA 1633 = 4803/4800. Shop $14: Mercury $3 (Pair L3), Jumbo Celestial $6 -> Uranus (Two Pair L2), The Tower $3. $2. Manacle 6400 (7-card hand): Tower on 2S -> Stone; Pair A + K Q Stone 3036, Pair K + J T 8 2024 (over Two Pair KKJJ+T 1980), final hand AC QH JC 9C 8C 4S 2D no pair -> High Card 1060 = 6120/6400. GAME OVER. Jokers [Splash (perished), Mystic Summit, Joker], $2, Pair L3, Two Pair L2, 0 xMult.
+
+## Post-mortem
+
+Binding constraint: SCALING, with MONEY underneath, and a design flaw in the engine. Total cash earned all run was ~$33 ($4 start, $6 Handy, $4 Garbage, $5+$5+$4 blind rewards, $1 Banner sale, a few unused-hand dollars) minus $12 of rent. Every shop had $5-16. The engine at the ante-3 boss was Pair L3 + Splash (perishing) + Mystic Summit (+15 at 0 discards) + Joker (+4): ~2000 per Pair hand, so 6400 needed three pair hands in a row with ZERO discards for the final hand (Mystic Summit only pays once both discards are gone). A 7-card hand (Manacle) has no pair about 25% of the time, and that is exactly what happened on the final hand: 1060 vs 1340 needed.
+
+Decisions I would change:
+1. The boss hand 2: Pair K + J T 8 (2024) vs Two Pair KKJJ + T (1980). The two were within 2%, and I picked by est. The Two Pair line would have kept 8D 2D and drawn the same five cards (AC QH 9C 8C 4S): Pair 8 + A Q 9 = ~1980 and a win. Not knowable in advance, but there was a tie-breaker I ignored: the spare card I kept (JC) had 2 unseen rank-mates left this round (JS already played), while 8D had 3. When two plays are within ~3%, keep the spare whose rank has the most unseen mates, not the highest chip value.
+2. Buying Mystic Summit (eternal + rental) at the ante-2 Mega Buffoon. It cleared The Mouth (2499/2000, impossible with Joker alone at x6) and the ante-3 Big, so it was right for survival, but it hard-codes "final hand with 0 discards" into every round. With that joker the first purchase once $3 is spare MUST be a rescue tarot (Death/Strength) because a discard can never save the final hand. I had $2 at the boss and the shop before it offered none; I spent $6 on a Jumbo Celestial (Uranus, never used) instead of keeping $3-6.
+3. Ante 3 first shop: Buffoon $4 -> skipped (Flash Card eternal / The Order rental). At Gold the Buffoon pack is a coin flip on stickers; with $16 and 0 xMult the Celestial pack + holding $8 was the better order, and the $4 would have been the rescue tarot money.
+
+What worked:
+- Banner + Splash at ante 1: Pair + 3 fillers with 2 discards kept was 210-232 per hand; cleared 450 exactly and the Pillar 606/600 without ever discarding. est exact on every hand.
+- Skipping the ante-2 Small (Handy +$6) and Big (Buffoon tag -> Mega Buffoon) with 0 mult jokers: the alternative was a ~25% Small Blind. Skips also skip rent and perish ticks.
+- Skipping the ante-3 Small (Garbage +$4) to keep perishable Splash alive for the boss: it lasted from the ante-1 Big through the ante-3 boss (5 rounds over 3 antes).
+- The Tower ($3) used mid-round on a 2: Pair A + K Q Stone est 1956 -> 3036 (verified exact).
+- At the ante-3 Big: playing Pair Q + fillers first and keeping 444 for a Full House chance (61%) produced FH 1564 and FH 1633 = 4803/4800.
+
+Reusable rules (if-then):
+- IF you own Mystic Summit (or any "0 discards" joker), THEN every round's final hand is a forced no-discard hand: buy Death/Strength ($3) before any pack, and treat a 7-card (Manacle) or pair-dependent final hand as a 25% loss until you hold one.
+- IF a perishable scorer has N rounds left and the Small Blind pays $0 (Gold), THEN skip the Small whenever its tag pays cash now (Handy, Garbage) or the shop has nothing affordable: skipped blinds do not tick perishables or rent, so the scorer reaches the boss.
+- IF Banner is owned, THEN never discard: a dealt Pair + 3 highest fillers (Splash) with +60 is worth more than any draw at ante 1 (Pair 7 + T 9 6 = 218 vs advisor's discard).
+- IF The Tower / a Stone card is offered for $3 and you play Pair + fillers, THEN buy it: +50 chips on every hand it joins (+1150 at x23) and it can be applied mid-round to a junk card already in hand.
+- IF two candidate plays are within 3% est and the final hand must contain a pair with 0 discards, THEN keep the spare card whose rank has the most unseen mates this round (count cards played this round), not the higher chip card.
+- IF The Mouth is the boss and you own Mystic Summit, THEN discard 1-2 junk cards twice BEFORE the first play, then lock Pair: 1260 + 1239 cleared 2000; a one-off Full House (1978) was both short and unrepeatable.
+- IF a Mega Buffoon at ante 2 offers only sticker jokers, THEN a +15 mult eternal rental beats a clean conditional joker when the next blind is 2000 and your mult is 2-6; accept the slot and rent, and sell any rental that conflicts with it (Banner wants discards kept, Mystic wants them spent).
+- IF Vampire is offered on a Black Deck with under $20 and no enhanced cards, THEN skip it: x1.0 with nothing to feed is a dead $7.
+
+Advisor/CLI defects:
+- Jumbo Celestial pack `advise` said "pick 1" (Neptune, Straight Flush) with main hand Pair while Uranus (Two Pair) was in the pack; when the main-hand planet is absent it should rank pair-family planets (Uranus/Venus/Earth) first, not the first slot.
+- `advise` at the ante-1 Big (Banner owned) said DISCARD when Pair 7 + T 9 6 fillers was est 218 = exactly the 218 needed; at the Pillar final hand it said DISCARD (which drops Banner to +30) when Pair A + fillers was 216 >= 210. It never searches filler sets for Banner/Splash; the ADVICE est is the 2-card core (160/162), the `play` line was 216/218.
+- The Mouth `advise` ADVICE "play PAIR ... est 672" when the same play with fillers (printed on the play line) was 1260; same core-vs-fillers gap at the ante-3 Big (est 315 vs 1606).
+- Blind-select `s` ADVICE: "Handy Tag not worth a shop visit" (it paid $6 vs a $0 Small with 0 mult jokers) and "Garbage Tag not worth a shop visit" (it paid $4 AND kept Splash alive for the boss). Skip advice should count the tag's cash, the Small's $0 payout at stake 2+, and perishable rounds left.
+- Buffoon pack `advise` scored Splash 10 -> SKIP with 0 jokers; Splash + Banner then cleared all of ante 1 with est exact. A free harmless joker should never rank below SKIP when slots are empty.
+- Mega Buffoon `advise` ranked Mystic Summit -35 below Joker 70 and Crazy 30; Mystic was the only option that made The Mouth 2000 (x21 vs x6) reachable. Sticker penalties should be capped when no owned joker adds mult and the next blind is unreachable without it.
+- `shopadvise` ranked Vampire 80 (top) at $16 with 0 enhanced cards and $0 interest floor; a growth xMult with no feed source should rank below the main-hand planet.
+- Bridge: no failures; every action settled on the first try. est was exact on all 14 scored hands (324, 232, 218, 210, 180, 216, 1260, 1239, 1606, 1564, 1633, 3036, 2024, 1060).

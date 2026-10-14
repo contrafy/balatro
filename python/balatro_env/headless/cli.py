@@ -41,7 +41,7 @@ def _manifest_paths(root: Path, include_all: bool) -> list[Path]:
 def _replay_worker(files: list[str], opts: dict[str, Any], queue) -> None:
     from balatro_env.headless.replay import Replayer
 
-    with Replayer(check_file=opts["check_file"], dt=opts["dt"]) as r:
+    with Replayer(check_file=opts["check_file"], dt=opts["dt"], fastpath=opts["fastpath"]) as r:
         for f in files:
             res = r.replay(f, compare_legal=opts["compare_legal"], log=lambda *a: None)
             queue.put({"path": f, "ok": res.ok, "report": res.report(), "detail": res.detail(),
@@ -62,7 +62,8 @@ def cmd_replay(args: argparse.Namespace) -> int:
     if not files:
         print("no trajectory files given", file=sys.stderr)
         return 2
-    opts = {"check_file": not args.no_file_check, "compare_legal": not args.no_legal, "dt": args.dt}
+    opts = {"check_file": not args.no_file_check, "compare_legal": not args.no_legal, "dt": args.dt,
+            "fastpath": not args.vanilla}
     n = max(1, min(args.workers, len(files)))
     ctx = mp.get_context("spawn")
     queue = ctx.Queue()
@@ -109,7 +110,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
         return {"seed": f"BENCH{run_no:03d}"[-8:], "deck": rng.choice(decks), "stake": rng.randint(1, 8)}
 
     t_boot = time.monotonic()
-    with HeadlessPool(args.workers, dt=args.dt) as pool:
+    with HeadlessPool(args.workers, dt=args.dt, fastpath=not args.vanilla) as pool:
         boot = time.monotonic() - t_boot
         rngs = [random.Random(args.rng_seed * 1000 + i) for i in range(pool.n)]
         frames0 = sum(s["frames"] for s in pool.call("stats"))
@@ -147,7 +148,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
         "workers": pool.n, "steps": steps, "seconds": round(elapsed, 2), "runs_finished": runs,
         "steps_per_s": round(total, 1), "steps_per_s_per_worker": round(total / pool.n, 1),
         "frames_per_step_incl_resets": round(frames / steps, 1), "frames_per_s": round(frames / elapsed),
-        "boot_seconds": round(boot, 2), "dt": args.dt, "cpu_count": os.cpu_count(),
+        "boot_seconds": round(boot, 2), "dt": args.dt, "fastpath": not args.vanilla, "cpu_count": os.cpu_count(),
     }, indent=1))
     return 0
 
@@ -179,6 +180,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-file-check", action="store_true",
                    help="skip the post-hoc comparison of the replay's own recording (hidden, refs)")
     p.add_argument("--dt", type=float, default=DEFAULT_DT)
+    p.add_argument("--vanilla", action="store_true", help="run without the fast-path patches (A/B check)")
     p.add_argument("--json", help="write per-file results to this JSON file")
     p.set_defaults(func=cmd_replay)
 
@@ -186,6 +188,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workers", type=int, default=1)
     p.add_argument("--steps", type=int, default=2000, help="total steps over all workers")
     p.add_argument("--dt", type=float, default=DEFAULT_DT)
+    p.add_argument("--vanilla", action="store_true", help="run without the fast-path patches (A/B check)")
     p.add_argument("--rng-seed", type=int, default=0)
     p.set_defaults(func=cmd_bench)
 

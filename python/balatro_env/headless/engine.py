@@ -77,7 +77,7 @@ class Engine:
 
     def __init__(self, exe: str | None = None, data_dir: str | os.PathLike | None = None,
                  port: int = HEADLESS_PORT, dt: float = DEFAULT_DT, git_sha: str | None = None,
-                 quiet: bool = True, boot_frames: int = 2000, lua: str = DEFAULT_LUA):
+                 quiet: bool = True, boot_frames: int = 2000, lua: str = DEFAULT_LUA, fastpath: bool = True):
         import importlib
 
         if lua not in LUA_FLAVORS:
@@ -103,6 +103,7 @@ class Engine:
             b"bridge_dir": _b(BRIDGE_DIR),
             b"dt": float(dt),
             b"quiet": bool(quiet),
+            b"fastpath": bool(fastpath),
             b"env": self.lua.table_from(env),
             b"save_files": self.lua.table_from({b"settings.jkr": SETTINGS_LUA.encode()}),
         })

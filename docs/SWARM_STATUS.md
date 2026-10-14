@@ -7,30 +7,28 @@ _Orchestrator: summarize the night here._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 00:32:31 by `balatro-data status` (edits inside this block are overwritten). Player runs: 47 (39 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-10-14 00:45:46 by `balatro-data status` (edits inside this block are overwritten). Player runs: 55 (49 finished, 6 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (8)
+### Live runs (6)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | 1QAUCRHI | 8 | PACK_OPENING | 3 | 4 | 12 | Small Blind (3200) | SKIP_PACK | Flash Card eternal (+2 mult per reroll) is a dead permanent slot; The Order is a rental x3 on strai… | 0s |
-| 7802 | port-7802 | claude-fable-5-1 | 7D8XNH58 | 8 | SELECTING_HAND | 3 | 7 | 2 | Big Blind 0/4800 | PLAY_HAND {"card_indices":[3,4,5,7]} | Flush now would play my only Q (1038). Instead Pair J + 9H 7C with QD held = 450, keep A Q 8 4 diam… | 1s |
-| 7803 | port-7803 | claude-opus-5-5 | QG9S4IKB | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[1,2,4,5,3]} | Two Pair AA66 est 108 of 300; 8H filler keeps 2-3-4 for a wheel draw | 7s |
-| 7805 | port-7805 | claude-opus-5-5 | 9MRSNKY7 | 8 | BLIND_SELECT | 3 | 5 | 6 | Big Blind (4800) | SELECT_BLIND | Big 4800: Two Pair ~3800 with Abstract +15, Mad, Sly; need shop before Manacle | 5s |
-| 7806 | port-7806 | claude-opus-5-5 | 8CCVAUB9 | 8 | BLIND_SELECT | 1 | 1 | 0 | Big Blind (450) | SELECT_BLIND | Big Blind 450, Ice Cream +100 chips | 5s |
-| 7807 | port-7807 | claude-sonnet-5-5 | CEFJAWIV | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[3,4,5,1,2]} | Full House JJJQQ est 360 clears 300 in one hand | 7s |
-| 7809 | port-7809 | claude-opus-5-5 | UVZQFHQ5 | 8 | SELECTING_HAND | 1 | 2 | 0 | Big Blind 0/450 | PLAY_HAND {"card_indices":[1,2,4,5,7]} | Club flush est 316 of 450; leaves 134 for 2 hands with 1 discard | 22s |
-| 7810 | port-7810 | claude-sonnet-5-5 | I7MH1E3L | 8 | SELECTING_HAND | 1 | 2 | 1 | Big Blind 0/450 | PLAY_HAND {"card_indices":[1,3,4,5,6]} | Club flush A Q 9 7 4 est 304 vs 450; leaves 146 for 2 hands with 1 discard | 5s |
+| 7801 | port-7801 | claude-fable-5-1 | TIEL478W | 8 | SELECTING_HAND | 1 | 2 | 0 | The Club 0/600 | PLAY_HAND {"card_indices":[1,2,5,6,8]} | Two Pair AA66 est 540 of 600 (Even Steven +8 on the 6s); filler 3D keeps 4D (even) for a later pair… | 3s |
+| 7802 | port-7802 | claude-fable-5-1 | DHIP8EMJ | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[5,6,7,8]} | Bank Two Pair 44/22 est 64 (300 needed, 0 discards). No filler: keep 9 8 7 5 open-ended straight dr… | 27s |
+| 7803 | port-7803 | claude-opus-5-5 | WJANAAZU | 8 | ROUND_EVAL | 2 | 4 | 2 | Big Blind (1500) | CASH_OUT | Big Blind won | 27s |
+| 7805 | port-7805 | claude-opus-5-5 | 71JNH7LN | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[3,4,7,8,1]} | Two Pair 8s2s est 80 banks 80/300 keeping both discards; Q as filler keeps 9-6-5 for a straight draw | 18s |
+| 7806 | port-7806 | claude-opus-5-5 | JDM76YSJ | 8 | SHOP | 2 | 3 | 9 | Small Blind (1000) | SHOP_REROLL | no scorer in shop (Gluttonous perishable club-only); ->, need a pair/unconditional joker for 1000+ … | 2s |
+| 7810 | port-7810 | claude-sonnet-5-5 | 6L83T6KZ | 8 | ROUND_EVAL | 3 | 6 | -2 | Big Blind (4800) | CASH_OUT | Cash out Big Blind | 12s |
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 4 | 0 | 4 | 0 | 0 | 3.0 | 4 |
+| claude-fable-5-1 | 8 | Black | 6 | 0 | 6 | 0 | 0 | 3.17 | 4 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 11 | 0 | 11 | 0 | 0 | 4.36 | 6 |
-| claude-sonnet-5-5 | 8 | Black | 18 | 0 | 17 | 0 | 1 | 2.83 | 8 |
+| claude-opus-5-5 | 8 | Black | 17 | 0 | 17 | 0 | 0 | 3.65 | 6 |
+| claude-sonnet-5-5 | 8 | Black | 20 | 0 | 19 | 0 | 1 | 2.85 | 8 |
 
 ### Deepest runs
 
@@ -49,8 +47,8 @@ _Generated 2026-10-14 00:32:31 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 40 files in manifest; schema_ok 40, schema invalid 0; replay_ok 26, replay failed 0, awaiting replay 5, open/unended 9; quarantined 0; not yet in manifest 7.
-- All files (incl. fuzz + replays): 133; schema_ok 131; replay_ok 32; replay failed 0; awaiting replay 89; quarantined 2.
+- Player runs: 47 files in manifest; schema_ok 47, schema invalid 0; replay_ok 31, replay failed 0, awaiting replay 7, open/unended 9; quarantined 0; not yet in manifest 8.
+- All files (incl. fuzz + replays): 145; schema_ok 143; replay_ok 37; replay failed 0; awaiting replay 96; quarantined 2.
 
 ### Rejects per agent
 
@@ -60,16 +58,16 @@ _Generated 2026-10-14 00:32:31 by `balatro-data status` (edits inside this block
 | port-7778 | 1 | 1 | 0 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 136 |
-| port-7802 | 0 | 0 | 154 |
-| port-7803 | 0 | 0 | 248 |
+| port-7801 | 0 | 0 | 172 |
+| port-7802 | 0 | 0 | 183 |
+| port-7803 | 0 | 0 | 307 |
 | port-7804 | 0 | 0 | 129 |
-| port-7805 | 0 | 0 | 229 |
-| port-7806 | 0 | 0 | 313 |
-| port-7807 | 0 | 0 | 331 |
+| port-7805 | 0 | 0 | 284 |
+| port-7806 | 0 | 0 | 383 |
+| port-7807 | 0 | 0 | 389 |
 | port-7808 | 0 | 0 | 145 |
-| port-7809 | 0 | 0 | 249 |
-| port-7810 | 0 | 0 | 327 |
+| port-7809 | 0 | 0 | 295 |
+| port-7810 | 0 | 0 | 408 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
@@ -86,4 +84,6 @@ _Generated 2026-10-14 00:32:31 by `balatro-data status` (edits inside this block
   GoldAdvisor. Ports 7802, 7804, 7805 and 7808 stay idle to keep concurrency at 8 agents.
 - 00:16 GoldAdvisor cli.py 8dbf6b03: debuffed jokers dropped from est + `{DEBUFFED}` in `s` + Crimson Heart throwaway re-roll; Mouth/Eye locks read from blind state (`only_hand`, `hands_used`), est 0 for debuffed types; Ramen = decaying xMult, Judgement scored and `buyuse`d.
 - 00:22 GoldAdvisor cli.py 46c98d9f: Mouth opening lock steered to a repeatable type, locked High Card playable (1 card), Burglar warning before The Mouth; slot pre-checks are notes only (trust /legal: Negative jokers, Buffoon packs); ORDER only for +mult vs xMult; Splash fillers chosen by est; draw outs from the real remaining deck; no "floor" for hands under half the per-hand need; Constellation planets `buyuse` ranked above rerolls; rental money jokers ~$0; debuffed cards lose suit for Seeing Double/Flower Pot.
+- 00:33 GoldAdvisor cli.py 9ece1230: owned-joker keep/sell uses real contribution (est of a typical main hand with vs without the joker), so a Gros Michel/Swashbuckler that carries the build is never sold as AVOID/dead weight (shop, pack, Verdant Leaf); Blackboard plays red fillers so held cards stay black.
+- 00:38 GoldAdvisor cli.py fdab97d3: 4+ plays of one type set the main hand at ante 1-2 (six Flushes no longer "undecided"; Celestial pack note/pick use most-played hand); Joker Stencil scored by empty slots (x5 with 1 joker, not AVOID); Spectral packs get pick advice with a target card.
 

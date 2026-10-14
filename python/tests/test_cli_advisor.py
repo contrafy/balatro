@@ -253,3 +253,42 @@ def test_rental_money_joker_penalised():
 def test_debuffed_club_does_not_count_for_suits():
     club = dict(_card("King", "Clubs", 1), debuff=True)
     assert "C" not in cli._suit_cover([club, _card("King", "Hearts", 2)], [])
+
+
+def test_main_mult_source_is_never_dead_weight():
+    # Gros Michel is AVOID-class but the only mult source: its real share of the est keeps it
+    owned = [joker("Gros Michel", 1, ability={"extra": {"mult": 15}})] + [joker("Egg", i) for i in range(2, 7)]
+    d = shop(jokers=owned, ante=5, money=6)
+    d["hand_levels"] = {"Pair": {"chips": 10, "mult": 2, "level": 1, "played": 9}}
+    assert cli.joker_share(d, owned[0], "Pair") > 0.5
+    assert "b sell 1 " not in _out(cli.shop_advise, d)
+
+
+def test_blackboard_plays_red_fillers():
+    hand = [_card("King", "Spades", 1), _card("King", "Clubs", 2), _card("3", "Hearts", 3), _card("9", "Spades", 4),
+            _card("5", "Diamonds", 5), _card("7", "Clubs", 6)]
+    d = {"phase": "SELECTING_HAND", "stake": 8, "ante": 2, "money": 5, "hands_remaining": 3, "discards_remaining": 0,
+         "hand": hand, "jokers": [joker("Blackboard", 1)], "hand_levels": {"Pair": {"chips": 10, "mult": 2, "level": 1}},
+         "blind": {"name": "Big Blind", "boss": False, "chips_needed": 100, "chips_scored": 0}}
+    adv = _advice(_out(cli.advise, d))
+    played = adv.split("b play PAIR ")[1].split("   ")[0].split()
+    assert {"3", "5"} <= set(played)
+
+
+def test_joker_stencil_scored_by_empty_slots():
+    d = shop(jokers=[joker("Joker", 1)], shop_jokers=[{"index": 1, "name": "Joker Stencil", "set": "Joker", "cost": 8}], money=10, ante=3)
+    assert "Stencil: x5 now" in _out(cli.shop_advise, d)
+
+
+def test_six_flushes_make_flush_the_main_hand():
+    d = shop(ante=2)
+    d["hand_levels"] = {"Flush": {"played": 6, "level": 1}, "Pair": {"played": 1, "level": 1}}
+    assert cli.main_hand(d) == "Flush"
+
+
+def test_spectral_pack_advice_with_target():
+    hand = [_card("King", "Spades", 1), _card("King", "Hearts", 2), _card("4", "Clubs", 3)]
+    d = {"phase": "PACK_OPENING", "stake": 8, "ante": 3, "money": 5, "joker_slots": 6, "jokers": [joker("Joker", 1)], "hand": hand,
+         "hand_levels": {}, "pack": {"kind": "Spectral", "choices_remaining": 1,
+                                     "cards": [{"name": "Sigil", "set": "Spectral"}, {"name": "Aura", "set": "Spectral"}]}}
+    assert _advice(_out(cli.pack_advise, d)).startswith("ADVICE: PICK -> b pick 2 1")
