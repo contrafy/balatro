@@ -883,3 +883,13 @@ def test_sell_then_immediate_buy_waits_for_the_dissolve(tmp_path, monkeypatch):
         with contextlib.redirect_stdout(io.StringIO()):
             cli.main()
     assert st["bought"]
+
+
+def test_loyalty_card_timing_from_counters():
+    # 7803 6UYKULXZ: x4 fired on the hand played at hands_played_total=16 (created at 11, every=5), not one hand earlier
+    lc = joker("Loyalty Card", 1, ability={"extra": {"every": 5, "Xmult": 4}, "hands_played_at_create": 11, "loyalty_remaining": 0})
+    cards = [_card("King", "Spades", 1), _card("King", "Hearts", 2)]
+    base = {"jokers": [lc], "hand_levels": {"Pair": {"level": 1, "chips": 10, "mult": 2}}}
+    fire = cli.estimate("Pair", cards, [], dict(base, run={"hands_played_total": 16}))
+    early = cli.estimate("Pair", cards, [], dict(base, run={"hands_played_total": 15}))
+    assert "fires on THIS hand" in " ".join(fire[1]) and fire[0] == 4 * early[0]

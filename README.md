@@ -137,7 +137,7 @@ Windows swarm runs (recorded and replay-verified under the data contract; live s
 
 | Milestone | Status |
 |-----------|--------|
-| Black Deck, Gold Stake (8) | **Beaten** (1 of 191 runs): run `7807_9IIGB2FF` (Opus). Clever + Stuntman + Abstract + Even Steven, with foil Obelisk x3.6 and Throwback x3.75; skipped every Small and Big blind from ante 5; 402199/400000 vs Crimson Heart |
+| Black Deck, Gold Stake (8) | **Beaten twice** in 289 runs. `7807_9IIGB2FF` (Opus): Clever + Stuntman + Abstract + Even Steven, foil Obelisk x3.6 and Throwback x3.75, skipped every Small and Big from ante 5, 402199/400000 vs Crimson Heart. `7807_2WEJC1IS` (Sonnet): Blueprint + Half Joker early, Throwback (copied by Blueprint) plus Brainstorm on Stuntman, skipped Small and Big from ante 3, 431900/400000 vs Cerulean Bell |
 
 ## Scripts
 

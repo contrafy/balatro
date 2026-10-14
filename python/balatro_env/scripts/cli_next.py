@@ -221,6 +221,15 @@ def _dead_perishable(j):
     return s["perishable"] and s["perish_tally"] == 0
 
 
+def _bad_swap(d, opt):
+    """A sell-for-pick/buy that trades a permanent xMult for a perishable joker (7803 6UYKULXZ: The Tribe for Flower Pot)."""
+    sold = opt.get("sell") if isinstance(opt.get("sell"), list) else []
+    if not sold or not _stk(opt.get("add_joker") or {})["perishable"]:
+        return False
+    return any(j.get("index") in sold and not _stk(j)["perishable"] and classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT")
+               for j in lst(d.get("jokers")))
+
+
 def _sells_boss_carrier(d, opt):
     """True when a SIM option sells a perishable xMult that is still alive for this ante's boss: the SIM horizon runs past
     its death and undervalues the boss round it is kept for (7803 7MUK4NI9: sell Ramen at its last round before The Plant)."""
@@ -914,8 +923,9 @@ def estimate(hand_name, scoring, held, state, repeat=None, played_n=None):
             hpc = ab.get("hands_played_at_create")
             if hp is not None and hpc is not None:
                 # recompute from the counters (the stored loyalty_remaining is only refreshed when the joker scores; 7802
-                # LFBTMULM read "5" for 4 hands): this hand is hands_played + 1, it fires when the result equals `every`
-                rem_n = (every - 1 - (int(hp) + 1 - int(hpc))) % (every + 1)
+                # LFBTMULM read "5" for 4 hands). Calibrated on 7803 6UYKULXZ: the observed hands_played_total already counts
+                # the hand about to be scored the way card.lua sees it (fired at hp=16, create=11, every=5)
+                rem_n = (every - 1 - (int(hp) - int(hpc))) % (every + 1)
                 rem = 0 if rem_n == every else (rem_n + 1) % (every + 1)
             else:
                 rem = ab.get("loyalty_remaining")
@@ -1439,6 +1449,17 @@ def advise(d):
             adv = f"ADVICE: {top['action']} -> {cmd}   (solver: {why}; {top['note']})"
         lines = lines[:adv_i] + sol + [adv] + lines[adv_i + 1:]
     tip = _copy_order_tip(d) if d.get("phase") == "SELECTING_HAND" and d.get("hands_played", 0) == 0 else None
+    forced = [c.get("index") for c in lst(d.get("hand")) if c.get("forced")]
+    if forced:
+        # The Cerulean Bell keeps one card selected: every play / discard must include it (7807 2WEJC1IS: NOT LEGAL)
+        for k, ln in enumerate(lines):
+            mf = re.match(r"(ADVICE: (?:PLAY|DISCARD) -> b (?:play|disc)(?: [A-Z]+)?)((?: \d+)+)(.*)$", ln)
+            if mf:
+                ix = [int(x) for x in mf.group(2).split()]
+                miss = [f for f in forced if f not in ix]
+                if miss:
+                    ix = (ix + miss) if len(ix) + len(miss) <= 5 else (ix[:5 - len(miss)] + miss)
+                    lines[k] = f"{mf.group(1)} {' '.join(map(str, ix))}{mf.group(3)} [Cerulean Bell: forced card {miss} included]"
     print("\n".join([x for x in (_obelisk_tie_note(d), tip) if x] + lines))
 
 
@@ -2885,6 +2906,9 @@ def shop_advise_sim(d, budget_s=6.0):
         cls_b = classify_joker(aj_b.get("name"), 0, main_hand(d))[0]
         if swap and "other hand" in cls_b:
             return 9.0  # a sell-for-buy swap into a joker that does not fire on the main hand is never advised (7804 K4GMJRB5)
+        if swap and _stk(aj_b)["perishable"] and any(j.get("index") in r["option"]["sell"] and not _stk(j)["perishable"]
+                                                     and classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") for j in lst(d.get("jokers"))):
+            return 9.0  # never swap a permanent xMult for a perishable one (7803 6UYKULXZ: The Tribe for Flower Pot)
         # a swap (sell X, buy Y) must win by 0.10: the sale is permanent and boss locks / sell-value jokers move it
         return (0.10 if swap else 0.02) + (0.05 if _stk(aj_b)["perishable"] else 0) + (0.05 if cls_b.startswith("XMULT(conditional") else 0)
     if not keep_rule:
@@ -2972,7 +2996,7 @@ def pack_advise_sim(d, budget_s=3.5):
         # 0.84 vs 0.00 was skipped)
         big = base_p is not None and not all_zero and key(r) - key(base_p) >= 0.15
         return ((big or not (st["eternal"] and st["rental"] and ante_s < 7)) and (big or not (st["rental"] and own_rent and ante_s < 6))
-                and not _eternal_bar(d, aj) and not _sells_boss_carrier(d, r["option"]))
+                and not _eternal_bar(d, aj) and not _sells_boss_carrier(d, r["option"]) and not _bad_swap(d, r["option"]))
     sim = (["  SIM: no option clears the next 3 blinds; ranking by expected score ratio"] if all_zero else []) + [
         f"  SIM: {r['label']}: " + (f"score ratio {r.get('score_ratio') or 0:.2f}" if all_zero else
                                     f"P(clear next 3 blinds) {r.get('p_next') or 0:.2f}" + (f", vs {r['terminal']} {r.get('p_term') or 0:.2f}" if r.get("terminal") else "")
