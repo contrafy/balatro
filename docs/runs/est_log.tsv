@@ -9243,3 +9243,58 @@
 7809	a4	The Wall	Two Pair	9H 9C 5H 5C	Mad Joker,Hanging Chad,Supernova,Smiley Face,Wrathful Joker,Odd Todd	est=7072	actual=7072	OK
 7806	a3	The Pillar	Full House	TS TC TD 6H 6D	Wily Joker,Lusty Joker,Gluttonous Joker,Sly Joker	est=2320	actual=2320	OK
 7805	a2	-	Straight	JC TH 9D 8C 7D	Jolly Joker,Crazy Joker,Walkie Talkie	est=1680	actual=1680	OK
+7802	a4	The Water	Straight	AS KC QD JC TS	Joker,Ice Cream,Smiley Face,8 Ball,Gros Michel,The Duo(foil)	est=6498	actual=6498	OK
+7810	a3	-	Two Pair	QS QC 9H 9C	Ice Cream,Supernova,Blueprint,Ramen(polychrome)	est=3840	actual=3840	OK
+7807	a1	-	Three of a Kind	7H 7C 7D		est=153	actual=153	OK
+7801	a3	The Club	Two Pair	7S 7H 5H 5D	Joker,Green Joker,Faceless Joker(foil),Banner(holo),Mad Joker	est=4928	actual=4928	OK
+7810	a3	-	Pair	JH JC	Ice Cream,Supernova,Blueprint,Ramen(polychrome)	est=2280	actual=2280	OK
+7801	a3	The Club	Pair	TS TH	Joker,Green Joker,Faceless Joker(foil),Banner(holo),Mad Joker	est=3220	actual=3220	OK
+7807	a1	-	Two Pair	AS AD QS QH		est=124	actual=124	OK
+7805	a2	-	Two Pair	JC JD 7S 7C	Jolly Joker,Crazy Joker,Walkie Talkie	est=540	actual=540	OK
+7807	a1	-	Straight	KD QD JS TC 9S		est=316	actual=316	OK
+7805	a2	-	Two Pair	KS KH 5C 5D	Jolly Joker,Crazy Joker,Walkie Talkie	est=500	actual=500	OK
+7803	a6	-	Two Pair	KC KD TH TC	Blue Joker,Square Joker,Supernova,Space Joker,Mystic Summit,Card Sharp	est=22600	actual=22600	OK
+7809	a1	-	Flush	AH TH 6H 5H 3H		est=280	actual=280	OK
+7805	a2	-	Pair	4H 4D	Jolly Joker,Crazy Joker,Walkie Talkie	est=684	actual=684	OK
+7807	a1	-	Full House	QS QH QC JS JC	Joker Stencil	est=2160	actual=2160	OK
+7809	a1	-	Pair	QS QC		est=60	actual=60	OK
+7810	a3	The Tooth	Two Pair	4C 4D 3S 3H	Ice Cream,Supernova,Odd Todd,Blueprint,Ramen(polychrome)	est=5448	actual=5448	OK
+7803	a6	-	High Card	AH	Blue Joker,Square Joker,Supernova,Space Joker,Mystic Summit,Card Sharp	est=2952	actual=2952	OK
+7806	a1	-	Two Pair	KS KC 4S 4H		est=96	actual=96	OK
+7810	a3	The Tooth	High Card	9S	Ice Cream,Supernova,Odd Todd,Blueprint,Ramen(polychrome)	est=1164	actual=1164	OK
+7803	a6	-	High Card	QD	Blue Joker,Square Joker,Supernova,Space Joker,Mystic Summit,Card Sharp	est=9063	actual=10140	OK
+7806	a1	-	Two Pair	AS AD TS TH		est=124	actual=124	OK
+7806	a1	-	Two Pair	9H 9D 7S 7D		est=104	actual=104	OK
+7804	a4	The House	Flush	AS AC 7S 4S 3S	Even Steven,Crafty Joker,Greedy Joker,Mystic Summit,Smeared Joker,Campfire	est=10375	actual=10375	OK
+7807	a1	The Goad	Two Pair	TS(DEBUFF) TH 4S(DEBUFF) 4C	Jolly Joker,Joker Stencil	est=1700	actual=1700	OK
+7805	a2	The Arm	Pair	JH TH 7C 7D 4C	Jolly Joker,Crazy Joker,Walkie Talkie,Splash	est=1224	actual=1224	OK
+7804	a4	The House	Flush	QH QD 8D 4D 2H	Even Steven,Crafty Joker,Greedy Joker,Mystic Summit,Smeared Joker,Campfire	est=19680	actual=19680	OK
+7805	a2	The Arm	Straight	6D 5D 4S 3S 2S	Jolly Joker,Crazy Joker,Walkie Talkie,Splash	est=1200	actual=1200	OK
+7809	a1	-	Four of a Kind	8S 8H 8C 8D	Mystic Summit	est=2024	actual=2024	OK
+7807	a2	-	Pair	6S 6C	Jolly Joker,Joker Stencil	est=1100	actual=1100	OK
+7806	a1	-	Full House	3H 3C 3D 2S 2C	Jolly Joker	est=636	actual=636	OK
+7801	a4	-	High Card	AD	Joker,Green Joker,Banner(holo),Mad Joker,The Trio,Ice Cream	est=4048	actual=4048	OK
+7801	a4	-	Two Pair	JC JD 9S 9H	Joker,Green Joker,Banner(holo),Mad Joker,The Trio,Ice Cream	est=7455	actual=7455	OK
+7810	a4	The Wall	Straight	9C 8D 7D 6H 5S	Supernova,Odd Todd,Driver's License(holo),Fortune Teller(holo),Blueprint,Ramen(polychrome)	est=23914	actual=23914	OK
+7806	a1	The Hook	Three of a Kind	TS TH TC	Jolly Joker	est=660	actual=660	OK
+7809	a1	The Club	Full House	QH QC(DEBUFF) QD JS JC(DEBUFF)	Mystic Summit	est=1330	actual=1330	OK
+7802	a1	-	Straight	AD KH QC JD TC		est=324	actual=324	OK
+7810	a4	The Wall	Flush	AD KD 4D 3D 2D	Supernova,Odd Todd,Driver's License(holo),Fortune Teller(holo),Blueprint,Ramen(polychrome)	est=23802	actual=23802	OK
+7807	a2	The Head	Straight	AC KC QS JC TD	Jolly Joker,Smiley Face(foil),Joker Stencil	est=9956	actual=9956	OK
+7805	a3	The Water	Two Pair	6S 4H 4C 2S 2H	Jolly Joker,Crazy Joker,Walkie Talkie,Splash	est=1044	actual=1044	OK
+7804	a5	-	Flush	AD JH TD 4H 2D	Even Steven,Crafty Joker,Greedy Joker,Mystic Summit,Smeared Joker,Campfire	est=10244	actual=10244	OK
+7805	a3	The Water	Two Pair	AS AH QS QH	Jolly Joker,Crazy Joker,Walkie Talkie,Splash	est=620	actual=620	OK
+7805	a3	The Water	Straight	TS 9C 8D 7D 6D	Jolly Joker,Crazy Joker,Walkie Talkie,Splash	est=2530	actual=2530	OK
+7803	a1	-	Flush	KS TS 6S 4S 2S		est=268	actual=268	OK
+7809	a2	-	Straight Flush	AS KS QS JS TS	Mystic Summit,Odd Todd,Sly Joker	est=4186	actual=4186	OK
+7806	a2	-	Pair	JS JD	Jolly Joker,Gros Michel	est=750	actual=750	OK
+7803	a1	-	Pair	7S 7D		est=48	actual=48	OK
+7802	a1	-	Three of a Kind	2S 2C 2D	Misprint	est=324	actual=396	OK
+7802	a1	-	Pair	KC KD	Misprint	est=240	actual=330	MISS
+7804	a5	-	Flush	AS JC TS 9S 9C	Crafty Joker,Mystic Summit,Smeared Joker,Campfire	est=7837	actual=7837	OK
+7806	a2	-	Two Pair	AC AD 8S 8C	Jolly Joker,Gros Michel	est=2646	actual=2646	OK
+7810	a5	The Wheel	Two Pair	9H 9D 8C 8D	Supernova,Odd Todd,Driver's License(holo),Fortune Teller(holo),Blueprint,Ramen(polychrome)	est=16781	actual=16781	OK
+7804	a5	-	Flush	AH KH KD 8H 8D	Crafty Joker,Mystic Summit,Smeared Joker,Campfire	est=7762	actual=7762	OK
+7810	a5	The Wheel	Flush	QS 5S 4S 3S 2S	Supernova,Odd Todd,Driver's License(holo),Fortune Teller(holo),Blueprint,Ramen(polychrome)	est=22589	actual=22589	OK
+7801	a4	-	High Card	AD	Joker,Green Joker,Banner(holo),Mad Joker,The Trio,Ice Cream	est=4150	actual=4150	OK
+7809	a2	-	Three of a Kind	3H 3C 3D	Mystic Summit,Odd Todd,Sly Joker	est=3276	actual=3276	OK

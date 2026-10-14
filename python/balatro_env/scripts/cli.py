@@ -297,8 +297,12 @@ def show(d):
         if tk == "tag_orbital" and orb in (main_hand(d), "Pair", "Two Pair", "Three of a Kind", "Full House"):
             NOW_TAGS[tk] = f"+3 levels to {orb} right now"
         boss_n = (ch.get("Boss") or {}).get("name")
-        if tk == "tag_boss" and boss_n in ("The Wall", "Violet Vessel", "The Needle", "The Flint", "The Arm", "The Eye", "The Mouth", "The Psychic",
-                                            "The Plant", "Crimson Heart", "Cerulean Bell", "Amber Acorn", "Verdant Leaf", "The Water", "The Manacle"):
+        mh_b = main_hand(d)
+        harmless = ((boss_n == "The Psychic" and mh_b in ("Flush", "Straight", "Full House", "Straight Flush", "Flush House", "Flush Five"))
+                    or (boss_n == "The Plant" and not any(j.get("name") in ("Smiley Face", "Scary Face", "Photograph", "Sock and Buskin", "Triboulet", "Business Card")
+                                                          for j in lst(d.get("jokers")))))  # 7806 FA2MCBFK: Psychic vs a 5-card build
+        if tk == "tag_boss" and not harmless and boss_n in ("The Wall", "Violet Vessel", "The Needle", "The Flint", "The Arm", "The Eye", "The Mouth", "The Psychic",
+                                                            "The Plant", "Crimson Heart", "Cerulean Bell", "Amber Acorn", "Verdant Leaf", "The Water", "The Manacle"):
             NOW_TAGS[tk] = f"rerolls {boss_n} right now (7807's win used a Boss Tag on The Wall)"
         # The Big Blind comes BEFORE any shop, so it must be beaten with what you own plus what the tag pays right now.
         # Stake 2-3 data (2026-08-30) and Gold data (2026-10-13: 328/450 and 448/450 with zero jokers after skipping for a
@@ -334,7 +338,8 @@ def show(d):
         # a skip has no round end, so perishables do not tick: with a key scorer at <= 2 rounds left, skipping keeps it
         # alive for the boss (Main 08:xx, ~6 runs lost a perishable carrier the round before the boss)
         perish_key = any(_stk(j)["perishable"] and (_stk(j)["perish_tally"] or 9) <= 2 and not _dead_perishable(j)
-                         and joker_share(d, j, main_hand(d)) >= 0.2 for j in lst(d.get("jokers")))
+                         and (classify_joker(j.get("name"), 0, main_hand(d))[0].startswith("XMULT") or joker_share(d, j, main_hand(d)) >= 0.3)
+                         for j in lst(d.get("jokers")))  # the KEY scorer only (7809 HCUCE445 skipped for a minor one)
         thr_ok = False
         if (thr or perish_key) and not riff:
             # WINNING LINE (7807, first Gold win): with Throwback, skip Small AND Big while your round beats this ante's
@@ -1880,6 +1885,12 @@ def _advise_rules(d):
         elif made:
             top = max(made, key=lambda t: t[2])
             keep = list(top[1]); why = f"keep {top[0]} (est {top[2]}) and draw around it"
+            dbf_k = [c.get("index") for c in _cards_by_idx(d, keep) if c.get("debuff")]
+            if dbf_k and top[2] * max(hands_left, 1) < need:
+                # a debuffed card only holds the TYPE; a type that cannot clear is not worth holding it (7807 7SDPD63B
+                # kept a debuffed AS under The Goad for a Two Pair that could not reach 2000)
+                keep = [i for i in keep if i not in dbf_k]
+                why += f"; debuffed {dbf_k} let go: this {top[0]} cannot clear"
             if top[0] in ("Straight", "Flush", "Straight Flush") and len(keep) == 5:
                 # a made 5-card hand that is still short: keep it and discard the rest hoping to improve later hands
                 pass
@@ -2060,6 +2071,15 @@ def _main_hand_raw(d):
     # any other IS the main hand; otherwise a type leveled >= 3 above every other played type is
     pl = sorted(((int((v or {}).get("played") or 0), k) for k, v in hl.items()), reverse=True)
     if len(pl) == 1 or (pl[0][0] >= 3 and pl[0][0] >= 2 * pl[1][0]):
+        # exception: an owned type-xMult (The Trio/Family/Order/Tribe...) whose type scores 2.5x+ per hand and was played
+        # 2+ times is the engine, not the most-played Pair (7806 BK2G3JSQ: Pair ~19.8k vs Duo+Trio Trips/FH 65-95k)
+        tx = {TYPE_X_JOKERS[j.get("name")][0] for j in lst(d.get("jokers")) if j.get("name") in TYPE_X_JOKERS and not j.get("debuff")}
+        alt = [t for t in tx if t != pl[0][1] and t in SYN_HANDS and int((hl.get(t) or {}).get("played") or 0)
+               + (int((hl.get("Full House") or {}).get("played") or 0) if t in ("Three of a Kind", "Two Pair") else 0) >= 2
+               and typical_est(d, t) >= 2.5 * typical_est(d, pl[0][1])]
+        if alt:
+            d["_mh_forced"] = True
+            return max(alt, key=lambda t: typical_est(d, t))
         d["_mh_forced"] = True
         return pl[0][1]
     lv = sorted(((int((v or {}).get("level") or 1), k) for k, v in hl.items() if int((v or {}).get("played") or 0) >= 2), reverse=True)
@@ -2682,8 +2702,13 @@ def shop_advise_sim(d, budget_s=6.0):
         # beyond them (7807 SWXRQQVU ante 2); the rules (next-ante SCORE CHECK, levels, scorers) decide
         sim.append("  SIM SATURATED: the next 3 blinds clear with or without any buy (all deltas < 0.02); ranking by the rules / next-ante SCORE CHECK instead")
         keep_rule = True
+    def _req(r):
+        """switch bar: a perishable or type-conditional joker must clearly win: its value fades / fires rarely beyond
+        the horizon (7806 FA2MCBFK: perishable The Family bought on +0.05)"""
+        aj_b = ((r or {}).get("option") or {}).get("add_joker") or {}
+        return 0.02 + (0.05 if _stk(aj_b)["perishable"] else 0) + (0.05 if classify_joker(aj_b.get("name"), 0, main_hand(d))[0].startswith("XMULT(conditional") else 0)
     if not keep_rule:
-        if best is not None and gain > 0.02:
+        if best is not None and gain > _req(best):
             new_cmd = best["option"]["_cmd"]
             sell_ix = best["option"].get("sell")
             sell_ix = sell_ix[0] if isinstance(sell_ix, list) and sell_ix else None
@@ -2701,10 +2726,13 @@ def shop_advise_sim(d, budget_s=6.0):
             forced = "NEEDED NOW" in adv or "EMERGENCY" in adv  # a survival-forced buy must actually help survival (7810 Banner)
             sim_top_nothing = best is None or gain <= 0  # the SIM's best is buying nothing: a BUY must not contradict it (Main 09:xx)
             barred_rule = mine is not None and not allowed(mine)
-            if g_m < -0.02 or (forced and g_m <= 0.0) or (sim_top_nothing and g_m <= 0.0) or barred_rule:
+            weak_fade = mine is not None and _req(mine) > 0.02 and g_m < _req(mine)
+            if g_m < -0.02 or (forced and g_m <= 0.0) or (sim_top_nothing and g_m <= 0.0) or barred_rule or weak_fade:
                 sim.append(f"  (rule advice was: {adv[8:]})")
                 adv = ("ADVICE: LEAVE -> b endshop   (the rule pick is barred by a hard sticker rule: a 2nd permanent rental before ante 6 (unless both are xMults or you sell the first), an eternal rental, or an eternal non-scorer; nothing else raises P(clear) by more than 0.02)"
-                       if barred_rule else f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes P(clear all next 3 blinds) by {g_m:+.2f}; nothing on offer raises it by more than 0.02)")
+                       if barred_rule else
+                       f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick is perishable/type-conditional and gains only {g_m:+.2f} (needs {_req(mine):+.2f}); nothing else clearly helps)"
+                       if weak_fade else f"ADVICE: LEAVE -> b endshop   (SIM: the rule pick changes P(clear all next 3 blinds) by {g_m:+.2f}; nothing on offer raises it by more than 0.02)")
             else:
                 sim.append(f"  (SIM neutral on the rule pick ({g_m:+.2f}): the rules decide)")
     # INVARIANT: an affordable item with SIM gain >= 0.10 that passes the hard rules is never answered with LEAVE
@@ -2880,12 +2908,20 @@ def _shop_rules(d):
     nk = next((k for k in ("Small", "Big", "Boss") if ((ch_now.get(k) or {}).get("state") or "Upcoming") not in ("Defeated", "Skipped")), None)
     need_next = int((ch_now.get(nk) or {}).get("chips") or 0) if nk else 0
     proj = int(round_est(d, mh) * ((deck_best / best_hand) if deck_best and best_hand else 1))
-    tight = bool(need_next) and proj < 1.2 * need_next
+    bn_t = (ch_now.get("Boss") or {}).get("name") if nk == "Boss" else None
+    if bn_t in ("The Water", "The Needle"):
+        # the boss's own constraint: The Water 0 discards (a deal's median best, not the 75th pct), The Needle 1 hand
+        # (7802 KLV4P2RZ lost The Water by 18: projected ~9280/hand vs 5.7-6.5k real)
+        med = deck_best_est(d, pct=0.5) or best_hand
+        proj = int(med * (1 if bn_t == "The Needle" else _hands_pr(d)))
+    # the last shop before a boss: below 1.25x the floor is off too (dying with money is the worst outcome)
+    tight = bool(need_next) and proj < (1.25 if nk == "Boss" else 1.2) * need_next
     if tight:
         floor = 0
-        print(f"  TIGHT: next blind ({(ch_now.get(nk) or {}).get('name') or nk}) needs {need_next}; projected round ~{proj} ({proj / need_next:.2f}x < 1.2x): "
+        print(f"  TIGHT: next blind ({(ch_now.get(nk) or {}).get('name') or nk}) needs {need_next}; projected round ~{proj} ({proj / need_next:.2f}x < {'1.25' if nk == 'Boss' else '1.2'}x"
+              + (f", with {bn_t}'s constraint" if bn_t in ("The Water", "The Needle") else "") + "): "
               f"recorded Gold shops at this ratio lost the next blind {'40' if proj < 0.5 * need_next else '32' if proj < 0.8 * need_next else '13'}% (>= 1.2x: 6% or less). "
-              "Money floor OFF - spend on whatever adds main-hand score now (main-hand planet, Celestial/Arcana pack, scorer)")
+              "Money floor OFF - spend on whatever adds main-hand score now (main-hand planet, Celestial/Arcana pack, scorer); sell dead weight (8 Ball, economy jokers) to fund it")
     mh_lv = (d.get("hand_levels") or {}).get(mh) or {}
     mh_why = f" (L{mh_lv.get('level') or 1}, {mh_lv.get('played') or 0} plays" + ("; forced: 2x the plays or +3 levels" if d.get("_mh_forced") else "") + ")" if mh != "undecided" else ""
     print(f"Shop advisor: ante {ante}, ${money}, jokers {len(jokers)}/{slots}, main hand {mh}{mh_why}, money floor ${floor} (spend below it only for an xMult, your main-hand planet or a Buffoon pack)"
@@ -3212,9 +3248,11 @@ def _shop_rules(d):
             if good and main_lvl >= 6 and n_x_now < 2:
                 psc = 52  # diminishing: L6+ adds ~12% per level while an xMult or Glass card adds 50-100%
             psc += 25 if feeds else 0
+            if good and ante >= 2 and 0.85 <= sc_ratio <= 1.15:
+                psc = max(psc, 90)  # SCORE CHECK within ~15% of the next boss: one level decides it (7807 7SDPD63B lost The Goad by 31 holding $16)
             if const and ante >= 4 and n_x_now <= 1:
                 psc = max(psc, 82)  # Constellation: every planet used is +0.1x on every hand forever; $3 beats a $5+ reroll
-            if ante <= 2 and scoring_now <= 1 and not const:
+            if ante <= 2 and scoring_now <= 1 and not const and not (good and 0.85 <= sc_ratio <= 1.15 and ante >= 2):
                 psc = min(psc, 20)  # 0-1 scoring jokers at ante 1-2: a level on a jokerless hand is +10-20 points; buy a scorer
             # planets are used on purchase: `buyuse` needs no consumable slot and feeds Constellation immediately
             options.append((psc, "PLANET", f"{'buyuse' if feeds else 'buy'} {c['index']}", f"{name} ${cost} [{'MAIN SCALING: main-hand planet' if good else 'planet for other hand'}{' (already L' + str(main_lvl) + ': multiplication now beats another level)' if good and main_lvl >= 6 else ''}{'; feeds Constellation (+0.1x)' if const else ('; feeds ' + 'Satellite/Astronomer' if feeds else '')}]", cost, good or feeds, False))
@@ -3256,7 +3294,10 @@ def _shop_rules(d):
             note = ("Telescope: your main planet is guaranteed" if telescope else
                     "no main hand yet: take the planet of the hand you play most (`advise` inside the pack picks it)" if mh == "undecided" else
                     f"take {PLANET_FOR.get(mh)}; if it is not offered, a fallback planet is worth little (skip the pack if you can buy your planet directly next shop)")
-            if ante <= 2 and scoring_now <= 1 and not feeds:
+            near_c = ante >= 2 and 0.85 <= sc_ratio <= 1.15 and mh != "undecided"
+            if near_c:
+                csc = max(csc, 75 - big)  # within ~15% of the next boss: a main-hand level decides it (7807 7SDPD63B)
+            elif ante <= 2 and scoring_now <= 1 and not feeds:
                 csc = min(csc, 15 - big)  # 0-1 scoring jokers at ante 1-2: levels on a jokerless hand barely move it (Main 08:xx)
             options.append((csc + big + (15 if feeds else 0), "PACK", f"pack {c['index']}", f"{name} ${cost} [hand level gamble: {note}{'; feeds Constellation' if feeds else ''}]", cost, ante >= 2 and (telescope or mh == "undecided") and not (ante <= 2 and scoring_now <= 1), False))
         elif "Buffoon" in name:
