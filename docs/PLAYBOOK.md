@@ -421,11 +421,10 @@ Ante 1-2 (you start with $4-8, no jokers). DO THIS:
 - STAKE 2+ (Red Stake and up): the Small Blind pays $0, so skipping it costs only one shop visit. Skip the Small Blind
   (ante 1-4) when its tag is worth a joker or a pack: Uncommon/Rare/Negative/Foil/Holo/Polychrome, Buffoon, Charm,
   Meteor, Ethereal, Coupon, Top-up, Investment — but with fewer than two scoring jokers only a tag that GIVES a joker
-  (Uncommon, Rare, Buffoon, Top-up, Coupon) beats the shop visit. At ANTE 1 with no jokers, SKIP the Small Blind for any
-  tag except the Boss tag: it pays $0, three pair-shaped hands against 300 lost 4 of ~8 stake-2 attempts (292/300,
-  256/300, 224/300), and the $4 shop it unlocks rarely buys a joker anyway. `s` at blind select prints `ADVICE: b skip`
-  when it applies; Big and
-  Boss blinds are never skipped, and at stake 1 nothing is skipped.
+  (Uncommon, Rare, Buffoon, Top-up, Coupon) beats the shop visit. At ante 1 with no jokers, play the 300 Small Blind
+  and take its shop unless the tag gives a joker NOW (superseded: stake-3 and Gold data showed that skipping for other
+  tags lost the 450 Big Blind; see the ANTE-1 SKIP RULE REVISED note below and 2b). `s` at blind select prints
+  `ADVICE: b skip` when it applies. Boss blinds are never skipped, and at stake 1 nothing is skipped.
 - Ante 1-2 rerolls: reroll ONLY when the shop has no scoring joker and you keep $4+ after it (shopadvise says when). Do NOT buy planets/tarots before you own 2 jokers,
   except a Planet for a hand you just played twice.
 - Buffoon Pack ($4) is fine at ante 1 if no joker is in the shop (pick the mult/chips joker; check editions: holo/poly/foil).
