@@ -84,40 +84,23 @@ _Updated 17:00._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-10-14 17:25:39 by `balatro-data status` (edits inside this block are overwritten). Player runs: 523 (506 finished, 17 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-11-09 19:27:45 by `balatro-data status` (edits inside this block are overwritten). Player runs: 525 (525 finished, 0 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (17)
+### Live runs (0)
 
-| port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-fable-5-1 | 8Q27ATWC | 8 | ROUND_EVAL | 4 | 10 | 10 | Small Blind (9000) | CASH_OUT | Small 9000 cleared in 2 pairs | 11s |
-| 7802 | port-7802 | claude-opus-5-5 | EGDDZQHD | 8 | PACK_OPENING | 4 | 7 | 30 | Small Blind (9000) | SELECT_PACK_CARD {"index":1} | Popcorn +20 mult (+167% round est) covers ante 4 blinds; SIM +0.10; sell when it fades | 1s |
-| 7803 | port-7803 | claude-opus-5-5 | AF96E3ER | 8 | BLIND_SELECT | 4 | 7 | 1 | Small Blind (9000) | SELECT_BLIND | Small 9000 vs round ~6100; skipping only leads to Big 13500/Tooth 18000 which are out of reach; bes… | 0s |
-| 7804 | port-7804 | claude-opus-5-5 | NPMBQNI1 | 8 | BLIND_SELECT | 4 | 9 | 17 | The Eye (18000) | SELECT_BLIND | The Eye 18000, round under its rule ~27k (1.52x); rotate hand types | 11s |
-| 7805 | port-7805 | claude-opus-5-5 | 2KL9WSNQ | 8 | SHOP | 4 | 7 | 13 | Small Blind (9000) | SHOP_REROLL | EMERGENCY 0.16, 0 xMult: free Chaos reroll before spending 3 | 36s |
-| 7807 | port-7807 | claude-sonnet-5-5 | 43WTUHE4 | 8 | SHOP | 4 | 8 | 6 | Small Blind (9000) | SHOP_BUY_BOOSTER {"slot":2} | Jumbo Buffoon : EMERGENCY 0.22, 1 xMult only (conditional Tribe); hunting xMult/+mult; 1 free slot … | 13s |
-| 7808 | port-7808 | claude-sonnet-5-5 | AHX6JJ6F | 8 | PACK_OPENING | 4 | 9 | 2 | Small Blind (9000) | SELECT_PACK_CARD {"index":1,"targets":[1]} | only marginal options: Devil gold seal... Gold AC (non-face, usually held) pays when held at round … | 25s |
-| 7809 | port-7809 | claude-sonnet-5-5 | SRV4M57L | 8 | BLIND_SELECT | 3 | 6 | 2 | Big Blind (4800) | SELECT_BLIND | Big 4800 need; Death/Chariot held for rescue | 15s |
-| 7810 | port-7810 | (unknown) | WAQE7ZUA | 8 | SHOP | 3 | 5 | 13 | Small Blind (3200) | SHOP_BUY_BOOSTER {"slot":2} | Jumbo Buffoon : hunt permanent scorer/xMult, Smiley perishes next round, left | 19s |
-| 7811 | port-7811 | claude-sonnet-5-5 | V7M2DYH4 | 8 | ROUND_EVAL | 5 | 12 | 14 | Small Blind (25000) | CASH_OUT | cash out Small | 2s |
-| 7812 | port-7812 | claude-sonnet-5-5 | DI1851LB | 8 | SELECTING_HAND | 4 | 11 | 15 | The Tooth 1664/18000 | PLAY_HAND {"card_indices":[2]} | Hand 2: single spare AC (); keep spades AS QS JS TS 9S (flush) / straight for final hand x3 | 13s |
-| 7813 | port-7813 | claude-sonnet-5-5 | 4X3522S1 | 8 | BLIND_SELECT | 2 | 4 | 9 | The Wheel (2000) | SELECT_BLIND | Fight The Wheel 2000 | 18s |
-| 7814 | port-7814 | claude-haiku-5-5 | 5JVWAMNF | 8 | SHOP | 2 | 4 | 4 | Small Blind (1000) | SHOP_END | Advisor LEAVE at : Mystic Summit costs , Devious Joker is a barred flat rental at ante 2; keep for … | 4s |
-| 7815 | port-7815 | claude-sonnet-5-5 | TDN862HM | 8 | BLIND_SELECT | 3 | 5 | 8 | Small Blind (3200) | SELECT_BLIND | Small 3200: Standard tag adds no score now, play it; Popcorn needs rounds so use them | 2s |
-| 7816 | port-7816 | claude-sonnet-5-5 | FC3AVWG6 | 8 | SELECTING_HAND | 2 | 4 | 3 | Small Blind 927/1000 | PLAY_HAND {"card_indices":[8]} | Single 3S est 882 vs 73 needed, clears Small | 5s |
-| 7817 | port-7817 | claude-opus-5-5 | S4SRUGPP | 8 | SHOP | 3 | 6 | 0 | Small Blind (3200) | SHOP_END | /bin/bash, done | 2s |
-| 7818 | port-7818 | claude-haiku-5-5 | YEQRB9QH | 8 | ROUND_EVAL | 3 | 7 | 10 | Small Blind (3200) | CASH_OUT | Small 3200 cleared (1859 + two pair 1512 = 3371). Cash out to ante 3 shop, Big 4800 next | 11s |
+No live runs.
 
 ### Results by model x stake x deck
 
 | model | stake | deck | runs | wins | losses | abandoned | unfinished | mean ante | max ante |
 |---|---|---|---|---|---|---|---|---|---|
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
-| claude-fable-5-1 | 8 | Black | 33 | 1 | 32 | 0 | 0 | 4.24 | 8 |
-| claude-haiku-5-5 | 8 | Black | 30 | 0 | 30 | 0 | 0 | 3.07 | 5 |
+| (unknown) | 8 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
+| claude-fable-5-1 | 8 | Black | 34 | 1 | 32 | 0 | 1 | 4.24 | 8 |
+| claude-haiku-5-5 | 8 | Black | 32 | 0 | 30 | 0 | 2 | 3.03 | 5 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 253 | 2 | 251 | 0 | 0 | 4.09 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 184 | 1 | 183 | 0 | 0 | 3.68 | 8 |
+| claude-opus-5-5 | 8 | Black | 260 | 2 | 252 | 0 | 6 | 4.06 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 192 | 1 | 184 | 0 | 7 | 3.69 | 8 |
 
 ### Deepest runs
 
@@ -136,36 +119,36 @@ _Generated 2026-10-14 17:25:39 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 523 files in manifest; schema_ok 523, schema invalid 0; replay_ok 502, replay failed 0, awaiting replay 3, open/unended 18; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 408 / failed 0; gui (live) ok 140 / failed 0; cross-checked by both 46, disagreeing 0.
-- All files (incl. fuzz + replays): 737; schema_ok 735; replay_ok 508 (headless 408, gui 146); replay failed 0; awaiting replay 208; quarantined 2.
+- Player runs: 525 files in manifest; schema_ok 525, schema invalid 0; replay_ok 504, replay failed 0, awaiting replay 3, open/unended 18; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 410 / failed 0; gui (live) ok 140 / failed 0; cross-checked by both 46, disagreeing 0.
+- All files (incl. fuzz + replays): 739; schema_ok 737; replay_ok 510 (headless 410, gui 146); replay failed 0; awaiting replay 208; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 3219 |
+| port-7805 | 2 | 2 | 3229 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 2881 |
-| port-7803 | 1 | 1 | 3309 |
-| port-7804 | 1 | 1 | 2969 |
-| port-7807 | 1 | 1 | 3589 |
+| port-7802 | 1 | 1 | 2893 |
+| port-7803 | 1 | 1 | 3319 |
+| port-7804 | 1 | 1 | 2976 |
+| port-7807 | 1 | 1 | 3605 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 2051 |
-| port-7806 | 0 | 0 | 3351 |
-| port-7808 | 0 | 0 | 1233 |
-| port-7809 | 0 | 0 | 3371 |
-| port-7810 | 0 | 0 | 3743 |
-| port-7811 | 0 | 0 | 964 |
-| port-7812 | 0 | 0 | 1044 |
-| port-7813 | 0 | 0 | 993 |
-| port-7814 | 0 | 0 | 1008 |
-| port-7815 | 0 | 0 | 1013 |
-| port-7816 | 0 | 0 | 1028 |
-| port-7817 | 0 | 0 | 914 |
-| port-7818 | 0 | 0 | 1012 |
+| port-7801 | 0 | 0 | 2058 |
+| port-7806 | 0 | 0 | 3364 |
+| port-7808 | 0 | 0 | 1242 |
+| port-7809 | 0 | 0 | 3378 |
+| port-7810 | 0 | 0 | 3760 |
+| port-7811 | 0 | 0 | 973 |
+| port-7812 | 0 | 0 | 1054 |
+| port-7813 | 0 | 0 | 1004 |
+| port-7814 | 0 | 0 | 1019 |
+| port-7815 | 0 | 0 | 1029 |
+| port-7816 | 0 | 0 | 1042 |
+| port-7817 | 0 | 0 | 927 |
+| port-7818 | 0 | 0 | 1025 |
 <!-- AUTO:END -->
 
 ## Orchestrator log

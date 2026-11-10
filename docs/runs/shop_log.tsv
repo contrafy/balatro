@@ -9616,3 +9616,10 @@
 7810	a4	$12	jokers=5/6	xmult_owned=0	PACK:Mega Arcana Pack $8 | TAROT:The Empress $3 | PACK:Standard Pack $4 | VOUCHER:Hieroglyph $10 | PLUS:Joker{ETERNAL} $2
 7805	a4	$15	jokers=6/6	xmult_owned=0	PLANET:Uranus $3 | PACK:Jumbo Buffoon Pack $6 | PACK:Celestial Pack $4 | PLANET:Mercury $3 | VOUCHER:Director's Cut $10
 7802	a4	$26	jokers=6/6	xmult_owned=0	PACK:Celestial Pack $4 | PLUS:Abstract Joker{PERISHABLE(5 rounds left)} $4 | PACK:Arcana Pack $4 | VOUCHER:Reroll Surplus $10 | XMULT(growth: Throwback x1.75 now, +0.25 per blind skipped):Throwback{ETERNAL,RENTAL(-$3/round)} $1
+7803	a1	$6	jokers=0/6	xmult_owned=0	PACK:Buffoon Pack $4 | AVOID(useless as the only joker):Swashbuckler{ETERNAL} $7 | ECON:Golden Joker{ETERNAL} $8 | VOUCHER:Magic Trick $10 | PACK:Standard Pack $4
+7804	a5	$15	jokers=6/6	xmult_owned=0	PLUS(one suit):Lusty Joker{RENTAL(-$3/round)} $1 | PACK:Jumbo Celestial Pack $6 | PACK:Celestial Pack $4 | VOUCHER:Wasteful $10 | ECON:Golden Joker{RENTAL(-$3/round)} $1
+7818	a3	$8	jokers=5/6	xmult_owned=0	LEVELS(planets and Celestial packs free):Astronomer{RENTAL(-$3/round)} $1 | TAROT:The Sun $3 | VOUCHER:Blank $10 | PACK:Standard Pack $4
+7816	a3	$9	jokers=4/6	xmult_owned=0	PACK:Celestial Pack $4 | PACK:Celestial Pack $4 | PLANET:Mercury $3 | VOUCHER:Seed Money $10 | UTIL:Hallucination{RENTAL(-$3/round)} $1
+7806	a1	$6	jokers=0/6	xmult_owned=0	PLUS:Banner $5 | PLUS(adds ~0 now: grows only with its condition):Hit the Road $8 | VOUCHER:Hieroglyph $10 | PACK:Arcana Pack $4 | PACK:Jumbo Celestial Pack $6
+7813	a3	$7	jokers=5/6	xmult_owned=0	PLANET:Jupiter (Flush L1) $0 | PACK:Arcana Pack $0 | PACK:Jumbo Arcana Pack $0 | TAROT:The Hierophant $0 | VOUCHER:Paint Brush $10
+7815	a4	$14	jokers=6/6	xmult_owned=0	PLANET:Uranus (Two Pair L4) $3 | PACK:Mega Arcana Pack $8 | PLUS:Supernova{PERISHABLE(5 rounds left)} $5 | VOUCHER:Reroll Surplus $10 | PACK:Standard Pack $4
