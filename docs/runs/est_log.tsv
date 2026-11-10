@@ -14091,3 +14091,52 @@
 7817	a3	The Pillar	Straight	TC 9S 8S 7C 6S	Supernova,Hanging Chad,Banner,Crazy Joker,Scholar	est=6960	actual=6960	OK
 7814	a2	The Club	Two Pair	KS KC(DEBUFF) 5S 5H	Satellite,Raised Fist,Cavendish	est=2640	actual=2640	OK
 7808	a4	The Tooth	Two Pair	KS KD 6C 6D	Smiley Face,Banner,Photograph,Raised Fist,Jolly Joker,Crazy Joker	est=6468	actual=6468	OK
+7812	a1	-	Flush	KC JC 9C 8C 5C		est=308	actual=308	OK
+7809	a1	-	Flush	JH 9H 8H 6H 3H		est=284	actual=284	OK
+7803	a1	-	Two Pair	9H 9C 7C 7D		est=104	actual=104	OK
+7809	a1	-	Two Pair	JC JD 9C 9D		est=116	actual=116	OK
+7804	a1	-	Two Pair	9H 9D 7H 7C		est=104	actual=104	OK
+7801	a1	-	Flush	KH TH 8H 7H 6H		est=304	actual=304	OK
+7814	a1	-	Full House	9H 9C 9D 4H 4C		est=300	actual=300	OK
+7815	a1	-	Flush	KH QH JH 9H 7H		est=324	actual=324	OK
+7802	a1	-	Flush	AH 9H 6H 5H 2H		est=272	actual=272	OK
+7817	a1	-	Straight	QS JC TC 9S 8S		est=308	actual=308	OK
+7806	a1	-	Full House	8S 8C 8D 4H 4D		est=288	actual=288	OK
+7805	a1	-	Flush	9D 6D 5D 4D 3D		est=248	actual=248	OK
+7807	a1	-	Two Pair	TS TD 8S 8C		est=112	actual=112	OK
+7808	a1	-	Pair	4S 4H		est=36	actual=36	OK
+7813	a1	-	Straight	QH JH TS 9H 8C		est=308	actual=308	OK
+7818	a1	-	Flush	AC KC QC TC 6C		est=328	actual=328	OK
+7802	a1	-	Pair	TS TH		est=60	actual=60	OK
+7811	a1	-	Full House	KS KC 4S 4C 4D		est=288	actual=288	OK
+7816	a1	-	Flush	KD JD TD 9D 6D		est=320	actual=320	OK
+7806	a1	-	Pair	TS TH		est=60	actual=60	OK
+7804	a1	-	Two Pair	KS KD 6H 6D		est=104	actual=104	OK
+7803	a1	-	Two Pair	8S 8H 5S 5H		est=92	actual=92	OK
+7808	a1	-	Flush	AD QD 6D 3D 2D		est=268	actual=268	OK
+7807	a1	-	Two Pair	KH KC QH QC		est=120	actual=120	OK
+7805	a1	-	Two Pair	9H 9C 6H 6C		est=100	actual=100	OK
+7810	a1	-	Pair	7S 7D		est=48	actual=48	OK
+7811	a1	-	Straight	TC 9S 8S 7H 6S		est=280	actual=280	OK
+7803	a1	-	Straight	AH KH QH JC TS		est=324	actual=324	OK
+7804	a1	-	Straight	QC JC TS 9S 8C		est=308	actual=308	OK
+7807	a1	-	Two Pair	9C 9D 6C 6D		est=100	actual=100	OK
+7809	a1	-	Full House	JS JC 8S 8C 8D	Turtle Bean	est=336	actual=336	OK
+7810	a1	-	Flush	KC JC 9C 6C 5C		est=300	actual=300	OK
+7817	a1	-	High Card	4H	Walkie Talkie(foil)	est=345	actual=345	OK
+7812	a1	-	Two Pair	AS AC JS JH	Loyalty Card	est=124	actual=124	OK
+7801	a1	-	Four of a Kind	KS KH KC KD	Mystic Summit	est=2200	actual=2200	OK
+7806	a1	-	Two Pair	QH QC TS TC	Misprint	est=810	actual=1320	MISS
+7814	a1	-	Full House	JS JC JD 2S 2H	Greedy Joker	est=518	actual=518	OK
+7802	a1	-	Full House	TS TH TC 9H 9C	Even Steven	est=1408	actual=1408	OK
+7817	a1	-	Two Pair	8S 8C 6S 6C	Walkie Talkie(foil)	est=196	actual=196	OK
+7809	a1	-	Flush	AH 7H 6H 4H 2H	Turtle Bean	est=260	actual=260	OK
+7812	a1	-	High Card	TC	Loyalty Card	est=15	actual=15	OK
+7815	a1	-	Two Pair	8S 8C 6S 6H	Lusty Joker	est=240	actual=240	OK
+7816	a1	-	Straight	AC KS QS JH TD	Turtle Bean	est=324	actual=324	OK
+7803	a1	-	Straight	TC 9S 8H 7S 6H	Scary Face	est=280	actual=280	OK
+7808	a1	-	Two Pair	5S 5D 4C 4D		est=76	actual=76	OK
+7807	a1	-	Two Pair	TS TD 7S 7D	Arrowhead	est=308	actual=308	OK
+7813	a1	-	Flush	KD JD TD 9D 8D		est=328	actual=328	OK
+7818	a1	-	Flush	KH KH KH 6H 4H	Cartomancer	est=300	actual=300	OK
+7810	a1	-	Two Pair	5S 5D 3C 3D	Raised Fist	est=792	actual=792	OK

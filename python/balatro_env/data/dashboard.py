@@ -1,6 +1,7 @@
 """`balatro-data dashboard`: stdlib-only local HTTP status page for the swarm (no external assets).
 
 Routes: `/` (auto-refreshing HTML), `/status.json`, `/runs/<port>_<seed>.md` (post-mortems as text).
+"Notable events" come from `notable.Harvester` (run-log `NOTABLE:` lines plus orchestrator notes).
 Trajectory summaries come from `status.RunScanner` (cached by size+mtime; open files are read incrementally, so a
 refresh costs one stat per file plus the bytes appended since the last refresh).
 """
@@ -18,6 +19,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+from balatro_env.data.notable import Harvester
 from balatro_env.data.status import (
     ANTE_BUCKETS,
     LIVE_WINDOW_S,
@@ -42,7 +44,7 @@ th{background:#1b2027;text-align:left} tr:nth-child(even) td{background:#161a20}
 a{color:#7fb3ff} .muted{color:#7d8794} .warn{color:#ffb454} .bad{color:#ff6b6b} .good{color:#7ee787}
 .why{max-width:420px} .bar{display:inline-block;width:80px;height:8px;background:#2c333c;margin-left:4px}
 .bar>span{display:block;height:8px;background:#7ee787} .hist{display:inline-block;margin:0 18px 10px 0}
-.small{font-size:11px}
+.small{font-size:11px} .notable{max-height:340px;overflow-y:auto;margin:4px 0} .notable .ev{max-width:760px}
 """
 
 
@@ -101,6 +103,20 @@ def render_html(st: dict[str, Any], refresh_s: int) -> str:
            f'<div class="muted">{time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now_s))} - '
            f"{c['player_runs']} player runs ({c['finished']} finished, {c['live']} live), {c['files']} trajectory "
            f"files; refresh every {refresh_s}s; <a href=\"/status.json\">status.json</a></div>"]
+
+    events = st.get("notable") or []
+    out.append(f"<h2>Notable events ({len(events)})</h2>")
+    if events:
+        rows = []
+        for ev in events:
+            port, seed = ev.get("port"), ev.get("seed")
+            log = f'<a href="/runs/{html.escape(f"{port}_{seed}.md")}">{_e(seed)}</a>' if seed else "-"
+            rows.append([_e(time.strftime("%m-%d %H:%M", time.localtime(ev.get("ts") or 0))), _e(ev.get("model")),
+                         f"{_e(port)} / {log}", _e(ev.get("ante")), f'<div class="ev">{_e(ev.get("text"))}</div>'])
+        out.append('<div class="notable">' + _table(["when", "model", "port / seed", "ante", "event"], rows) + "</div>")
+    else:
+        out.append('<div class="muted">No notable events yet (players add <code>NOTABLE:</code> lines to their run '
+                   "logs; the orchestrator adds notes from finished runs).</div>")
 
     out.append(f"<h2>Live runs ({len(st['live'])})</h2>")
     rows = []
@@ -203,6 +219,7 @@ class Dashboard:
         self.live_window_s = live_window_s
         self.refresh_s = refresh_s
         self.min_age_s = min_age_s
+        self.harvester = Harvester(self.root, self.runs_dir)
         self._lock = threading.Lock()
         self._st: dict[str, Any] | None = None
         self._at = 0.0
@@ -212,6 +229,7 @@ class Dashboard:
             if self._st is None or time.monotonic() - self._at > self.min_age_s:
                 self._st = build_status(self.root, self.runs_dir, self.scanner, self.pm_index,
                                         live_window_s=self.live_window_s)
+                self._st["notable"] = self.harvester.run()
                 self._at = time.monotonic()
             return self._st
 

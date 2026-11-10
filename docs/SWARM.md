@@ -93,6 +93,11 @@ python/.venv/Scripts/balatro-data dashboard --port 8765                       # 
 python/.venv/Scripts/balatro-data status --print                              # one-off refresh of docs/SWARM_STATUS.md
 ```
 
+Notable events (top of the dashboard, newest first) live in `data/notable_events.jsonl`. Players append
+`NOTABLE: ante N - <sentence>` lines to their run logs as things happen; the dashboard harvests new lines on each
+refresh. The orchestrator adds events it finds in finished runs' results and post-mortems:
+`python/.venv/Scripts/python.exe python/balatro_env/scripts/swarm_ctl.py note <port> <seed> <ante|-> '<text>'`.
+
 ## 5. Crash handling
 
 A crashed instance can keep its process alive while the bridge is gone. Check both:

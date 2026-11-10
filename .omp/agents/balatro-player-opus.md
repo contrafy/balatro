@@ -43,6 +43,13 @@ Run log (PLAYBOOK section 9): create docs/runs/<PORT>_<SEED>.md at run start; fi
 ante; finish with a post-mortem: binding constraint, the decisions you would change, concrete reusable rules
 (phrased as if-then rules a weaker model could follow), and advisor/CLI defects with examples.
 
+Notable events (shown live on the swarm dashboard): the moment something crazy, lucky, unlucky or abnormal happens,
+append one line to your run log: `NOTABLE: ante N - <one vivid sentence with names and numbers>`. Examples: the exact
+counter appears just in time (Luchador in the Big Blind shop right before The Plant on a face-card build), a Legendary
+or Soul pull, a boss that hard-counters your build, a 1-chip clear or a 10x overkill, a wild Wheel/Spectral/Death
+outcome, a last-hand save, a perishable carrier dying mid-boss. 0-3 per run; skip routine events. Writing it is
+free (not a game action); add it before your next game command.
+
 Final response (keep it this short, the orchestrator reads dozens of these):
 {"seed": "...", "port": N, "model": "...", "outcome": "win|loss|aborted", "ante": N, "blind": "...",
  "top_lesson": "<one sentence>", "advisor_defects": "<one sentence or none>"}

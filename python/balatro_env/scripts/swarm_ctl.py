@@ -3,6 +3,7 @@
   swarm_ctl.py next <port> <tier>     ensure the port's instance is healthy, assign a fresh seed, print the task spec
   swarm_ctl.py result '<json>'        record a finished player's JSON result (needs "port" and "seed")
   swarm_ctl.py summary                per-tier outcomes so far
+  swarm_ctl.py note <port> <seed> <ante|-> '<text>'   add a dashboard "Notable events" row (model from the state file)
 """
 
 import json
@@ -15,6 +16,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[3]
 STATE = REPO / "data" / "swarm_state.json"
 RESULTS = REPO / "data" / "swarm_results.jsonl"
+NOTABLE = REPO / "data" / "notable_events.jsonl"
 MODEL_ID = {"fable": "claude-fable-5-1", "opus": "claude-opus-5-5", "sonnet": "claude-sonnet-5-5", "haiku": "claude-haiku-5-5"}
 
 
@@ -106,6 +108,16 @@ def cmd_result(raw):
     print("recorded", r.get("port"), r.get("seed"), r.get("outcome"), r.get("ante"))
 
 
+def cmd_note(port, seed, ante, text):
+    runs = load()["ports"].get(str(port), {}).get("runs", [])
+    tier = next((r["tier"] for r in reversed(runs) if r["seed"] == seed), None)
+    row = {"ts": time.time(), "port": port, "seed": seed, "model": MODEL_ID.get(tier), "ante": None if ante == "-" else int(ante),
+           "text": text, "source": "orchestrator"}
+    with NOTABLE.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    print("noted", port, seed)
+
+
 def cmd_summary():
     rows = [json.loads(l) for l in RESULTS.read_text(encoding="utf-8").splitlines() if l.strip()] if RESULTS.exists() else []
     agg = {}
@@ -129,3 +141,5 @@ if __name__ == "__main__":
         cmd_result(sys.argv[2])
     elif c == "summary":
         cmd_summary()
+    elif c == "note":
+        cmd_note(int(sys.argv[2]), sys.argv[3], sys.argv[4], " ".join(sys.argv[5:]))
