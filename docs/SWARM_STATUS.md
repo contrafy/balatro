@@ -84,20 +84,15 @@ _Updated 17:00._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-11-09 20:00:42 by `balatro-data status` (edits inside this block are overwritten). Player runs: 552 (544 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-11-09 21:45:37 by `balatro-data status` (edits inside this block are overwritten). Player runs: 555 (552 finished, 3 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (8)
+### Live runs (3)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7803 | port-7803 | claude-opus-5-5 | RMR7CHY9 | 8 | SHOP | 2 | 3 | 9 | Small Blind (1000) | SHOP_BUY {"slot":1} | EMERGENCY: Photograph sticker-free x2 on first face, SIM 0.12 vs 0.06; left | 11s |
-| 7806 | port-7806 | claude-sonnet-5-5 | AU1L2IHX | 8 | BLIND_SELECT | 5 | 12 | 3 | The Fish (50000) | SELECT_BLIND | play boss The Fish 50000 (cards drawn face down after play) | 29s |
-| 7807 | port-7807 | claude-sonnet-5-5 | ZAZNMZ62 | 8 | SELECTING_HAND | 1 | 3 | -5 | The Hook 0/600 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | Straight Q-8 est 308 registers Sharp; solver p 0.82; need 600 | 10s |
-| 7808 | port-7808 | claude-sonnet-5-5 | VSESQM2I | 8 | SHOP | 7 | 13 | 40 | Small Blind (110000) | SHOP_REROLL | reroll (0->5, interest still maxed) hunting an xMult/planet; slots full but Fibonacci rental is sel… | 1s |
-| 7811 | port-7811 | claude-haiku-5-5 | E3TZYHE1 | 8 | SELECTING_HAND | 3 | 9 | 14 | The Psychic 0/6400 | PLAY_HAND {"card_indices":[1,2,4,5,8]} | ADVICE two pair KS KH 9S 9D + 2D filler est 6156 vs need 6400; 2 hands after; Psychic needs 5 cards | 10s |
-| 7812 | port-7812 | claude-haiku-5-5 | QXVPJ7Y1 | 8 | SHOP | 4 | 9 | 13 | Small Blind (9000) | SHOP_END | LEAVE at 3: Mercury/Mars planets not my Two Pair main, Jumbo Celestial would leave under floor; kee… | 3s |
-| 7814 | port-7814 | claude-haiku-5-5 | D269L8X1 | 8 | ROUND_EVAL | 4 | 9 | -3 | The Water (18000) | CASH_OUT | Water 6400 cleared (5510+1750=7260); ante 3 done; cash out | 19s |
-| 7817 | port-7817 | claude-haiku-5-5 | 986IYLMD | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | Small 300 cleared with final Two Pair 84 (216+84=300 exact); cash out | 19s |
+| 7803 | port-7803 | claude-opus-5-5 | RMR7CHY9 | 8 | SELECTING_HAND | 7 | 16 | 2 | The Hook 0/220000 | DISCARD {"card_indices":[1,4,5]} | Hook: discard before playing (plays get hooked); keep AH QD JD TH TD for a K (Broadway, Q-led ~167k… | 11s |
+| 7814 | port-7814 | claude-haiku-5-5 | 7U1FM1KD | 8 | SELECTING_HAND | 5 | 14 | 15 | Big Blind 5328/37500 | PLAY_HAND {"card_indices":[1,2,5,6,7]} | Big 37500: Pair AC AD est 8722 (need 32172 over 5 hands); solver 1 2 5 6 7 top exp 33123 p 0.64; se… | 1s |
+| 7817 | port-7817 | claude-haiku-5-5 | 986IYLMD | 8 | SELECTING_HAND | 6 | 15 | 27 | Small Blind 2820/60000 | PLAY_HAND {"card_indices":[5,6,7,8]} | Small 60000, 2820 banked, 4 hands: solver dig 7C 5D 3D 2D (keep AH 9S 8C 8D Two Pair draw) p 0.89 v… | 6s |
 
 ### Results by model x stake x deck
 
@@ -106,10 +101,10 @@ _Generated 2026-11-09 20:00:42 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | (unknown) | 8 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
 | claude-fable-5-1 | 8 | Black | 34 | 1 | 32 | 0 | 1 | 4.24 | 8 |
-| claude-haiku-5-5 | 8 | Black | 40 | 0 | 38 | 0 | 2 | 3.05 | 5 |
+| claude-haiku-5-5 | 8 | Black | 43 | 0 | 41 | 0 | 2 | 3.16 | 5 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 265 | 2 | 257 | 0 | 6 | 4.05 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 198 | 1 | 190 | 0 | 7 | 3.66 | 8 |
+| claude-opus-5-5 | 8 | Black | 266 | 2 | 258 | 0 | 6 | 4.04 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 202 | 2 | 193 | 0 | 7 | 3.67 | 8 |
 
 ### Deepest runs
 
@@ -117,20 +112,20 @@ _Generated 2026-11-09 20:00:42 by `balatro-data status` (edits inside this block
 |---|---|---|---|---|---|---|---|---|
 | 1 | 7RFNYICY | claude-fable-5-1 | 8 | Black | win | 8 | Cerulean Bell 493996/400000 | [7801_7RFNYICY.md](runs/7801_7RFNYICY.md) |
 | 2 | IFYMR9UX | claude-opus-5-5 | 8 | Black | win | 8 | Cerulean Bell 460120/400000 | [7802_IFYMR9UX.md](runs/7802_IFYMR9UX.md) |
-| 3 | 9IIGB2FF | claude-opus-5-5 | 8 | Black | win | 8 | Crimson Heart 402199/400000 | [7807_9IIGB2FF.md](runs/7807_9IIGB2FF.md) |
-| 4 | 2WEJC1IS | claude-sonnet-5-5 | 8 | Black | win | 8 | Cerulean Bell 431900/400000 | [7807_2WEJC1IS.md](runs/7807_2WEJC1IS.md) |
-| 5 | B6KZC39M | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 207920/400000 | [7807_B6KZC39M.md](runs/7807_B6KZC39M.md) |
-| 6 | E57ZB14D | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 249600/400000 | [7805_E57ZB14D.md](runs/7805_E57ZB14D.md) |
-| 7 | ME9AMTUQ | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 152568/400000 | [7812_ME9AMTUQ.md](runs/7812_ME9AMTUQ.md) |
-| 8 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
-| 9 | A5LJXXMW | claude-opus-5-5 | 8 | Black | loss | 8 | Crimson Heart 275896/400000 | [7804_A5LJXXMW.md](runs/7804_A5LJXXMW.md) |
-| 10 | FWWIECQF | claude-opus-5-5 | 8 | Black | loss | 8 | Verdant Leaf 224688/400000 | [7805_FWWIECQF.md](runs/7805_FWWIECQF.md) |
+| 3 | VSESQM2I | claude-sonnet-5-5 | 8 | Black | win | 8 | Crimson Heart 576257/400000 | [7808_VSESQM2I.md](runs/7808_VSESQM2I.md) |
+| 4 | 9IIGB2FF | claude-opus-5-5 | 8 | Black | win | 8 | Crimson Heart 402199/400000 | [7807_9IIGB2FF.md](runs/7807_9IIGB2FF.md) |
+| 5 | 2WEJC1IS | claude-sonnet-5-5 | 8 | Black | win | 8 | Cerulean Bell 431900/400000 | [7807_2WEJC1IS.md](runs/7807_2WEJC1IS.md) |
+| 6 | B6KZC39M | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 207920/400000 | [7807_B6KZC39M.md](runs/7807_B6KZC39M.md) |
+| 7 | E57ZB14D | claude-opus-5-5 | 8 | Black | loss | 8 | Amber Acorn 249600/400000 | [7805_E57ZB14D.md](runs/7805_E57ZB14D.md) |
+| 8 | ME9AMTUQ | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 152568/400000 | [7812_ME9AMTUQ.md](runs/7812_ME9AMTUQ.md) |
+| 9 | ZY6GJXIG | claude-sonnet-5-5 | 8 | Black | loss | 8 | Crimson Heart 158620/400000 | [7810_ZY6GJXIG.md](runs/7810_ZY6GJXIG.md) |
+| 10 | A5LJXXMW | claude-opus-5-5 | 8 | Black | loss | 8 | Crimson Heart 275896/400000 | [7804_A5LJXXMW.md](runs/7804_A5LJXXMW.md) |
 
 ### Data validity
 
-- Player runs: 552 files in manifest; schema_ok 552, schema invalid 0; replay_ok 540, replay failed 0, awaiting replay 3, open/unended 9; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 446 / failed 0; gui (live) ok 141 / failed 0; cross-checked by both 47, disagreeing 0.
-- All files (incl. fuzz + replays): 767; schema_ok 765; replay_ok 546 (headless 446, gui 147); replay failed 0; awaiting replay 209; quarantined 2.
+- Player runs: 555 files in manifest; schema_ok 555, schema invalid 0; replay_ok 548, replay failed 0, awaiting replay 3, open/unended 4; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 454 / failed 0; gui (live) ok 142 / failed 0; cross-checked by both 48, disagreeing 0.
+- All files (incl. fuzz + replays): 771; schema_ok 769; replay_ok 554 (headless 454, gui 148); replay failed 0; awaiting replay 210; quarantined 2.
 
 ### Rejects per agent
 
@@ -139,24 +134,24 @@ _Generated 2026-11-09 20:00:42 by `balatro-data status` (edits inside this block
 | BridgeCore | 3 | 1 | 63 |
 | port-7805 | 2 | 2 | 3283 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 2993 |
-| port-7803 | 1 | 1 | 3441 |
+| port-7802 | 1 | 1 | 3024 |
+| port-7803 | 1 | 1 | 3568 |
 | port-7804 | 1 | 1 | 3013 |
-| port-7807 | 1 | 1 | 3759 |
+| port-7807 | 1 | 1 | 3822 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
 | port-7801 | 0 | 0 | 2113 |
-| port-7806 | 0 | 0 | 3452 |
-| port-7808 | 0 | 0 | 1385 |
+| port-7806 | 0 | 0 | 3460 |
+| port-7808 | 0 | 0 | 1413 |
 | port-7809 | 0 | 0 | 3419 |
 | port-7810 | 0 | 0 | 3806 |
-| port-7811 | 0 | 0 | 1109 |
-| port-7812 | 0 | 0 | 1189 |
+| port-7811 | 0 | 0 | 1155 |
+| port-7812 | 0 | 0 | 1233 |
 | port-7813 | 0 | 0 | 1026 |
-| port-7814 | 0 | 0 | 1148 |
+| port-7814 | 0 | 0 | 1288 |
 | port-7815 | 0 | 0 | 1089 |
 | port-7816 | 0 | 0 | 1089 |
-| port-7817 | 0 | 0 | 1040 |
+| port-7817 | 0 | 0 | 1166 |
 | port-7818 | 0 | 0 | 1092 |
 <!-- AUTO:END -->
 
@@ -233,4 +228,23 @@ _Generated 2026-11-09 20:00:42 by `balatro-data status` (edits inside this block
   reroll floor, boss known at ante start, copier order from both new wins, Card Sharp repeats, Verdant Leaf).
   Stats at 16:14: Opus 236 runs / 2 wins / mean ante 4.09; Sonnet 157 / 1 / 3.64; Fable 32 / 0 / 4.12;
   Haiku 22 / 0 / 3.00 (max 5). Latest ante-8 loss: FWWIECQF (Opus, Verdant Leaf 224688/400000).
+- 2026-11-09 19:25 Swarm resumed without Fable: 18 players (Opus 7801-7804, Sonnet 7805-7810, Haiku 7811-7818).
+  Steam must be running or every instance exits at launch. The dashboard gained a "Notable events" section:
+  players append `NOTABLE:` lines to their run logs, and the orchestrator adds `swarm_ctl.py note` rows.
+- 19:35 At the user's request, scaled down to 9 players (2 Opus, 3 Sonnet, 4 Haiku) by retiring the first
+  finishers of each model, with a soft stop (no new games) at 21:05:49.
+- ~21:00 Several players stopped at the 200-request soft budget mid-run (7808 in the ante 8 shop, 7803 at ante 6,
+  7814 and 7817 at ante 5). The orchestrator messaged each one to resume and finish its run, and raised
+  `task.agentSoftRequestBudget` to 1000 for player agents (session only).
+- Result: **5th Gold win**, Sonnet `VSESQM2I` (port 7808) beat Crimson Heart 576257/400000.
+  - Build: Hanging Chad + Blueprint copying Photograph, Bloodstone on Sun/Death hearts, and Throwback from skipped
+    blinds.
+  - 157 steps, 0 rejects, replay_ok (headless).
+  - Haiku set its best ante (6, `986IYLMD`). Opus `RMR7CHY9` reached ante 8 with a perishable Hanging Chad x64 engine.
+  - Session totals: 30 runs (Sonnet 10 / 1 win / mean ante 3.3; Haiku 13 / 0 / 3.85; Opus 7 / 0 / 3.71).
+- Recurring advisor defect, reported by about 7 players: solver p reads >= 0.95 on lines that cannot clear
+  (best est x hands left < chips needed).
+  - Also reported: The Mark face-down cards (p 0.01 on a round won by 118), Bloodstone rolls ignored by est/SIM,
+    and SCORE CHECK dropping perishable carriers.
+  - No advisor worker ran this session, so these are unfixed; details are in `data/swarm_results.jsonl`.
 
