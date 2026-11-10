@@ -84,30 +84,20 @@ _Updated 17:00._
 ## Auto-generated status
 
 <!-- AUTO:BEGIN -->
-_Generated 2026-11-09 19:30:48 by `balatro-data status` (edits inside this block are overwritten). Player runs: 543 (525 finished, 18 live); fuzz seeds, `test-*` agents and replays excluded._
+_Generated 2026-11-09 20:00:42 by `balatro-data status` (edits inside this block are overwritten). Player runs: 552 (544 finished, 8 live); fuzz seeds, `test-*` agents and replays excluded._
 
-### Live runs (18)
+### Live runs (8)
 
 | port | agent | model | seed | stake | phase | ante | round | $ | blind | last action | why | idle |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 7801 | port-7801 | claude-opus-5-5 | KEHU82A5 | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[2,3,4,8]} | solver p>=0.99 vs 0.93 for 2P play: keep KH TH 7H 6H flush draw, 2 hands+1 disc left for 300 | 8s |
-| 7802 | port-7802 | claude-opus-5-5 | 44NQ3115 | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[2,3,6,7,8]} | solver p 0.97 vs 0.87: keep AH 6H 5H for flush/straight draw, 2P est 92 far below 300 | 14s |
-| 7803 | port-7803 | claude-opus-5-5 | N8XYWGFC | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[4,5,7,8]} | made Two Pair 99 77 est 104 = pace for 300; solver 0.81 vs 0.84 within noise, keep discard | 3s |
-| 7804 | port-7804 | claude-opus-5-5 | GWQANQ4Y | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[2,3,4,5,8]} | made Two Pair 99 77 est 104 on pace for 300, solver p 0.95, keep discards | 1s |
-| 7805 | port-7805 | claude-sonnet-5-5 | N57R6S8K | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[1,2,4,8]} | keep 4 diamonds 9D6D5D4D for flush draw, solver p 0.94 vs 300 need | 3s |
-| 7806 | port-7806 | claude-sonnet-5-5 | AU1L2IHX | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[2,6,8]} | keep 888 + AD 4D, solver p>=0.99 vs 0.97 for playing trips now; need 300, trips est 162 | 3s |
-| 7807 | port-7807 | claude-sonnet-5-5 | VWBWY9KW | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[6,7,8]} | Keep AKQ+TT: straight draw (J) with pair floor; solver p 0.85 vs need 300 | 1s |
-| 7808 | port-7808 | claude-sonnet-5-5 | 3QPAXEP9 | 8 | BLIND_SELECT | 1 | 0 | 4 | Small Blind (300) | SELECT_BLIND | play ante-1 Small 300; Economy tag at does not give a joker now | 26s |
-| 7809 | port-7809 | (unknown) | VVTKJ1AB | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 284/300 | PLAY_HAND {"card_indices":[3,4,5,6]} | Two Pair JJ99 ~100 clears the last 16 needed | 3s |
-| 7810 | port-7810 | claude-sonnet-5-5 | PX5JP3IZ | 8 | - | - | - | - | - | - | - | 37s |
-| 7811 | port-7811 | claude-haiku-5-5 | 771P38G2 | 8 | BLIND_SELECT | 1 | 0 | 4 | Small Blind (300) | SELECT_BLIND | ADVICE blind; ante 1 Small 300, Skip tag is not a joker tag, so play it for the $ and shop | 27s |
-| 7812 | port-7812 | claude-haiku-5-5 | XDF87YY8 | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | Small Blind cleared with Flush 308 vs 300 | 5s |
-| 7813 | port-7813 | claude-haiku-5-5 | DR9Y88WA | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[1,3,4,5,8]} | Pair KK est 60 < need 300; solver disc p 0.97 highest-line; keep KC 8C 3C flush draw | 13s |
-| 7814 | port-7814 | claude-haiku-5-5 | R57NWUGL | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[2,3,4,6,7]} | Full House 9s and 4s est 300 = need 300 Small Blind, solver p>=0.99 | 3s |
-| 7815 | port-7815 | claude-haiku-5-5 | PKME7T8R | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | PLAY_HAND {"card_indices":[2,3,4,5,6]} | Flush KH QH JH 9H 7H est 324 vs need 300, solver p>=0.99 | 1s |
-| 7816 | port-7816 | claude-haiku-5-5 | 4ULAHSJL | 8 | BLIND_SELECT | 1 | 0 | 4 | Small Blind (300) | SELECT_BLIND | Small 300 with no jokers; advisor says play, Charm tag only pays a pack with a skip and Small skip … | 19s |
-| 7817 | port-7817 | claude-haiku-5-5 | KQIX3Z4U | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[2,6,7,8]} | Advisor ADVICE: solver p 0.97 keep-draw vs 0.81 play Two Pair 112 now; last discard, need 300 over … | 6s |
-| 7818 | port-7818 | claude-haiku-5-5 | F4VCTBZQ | 8 | SELECTING_HAND | 1 | 1 | 4 | Small Blind 0/300 | DISCARD {"card_indices":[1,2,5,7,8]} | Pace: Pair est 60 < 300 need; solver discard clears 90% vs 81% for rule pick; keep KC QC 6C flush d… | 3s |
+| 7803 | port-7803 | claude-opus-5-5 | RMR7CHY9 | 8 | SHOP | 2 | 3 | 9 | Small Blind (1000) | SHOP_BUY {"slot":1} | EMERGENCY: Photograph sticker-free x2 on first face, SIM 0.12 vs 0.06; left | 11s |
+| 7806 | port-7806 | claude-sonnet-5-5 | AU1L2IHX | 8 | BLIND_SELECT | 5 | 12 | 3 | The Fish (50000) | SELECT_BLIND | play boss The Fish 50000 (cards drawn face down after play) | 29s |
+| 7807 | port-7807 | claude-sonnet-5-5 | ZAZNMZ62 | 8 | SELECTING_HAND | 1 | 3 | -5 | The Hook 0/600 | PLAY_HAND {"card_indices":[1,2,3,4,5]} | Straight Q-8 est 308 registers Sharp; solver p 0.82; need 600 | 10s |
+| 7808 | port-7808 | claude-sonnet-5-5 | VSESQM2I | 8 | SHOP | 7 | 13 | 40 | Small Blind (110000) | SHOP_REROLL | reroll (0->5, interest still maxed) hunting an xMult/planet; slots full but Fibonacci rental is sel… | 1s |
+| 7811 | port-7811 | claude-haiku-5-5 | E3TZYHE1 | 8 | SELECTING_HAND | 3 | 9 | 14 | The Psychic 0/6400 | PLAY_HAND {"card_indices":[1,2,4,5,8]} | ADVICE two pair KS KH 9S 9D + 2D filler est 6156 vs need 6400; 2 hands after; Psychic needs 5 cards | 10s |
+| 7812 | port-7812 | claude-haiku-5-5 | QXVPJ7Y1 | 8 | SHOP | 4 | 9 | 13 | Small Blind (9000) | SHOP_END | LEAVE at 3: Mercury/Mars planets not my Two Pair main, Jumbo Celestial would leave under floor; kee… | 3s |
+| 7814 | port-7814 | claude-haiku-5-5 | D269L8X1 | 8 | ROUND_EVAL | 4 | 9 | -3 | The Water (18000) | CASH_OUT | Water 6400 cleared (5510+1750=7260); ante 3 done; cash out | 19s |
+| 7817 | port-7817 | claude-haiku-5-5 | 986IYLMD | 8 | ROUND_EVAL | 1 | 1 | 4 | Small Blind (300) | CASH_OUT | Small 300 cleared with final Two Pair 84 (216+84=300 exact); cash out | 19s |
 
 ### Results by model x stake x deck
 
@@ -116,10 +106,10 @@ _Generated 2026-11-09 19:30:48 by `balatro-data status` (edits inside this block
 | (unknown) | 1 | Red | 5 | 0 | 3 | 1 | 1 | 1.4 | 2 |
 | (unknown) | 8 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
 | claude-fable-5-1 | 8 | Black | 34 | 1 | 32 | 0 | 1 | 4.24 | 8 |
-| claude-haiku-5-5 | 8 | Black | 32 | 0 | 30 | 0 | 2 | 3.03 | 5 |
+| claude-haiku-5-5 | 8 | Black | 40 | 0 | 38 | 0 | 2 | 3.05 | 5 |
 | claude-opus-4 | 1 | Black | 1 | 0 | 0 | 0 | 1 | 4.0 | 4 |
-| claude-opus-5-5 | 8 | Black | 260 | 2 | 252 | 0 | 6 | 4.06 | 8 |
-| claude-sonnet-5-5 | 8 | Black | 192 | 1 | 184 | 0 | 7 | 3.69 | 8 |
+| claude-opus-5-5 | 8 | Black | 265 | 2 | 257 | 0 | 6 | 4.05 | 8 |
+| claude-sonnet-5-5 | 8 | Black | 198 | 1 | 190 | 0 | 7 | 3.66 | 8 |
 
 ### Deepest runs
 
@@ -138,36 +128,36 @@ _Generated 2026-11-09 19:30:48 by `balatro-data status` (edits inside this block
 
 ### Data validity
 
-- Player runs: 543 files in manifest; schema_ok 543, schema invalid 0; replay_ok 521, replay failed 0, awaiting replay 3, open/unended 19; quarantined 0; not yet in manifest 0.
-- Player-run replay verdicts by host: headless ok 427 / failed 0; gui (live) ok 140 / failed 0; cross-checked by both 46, disagreeing 0.
-- All files (incl. fuzz + replays): 757; schema_ok 755; replay_ok 527 (headless 427, gui 146); replay failed 0; awaiting replay 208; quarantined 2.
+- Player runs: 552 files in manifest; schema_ok 552, schema invalid 0; replay_ok 540, replay failed 0, awaiting replay 3, open/unended 9; quarantined 0; not yet in manifest 0.
+- Player-run replay verdicts by host: headless ok 446 / failed 0; gui (live) ok 141 / failed 0; cross-checked by both 47, disagreeing 0.
+- All files (incl. fuzz + replays): 767; schema_ok 765; replay_ok 546 (headless 446, gui 147); replay failed 0; awaiting replay 209; quarantined 2.
 
 ### Rejects per agent
 
 | agent | rejects | runs with rejects | steps |
 |---|---|---|---|
 | BridgeCore | 3 | 1 | 63 |
-| port-7805 | 2 | 2 | 3231 |
+| port-7805 | 2 | 2 | 3283 |
 | port-7778 | 1 | 1 | 0 |
-| port-7802 | 1 | 1 | 2895 |
-| port-7803 | 1 | 1 | 3322 |
-| port-7804 | 1 | 1 | 2978 |
-| port-7807 | 1 | 1 | 3607 |
+| port-7802 | 1 | 1 | 2993 |
+| port-7803 | 1 | 1 | 3441 |
+| port-7804 | 1 | 1 | 3013 |
+| port-7807 | 1 | 1 | 3759 |
 | ? | 0 | 0 | 60 |
 | CliSwarm | 0 | 0 | 107 |
-| port-7801 | 0 | 0 | 2060 |
-| port-7806 | 0 | 0 | 3366 |
-| port-7808 | 0 | 0 | 1243 |
-| port-7809 | 0 | 0 | 3382 |
-| port-7810 | 0 | 0 | 3760 |
-| port-7811 | 0 | 0 | 974 |
-| port-7812 | 0 | 0 | 1057 |
-| port-7813 | 0 | 0 | 1006 |
-| port-7814 | 0 | 0 | 1021 |
-| port-7815 | 0 | 0 | 1031 |
-| port-7816 | 0 | 0 | 1043 |
-| port-7817 | 0 | 0 | 930 |
-| port-7818 | 0 | 0 | 1027 |
+| port-7801 | 0 | 0 | 2113 |
+| port-7806 | 0 | 0 | 3452 |
+| port-7808 | 0 | 0 | 1385 |
+| port-7809 | 0 | 0 | 3419 |
+| port-7810 | 0 | 0 | 3806 |
+| port-7811 | 0 | 0 | 1109 |
+| port-7812 | 0 | 0 | 1189 |
+| port-7813 | 0 | 0 | 1026 |
+| port-7814 | 0 | 0 | 1148 |
+| port-7815 | 0 | 0 | 1089 |
+| port-7816 | 0 | 0 | 1089 |
+| port-7817 | 0 | 0 | 1040 |
+| port-7818 | 0 | 0 | 1092 |
 <!-- AUTO:END -->
 
 ## Orchestrator log
